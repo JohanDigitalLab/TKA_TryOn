@@ -21,7 +21,7 @@ export default function MissionsPage() {
   const [activityType, setActivityType] = useState("latihan");
   const [difficulty, setDifficulty] = useState("sedang");
   const [questionCount, setQuestionCount] = useState("20");
-  const [duration, setDuration] = useState("60");
+  const [duration, setDuration] = useState("30");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -418,28 +418,28 @@ export default function MissionsPage() {
               </select>
             </div>
 
-            {activityType === "simulasi" && (
-              <div>
-                <label
-                  htmlFor="duration"
-                  className="mb-2 block text-sm font-bold text-slate-800"
-                >
-                  Durasi per Mata Pelajaran
-                </label>
+            {/* DURASI: TERSEDIA UNTUK KEDUA JENIS KEGIATAN */}
+            <div>
+              <label
+                htmlFor="duration"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
+                Durasi per Mata Pelajaran
+              </label>
 
-                <select
-                  id="duration"
-                  value={duration}
-                  onChange={(event) => setDuration(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
-                >
-                  <option value="30">30 Menit</option>
-                  <option value="45">45 Menit</option>
-                  <option value="60">60 Menit</option>
-                  <option value="90">90 Menit</option>
-                </select>
-              </div>
-            )}
+              <select
+                id="duration"
+                value={duration}
+                onChange={(event) => setDuration(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+              >
+                <option value="20">20 Menit</option>
+                <option value="30">30 Menit</option>
+                <option value="45">45 Menit</option>
+                <option value="60">60 Menit</option>
+                <option value="90">90 Menit</option>
+              </select>
+            </div>
           </div>
         </section>
 
@@ -484,6 +484,16 @@ export default function MissionsPage() {
               </p>
             </div>
           </div>
+
+          {/* RINGKASAN DURASI */}
+          {activityType === "latihan" && (
+            <div className="mt-3 rounded-lg bg-slate-50 p-4">
+              <p className="text-xs text-slate-500">Durasi per Sesi</p>
+              <p className="mt-2 font-bold text-slate-900">
+                {duration} menit
+              </p>
+            </div>
+          )}
 
           {selectedSubjects.length > 0 && (
             <div className="mt-5 rounded-lg bg-blue-50 p-4">
