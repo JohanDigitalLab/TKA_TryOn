@@ -7,15 +7,16 @@ const services = [
     title: "Simulasi TKA",
     description:
       "Kerjakan simulasi ujian dengan tampilan CBT, batas waktu, navigasi soal, dan mekanisme pengerjaan terstruktur.",
-    status: "DALAM PENGEMBANGAN",
-    available: false,
+    status: "MULAI SIMULASI",
+    available: true,
+    href: "/student/subjects",
   },
   {
     number: "02",
     title: "Latihan Akademik",
     description:
       "Latihan berdasarkan jenjang pendidikan, mata pelajaran, dan kompetensi yang diujikan.",
-    status: "BUKA LATIHAN",
+    status: "MULAI LATIHAN",
     available: true,
     href: "/student/subjects",
   },
@@ -23,24 +24,24 @@ const services = [
     number: "03",
     title: "Hasil dan Evaluasi",
     description:
-      "Lihat hasil pengerjaan, capaian kompetensi, dan rekomendasi peningkatan kemampuan.",
-    status: "SEGERA TERSEDIA",
-    available: false,
+      "Lihat hasil pengerjaan, capaian kompetensi, dan pembahasan soal untuk mengevaluasi kemampuan akademik.",
+    status: "LIHAT HASIL",
+    available: true,
+    href: "/student/results",
   },
 ];
 
 export default function StudentPage() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
-
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 lg:px-8">
-
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
               T
             </div>
+
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
                 TKA <span className="text-blue-700">TryOn</span>
@@ -60,16 +61,15 @@ export default function StudentPage() {
                 Profil belum terhubung
               </p>
             </div>
+
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
               P
             </div>
           </div>
-
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-
         {/* SAPAAN */}
         <section className="mb-8">
           <p className="text-sm font-semibold text-blue-700">
@@ -93,9 +93,11 @@ export default function StudentPage() {
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 INFORMASI PESERTA
               </p>
+
               <h3 className="mt-2 text-lg font-bold text-slate-900">
                 Lengkapi profil pendidikan Anda
               </h3>
+
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 Jenjang dan kelas akan digunakan untuk menyesuaikan materi
                 latihan serta paket simulasi TKA.
@@ -114,9 +116,11 @@ export default function StudentPage() {
             <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
               LAYANAN PESERTA
             </p>
+
             <h3 className="mt-2 text-xl font-extrabold text-slate-950 sm:text-2xl">
               Pilih Aktivitas Anda
             </h3>
+
             <p className="mt-1 text-sm text-slate-500">
               Akses fasilitas persiapan dan evaluasi TKA.
             </p>
@@ -133,14 +137,8 @@ export default function StudentPage() {
                     LAYANAN {service.number}
                   </span>
 
-                  <span
-                    className={`rounded-md px-2.5 py-1.5 text-[10px] font-bold tracking-wide ${
-                      service.available
-                        ? "bg-green-50 text-green-700"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {service.available ? "TERSEDIA" : "BELUM TERSEDIA"}
+                  <span className="rounded-md bg-green-50 px-2.5 py-1.5 text-[10px] font-bold tracking-wide text-green-700">
+                    TERSEDIA
                   </span>
                 </div>
 
@@ -152,18 +150,12 @@ export default function StudentPage() {
                   {service.description}
                 </p>
 
-                {service.available ? (
-                  <Link
-                    href={service.href}
-                    className="mt-6 flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-                  >
-                    {service.status} →
-                  </Link>
-                ) : (
-                  <div className="mt-6 flex min-h-11 items-center justify-center rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-400">
-                    {service.status}
-                  </div>
-                )}
+                <Link
+                  href={service.href}
+                  className="mt-6 flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+                >
+                  {service.status} →
+                </Link>
               </article>
             ))}
           </div>
@@ -191,11 +183,11 @@ export default function StudentPage() {
           <p className="text-xs text-slate-500">
             © 2026 TKA TryOn
           </p>
+
           <p className="mt-1 text-xs font-semibold tracking-wider text-blue-700">
             SKILL ON • CONFIDENCE ON
           </p>
         </footer>
-
       </div>
     </main>
   );

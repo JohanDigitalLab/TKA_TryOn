@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,15 +24,21 @@ function getExamConfig() {
   }
 }
 
-function normalizeSubject(value) {
-  if (Array.isArray(value)) return value[0] || "";
-  if (typeof value === "string") return value;
-  return "";
+function normalizeSubjects(config) {
+  const subjects = Array.isArray(config.subjects)
+    ? config.subjects
+    : [config.subject || config.mataPelajaran || "Matematika"];
+
+  return subjects.map((item) => String(item).trim()).filter(Boolean);
 }
 
 function normalizeGrade(config) {
   const raw = config.grade ?? config.kelas ?? config.level;
   const text = String(raw || "").toLowerCase();
+
+  if (text.includes("sma") || text.includes("ma") || text === "12") {
+    return 12;
+  }
 
   if (text.includes("smp") || text.includes("mts") || text === "9") {
     return 9;
@@ -41,7 +48,8 @@ function normalizeGrade(config) {
     return 6;
   }
 
-  return Number(raw) === 9 ? 9 : 6;
+  const number = Number(raw);
+  return [6, 9, 12].includes(number) ? number : 6;
 }
 
 function normalizeType(type) {
@@ -91,10 +99,22 @@ function getCategoryOptions(items = []) {
 
   items.forEach((item) => {
     if (item.category_label) values.push(item.category_label);
-    if (item.correct_category) values.push(item.correct_category);
+    if (item.category_options && Array.isArray(item.category_options)) {
+      values.push(...item.category_options);
+    }
   });
 
   return [...new Set(values.filter(Boolean))];
+}
+
+function getSimulationResults() {
+  try {
+    return JSON.parse(
+      sessionStorage.getItem("tryon-simulation-results") || "[]"
+    );
+  } catch {
+    return [];
+  }
 }
 
 // =====================================================
@@ -128,6 +148,9 @@ export default function ChallengePage() {
   const [examInfo, setExamInfo] = useState({
     grade: 6,
     subject: "Matematika",
+    subjectIndex: 0,
+    totalSubjects: 1,
+    simulationId: null,
   });
 
   const startedRef = useRef(false);
@@ -142,11 +165,16 @@ export default function ChallengePage() {
     ).length;
   }, [questions, answers]);
 
+  const config = getExamConfig();
+  const subjects = normalizeSubjects(config);
+  const subjectIndex = Number(config.currentSubjectIndex || 0);
+  const hasNextSubject = subjectIndex < subjects.length - 1;
+
   // =====================================================
-  // MEMULAI UJIAN
+  // MEMULAI SESI MATA PELAJARAN
   // =====================================================
 
-  const startExam = useCallback(async () => {
+  const startExam = useCallback(async (subjectOverride = null) => {
     if (startedRef.current) return;
 
     startedRef.current = true;
@@ -161,35 +189,55 @@ export default function ChallengePage() {
 
       if (!sessionData?.session) {
         throw new Error(
-          "Siswa harus login terlebih dahulu sebelum memulai simulasi."
+          "Siswa harus login terlebih dahulu sebelum memulai ujian."
         );
       }
 
-      const config = getExamConfig();
-
-      const grade = normalizeGrade(config);
+      const currentConfig = getExamConfig();
+      const subjectList = normalizeSubjects(currentConfig);
+      const index = Number(currentConfig.currentSubjectIndex || 0);
 
       const subject =
-        normalizeSubject(
-          config.subjects ||
-            config.subject ||
-            config.mataPelajaran
-        ) || "Matematika";
+        subjectOverride ||
+        subjectList[index] ||
+        subjectList[0] ||
+        "Matematika";
+
+      const grade = normalizeGrade(currentConfig);
 
       const duration = Math.min(
         240,
-        Math.max(1, Number(config.duration) || 60)
+        Math.max(1, Number(currentConfig.duration) || 60)
       );
 
       const questionCount = Math.min(
         100,
         Math.max(
           1,
-          Number(config.questionCount || config.totalQuestions) || 20
+          Number(
+            currentConfig.questionCount || currentConfig.totalQuestions
+          ) || 20
         )
       );
 
-      setExamInfo({ grade, subject });
+      const simulationId =
+        currentConfig.simulationId || `sim-${Date.now()}`;
+
+      currentConfig.simulationId = simulationId;
+      currentConfig.currentSubjectIndex = index;
+
+      sessionStorage.setItem(
+        "tryon-exam-config",
+        JSON.stringify(currentConfig)
+      );
+
+      setExamInfo({
+        grade,
+        subject,
+        subjectIndex: index,
+        totalSubjects: subjectList.length,
+        simulationId,
+      });
 
       const { data, error: rpcError } = await supabase.rpc(
         "start_exam_attempt",
@@ -209,36 +257,31 @@ export default function ChallengePage() {
         data.questions.length === 0
       ) {
         throw new Error(
-          "Supabase belum mengembalikan daftar soal untuk simulasi ini."
+          `Soal untuk mata pelajaran ${subject} belum tersedia di bank soal.`
         );
       }
 
       const mapped = data.questions.map((item, index) => ({
         ...item,
-
         number: item.question_order || index + 1,
         subject,
-
         type: normalizeType(item.question_type),
-
         question: item.question_text,
-
         stimulus:
           item.stimulus?.content_text ||
           item.stimulus?.title ||
           "",
-
         options: (item.options || []).map((option) => ({
           code: option.option_code,
           text: option.option_text,
           is_correct: option.is_correct,
           explanation: option.explanation,
         })),
-
         category_items: (item.category_items || []).map((category) => ({
           item_number: category.item_number,
           item_text: category.item_text,
           category_label: category.category_label,
+          category_options: category.category_options,
           correct_category: category.correct_category,
           explanation: category.explanation,
         })),
@@ -246,12 +289,8 @@ export default function ChallengePage() {
 
       setAttemptId(data.attempt_id);
       setQuestions(mapped);
+      setRemaining(Number(data.duration_minutes || duration) * 60);
 
-      setRemaining(
-        Number(data.duration_minutes || duration) * 60
-      );
-
-      // Inisialisasi jawaban kosong sesuai tipe soal.
       const initialAnswers = {};
 
       mapped.forEach((item) => {
@@ -265,7 +304,7 @@ export default function ChallengePage() {
       setAnswers(initialAnswers);
     } catch (err) {
       startedRef.current = false;
-      setError(err?.message || "Simulasi gagal dimulai.");
+      setError(err?.message || "Ujian gagal dimulai.");
     } finally {
       setLoading(false);
     }
@@ -322,11 +361,9 @@ export default function ChallengePage() {
 
     answersRef.current = next;
     setAnswers(next);
-
     persistAnswer(questionId, payload);
   };
 
-  // PG TUNGGAL
   const chooseSingle = (optionCode) => {
     if (!question || finished) return;
 
@@ -336,12 +373,11 @@ export default function ChallengePage() {
     });
   };
 
-  // PGK MA: PILIH LEBIH DARI SATU
   const toggleMultiple = (optionCode) => {
     if (!question || finished) return;
 
     const currentPayload = normalizePayload(
-      answers[question.question_id]
+      answersRef.current[question.question_id]
     );
 
     const selected = currentPayload.option_codes;
@@ -356,12 +392,11 @@ export default function ChallengePage() {
     });
   };
 
-  // PGK KATEGORI
   const chooseCategory = (itemNumber, category) => {
     if (!question || finished) return;
 
     const currentPayload = normalizePayload(
-      answers[question.question_id]
+      answersRef.current[question.question_id]
     );
 
     const nextCategories = {
@@ -379,40 +414,84 @@ export default function ChallengePage() {
   // REVIEW HASIL UJIAN
   // =====================================================
 
-  const loadReview = useCallback(
-    async (id) => {
-      if (!id) return;
+  const loadReview = useCallback(async (id) => {
+    if (!id) return;
 
-      setReviewLoading(true);
-      setReviewError("");
+    setReviewLoading(true);
+    setReviewError("");
 
-      try {
-        const { data, error: reviewRpcError } =
-          await supabase.rpc("get_exam_attempt_review", {
-            p_attempt_id: id,
-          });
-
-        if (reviewRpcError) throw reviewRpcError;
-
-        if (!data) {
-          throw new Error("Data review belum tersedia.");
+    try {
+      const { data, error: reviewRpcError } = await supabase.rpc(
+        "get_exam_attempt_review",
+        {
+          p_attempt_id: id,
         }
+      );
 
-        setReview(data);
-      } catch (err) {
-        setReviewError(
-          err?.message ||
-            "Rincian hasil ujian belum berhasil dimuat."
-        );
-      } finally {
-        setReviewLoading(false);
-      }
-    },
-    []
-  );
+      if (reviewRpcError) throw reviewRpcError;
+      if (!data) throw new Error("Data review belum tersedia.");
+
+      setReview(data);
+    } catch (err) {
+      setReviewError(
+        err?.message || "Rincian hasil ujian belum berhasil dimuat."
+      );
+    } finally {
+      setReviewLoading(false);
+    }
+  }, []);
 
   // =====================================================
-  // MENYELESAIKAN UJIAN
+  // SIMPAN HASIL SESI
+  // =====================================================
+
+  const saveSessionResult = (data, reviewData) => {
+    const currentConfig = getExamConfig();
+    const currentSubjects = normalizeSubjects(currentConfig);
+    const index = Number(currentConfig.currentSubjectIndex || 0);
+
+    const sessionResult = {
+      simulationId:
+        currentConfig.simulationId || examInfo.simulationId,
+      subject: examInfo.subject,
+      grade: examInfo.grade,
+      subjectIndex: index,
+      totalSubjects: currentSubjects.length,
+      attemptId,
+      score: Number(data?.score ?? 0),
+      totalQuestions: Number(data?.total_questions ?? questions.length),
+      correctAnswers: Number(data?.correct_answers ?? 0),
+      incorrectOrUnanswered: Number(
+        data?.incorrect_or_unanswered ?? 0
+      ),
+      answeredCount,
+      result: data,
+      review: reviewData || null,
+      completedAt: new Date().toISOString(),
+    };
+
+    const previousResults = getSimulationResults();
+
+    const updatedResults = [
+      ...previousResults.filter(
+        (item) => item.subjectIndex !== index
+      ),
+      sessionResult,
+    ].sort((a, b) => a.subjectIndex - b.subjectIndex);
+
+    sessionStorage.setItem(
+      "tryon-simulation-results",
+      JSON.stringify(updatedResults)
+    );
+
+    sessionStorage.setItem(
+      "tryon-exam-result",
+      JSON.stringify(data)
+    );
+  };
+
+  // =====================================================
+  // MENYELESAIKAN SESI
   // =====================================================
 
   const finishExam = useCallback(async () => {
@@ -436,24 +515,79 @@ export default function ChallengePage() {
       setFinished(true);
       setShowConfirm(false);
 
-      sessionStorage.setItem(
-        "tryon-exam-result",
-        JSON.stringify(data)
+      await loadReview(attemptId);
+
+      const { data: reviewData } = await supabase.rpc(
+        "get_exam_attempt_review",
+        {
+          p_attempt_id: attemptId,
+        }
       );
 
-      // Ambil rincian setelah ujian dinyatakan selesai.
-      await loadReview(attemptId);
+      saveSessionResult(data, reviewData);
     } catch (err) {
       finishingRef.current = false;
-
       setError(
         err?.message ||
-          "Ujian belum berhasil diselesaikan. Coba kembali."
+          "Ujian belum berhasil diselesaikan. Silakan coba kembali."
       );
     } finally {
       setSaving(false);
     }
-  }, [attemptId, finished, loadReview]);
+  }, [
+    attemptId,
+    finished,
+    loadReview,
+    examInfo,
+    questions.length,
+    answeredCount,
+  ]);
+
+  // =====================================================
+  // LANJUT KE MATA PELAJARAN BERIKUTNYA
+  // =====================================================
+
+  const nextSubject = () => {
+    const currentConfig = getExamConfig();
+    const subjectList = normalizeSubjects(currentConfig);
+    const nextIndex =
+      Number(currentConfig.currentSubjectIndex || 0) + 1;
+
+    if (nextIndex >= subjectList.length) {
+      router.push("/student/results");
+      return;
+    }
+
+    currentConfig.currentSubjectIndex = nextIndex;
+
+    sessionStorage.setItem(
+      "tryon-exam-config",
+      JSON.stringify(currentConfig)
+    );
+
+    // Reset seluruh state sesi sebelumnya.
+    startedRef.current = false;
+    finishingRef.current = false;
+    answersRef.current = {};
+
+    setLoading(true);
+    setSaving(false);
+    setError("");
+    setQuestions([]);
+    setAttemptId(null);
+    setCurrent(0);
+    setAnswers({});
+    setMarked([]);
+    setRemaining(3600);
+    setFinished(false);
+    setShowConfirm(false);
+    setResult(null);
+    setReview(null);
+    setReviewError("");
+    setShowReview(false);
+
+    startExam(subjectList[nextIndex]);
+  };
 
   // =====================================================
   // TIMER
@@ -490,58 +624,7 @@ export default function ChallengePage() {
   };
 
   // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
-    return (
-      <main className="min-h-screen grid place-items-center bg-slate-100 text-slate-600">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
-
-          <p className="font-semibold">
-            Menyiapkan soal dari bank TKA TryOn…
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  // =====================================================
-  // ERROR MEMULAI UJIAN
-  // =====================================================
-
-  if (error && !questions.length) {
-    return (
-      <main className="min-h-screen grid place-items-center bg-slate-100 p-5 text-slate-800">
-        <section className="w-full max-w-xl rounded-2xl bg-white p-7 shadow-sm">
-          <h1 className="text-xl font-extrabold text-slate-900">
-            Simulasi belum dapat dimulai
-          </h1>
-
-          <p className="mt-3 rounded-lg bg-red-50 p-4 text-sm leading-6 text-red-700">
-            {error}
-          </p>
-
-          <p className="mt-3 text-sm text-slate-500">
-            Pastikan akun siswa sudah login, konfigurasi jenjang
-            dan mata pelajaran sudah dipilih, serta soal tersedia
-            di Supabase.
-          </p>
-
-          <button
-            onClick={() => router.push("/student")}
-            className="mt-5 rounded-lg bg-blue-700 px-5 py-3 font-bold text-white"
-          >
-            Kembali ke Dashboard
-          </button>
-        </section>
-      </main>
-    );
-  }
-
-  // =====================================================
-  // HALAMAN REVIEW
+  // REVIEW JAWABAN
   // =====================================================
 
   const reviewQuestions = review?.questions || [];
@@ -551,11 +634,9 @@ export default function ChallengePage() {
     const payload = normalizePayload(item.answer_payload);
 
     if (type === "PGK_KATEGORI") {
-      const categoryItems = item.category_items || [];
-
       return (
         <div className="mt-4 space-y-3">
-          {categoryItems.map((category) => {
+          {(item.category_items || []).map((category) => {
             const number = String(category.item_number);
             const studentAnswer =
               payload.category_answers[number] || "Belum dijawab";
@@ -568,15 +649,11 @@ export default function ChallengePage() {
                 <p className="text-sm font-medium text-slate-800">
                   {category.item_number}. {category.item_text}
                 </p>
-
                 <p className="mt-2 text-sm">
-                  Jawaban siswa:{" "}
-                  <strong>{studentAnswer}</strong>
+                  Jawaban siswa: <strong>{studentAnswer}</strong>
                 </p>
-
                 <p className="text-sm text-green-700">
-                  Kunci:{" "}
-                  <strong>{category.correct_category}</strong>
+                  Kunci: <strong>{category.correct_category}</strong>
                 </p>
               </div>
             );
@@ -607,17 +684,12 @@ export default function ChallengePage() {
                 <span className="font-bold">
                   {option.option_code}.
                 </span>
-
-                <span className="flex-1">
-                  {option.option_text}
-                </span>
-
+                <span className="flex-1">{option.option_text}</span>
                 {selected && (
                   <span className="text-xs font-bold">
                     Jawaban siswa
                   </span>
                 )}
-
                 {option.is_correct && (
                   <span className="text-xs font-bold text-green-700">
                     Kunci
@@ -632,7 +704,57 @@ export default function ChallengePage() {
   };
 
   // =====================================================
-  // HASIL UJIAN
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <main className="min-h-screen grid place-items-center bg-slate-100 text-slate-600">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+          <p className="font-semibold">
+            Menyiapkan soal dari bank TKA TryOn…
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // =====================================================
+  // ERROR MEMULAI UJIAN
+  // =====================================================
+
+  if (error && !questions.length) {
+    return (
+      <main className="min-h-screen grid place-items-center bg-slate-100 p-5 text-slate-800">
+        <section className="w-full max-w-xl rounded-2xl bg-white p-7 shadow-sm">
+          <h1 className="text-xl font-extrabold text-slate-900">
+            Sesi ujian belum dapat dimulai
+          </h1>
+
+          <p className="mt-3 rounded-lg bg-red-50 p-4 text-sm leading-6 text-red-700">
+            {error}
+          </p>
+
+          <p className="mt-3 text-sm text-slate-500">
+            Pastikan akun siswa sudah login, konfigurasi jenjang
+            dan mata pelajaran sudah dipilih, serta soal tersedia
+            di Supabase.
+          </p>
+
+          <button
+            onClick={() => router.push("/student")}
+            className="mt-5 rounded-lg bg-blue-700 px-5 py-3 font-bold text-white"
+          >
+            Kembali ke Dashboard
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  // =====================================================
+  // HASIL SESI MATA PELAJARAN
   // =====================================================
 
   if (finished) {
@@ -643,22 +765,30 @@ export default function ChallengePage() {
             <div className="text-5xl text-green-600">✓</div>
 
             <h1 className="mt-4 text-2xl font-extrabold text-slate-900">
-              Ujian Telah Diakhiri
+              Sesi Mata Pelajaran Selesai
             </h1>
 
             <p className="mt-2 text-sm text-slate-600">
-              Hasil penilaian telah dihitung dan disimpan oleh Supabase.
+              Hasil penilaian telah dihitung oleh Supabase.
             </p>
+
+            <div className="mt-5 rounded-xl bg-blue-50 p-4">
+              <p className="text-sm font-bold text-blue-700">
+                {examInfo.subject}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Kelas {examInfo.grade} · Sesi{" "}
+                {examInfo.subjectIndex + 1} dari {examInfo.totalSubjects}
+              </p>
+            </div>
 
             <div className="mt-7 rounded-2xl bg-blue-50 p-6">
               <p className="text-sm font-semibold text-blue-700">
                 NILAI AKHIR
               </p>
-
               <p className="mt-2 text-6xl font-black text-blue-700">
                 {Number(result?.score ?? 0).toFixed(2)}
               </p>
-
               <p className="mt-2 text-xs text-slate-500">
                 Skala nilai 0–100 · Penilaian server
               </p>
@@ -694,10 +824,6 @@ export default function ChallengePage() {
               </div>
             </div>
 
-            <p className="mt-5 text-sm text-slate-500">
-              {examInfo.subject} · Kelas {examInfo.grade}
-            </p>
-
             <button
               onClick={() => setShowReview((value) => !value)}
               className="mt-6 w-full rounded-lg bg-green-700 px-7 py-3 font-bold text-white hover:bg-green-800"
@@ -717,7 +843,6 @@ export default function ChallengePage() {
               <div className="mt-5 rounded-lg bg-red-50 p-4 text-left text-sm text-red-700">
                 <strong>Review belum tersedia.</strong>
                 <p className="mt-1">{reviewError}</p>
-
                 <button
                   onClick={() => loadReview(attemptId)}
                   className="mt-3 rounded-lg bg-red-700 px-4 py-2 font-bold text-white"
@@ -734,7 +859,6 @@ export default function ChallengePage() {
                 <h2 className="text-xl font-extrabold">
                   Review Hasil Ujian
                 </h2>
-
                 <p className="mt-1 text-sm text-slate-500">
                   Periksa jawaban, kunci, dan pembahasan setiap soal.
                 </p>
@@ -788,7 +912,6 @@ export default function ChallengePage() {
                       <p className="text-xs font-bold uppercase text-blue-700">
                         Pembahasan
                       </p>
-
                       <p className="mt-2 text-sm leading-6 text-slate-700">
                         {item.explanation}
                       </p>
@@ -799,13 +922,22 @@ export default function ChallengePage() {
             </section>
           )}
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => router.push("/student")}
-              className="rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
-            >
-              Kembali ke Dashboard
-            </button>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            {hasNextSubject ? (
+              <button
+                onClick={nextSubject}
+                className="flex-1 rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
+              >
+                Lanjut ke Mata Pelajaran Berikutnya →
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push("/student/results")}
+                className="flex-1 rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
+              >
+                Lihat Rekap Seluruh Hasil →
+              </button>
+            )}
           </div>
         </div>
       </main>
@@ -834,9 +966,12 @@ export default function ChallengePage() {
             <h1 className="text-lg font-extrabold text-slate-900">
               TKA <span className="text-blue-700">TryOn</span>
             </h1>
-
             <p className="text-xs text-slate-500">
-              Ruang Ujian CBT · {examInfo.subject} · Kelas {examInfo.grade}
+              {examInfo.subject} · Kelas {examInfo.grade}
+            </p>
+            <p className="text-xs text-slate-400">
+              Sesi {examInfo.subjectIndex + 1} dari{" "}
+              {examInfo.totalSubjects}
             </p>
           </div>
 
@@ -844,7 +979,6 @@ export default function ChallengePage() {
             <p className="text-[10px] font-bold uppercase text-slate-500">
               Sisa Waktu
             </p>
-
             <p
               className={`font-mono text-xl font-extrabold ${
                 remaining < 300 ? "text-red-600" : "text-blue-700"
@@ -876,7 +1010,6 @@ export default function ChallengePage() {
               <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
                 {question.subject}
               </p>
-
               <h2 className="mt-1 text-lg font-bold">
                 Soal Nomor {current + 1}
               </h2>
@@ -903,9 +1036,7 @@ export default function ChallengePage() {
             {question.question}
           </p>
 
-          {/* =========================================
-              PG TUNGGAL
-          ========================================= */}
+          {/* PILIHAN GANDA TUNGGAL */}
 
           {question.type === "PG_TUNGGAL" && (
             <div className="mt-6 space-y-3">
@@ -936,7 +1067,6 @@ export default function ChallengePage() {
                     >
                       {option.code}
                     </span>
-
                     <span className="pt-1 text-sm leading-6">
                       {option.text}
                     </span>
@@ -946,9 +1076,7 @@ export default function ChallengePage() {
             </div>
           )}
 
-          {/* =========================================
-              PGK MA
-          ========================================= */}
+          {/* PILIHAN GANDA KOMPLEKS */}
 
           {question.type === "PGK_MA" && (
             <div className="mt-6 space-y-3">
@@ -979,11 +1107,9 @@ export default function ChallengePage() {
                     >
                       {active ? "✓" : ""}
                     </span>
-
                     <span className="text-sm font-bold">
                       {option.code}.
                     </span>
-
                     <span className="text-sm leading-6">
                       {option.text}
                     </span>
@@ -997,9 +1123,7 @@ export default function ChallengePage() {
             </div>
           )}
 
-          {/* =========================================
-              PGK KATEGORI
-          ========================================= */}
+          {/* PILIHAN GANDA KATEGORI */}
 
           {question.type === "PGK_KATEGORI" && (
             <div className="mt-6 space-y-4">
@@ -1034,10 +1158,7 @@ export default function ChallengePage() {
                       }
                       className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
-                      <option value="">
-                        Pilih kategori jawaban
-                      </option>
-
+                      <option value="">Pilih kategori jawaban</option>
                       {categoryOptions.map((category) => (
                         <option key={category} value={category}>
                           {category}
@@ -1091,21 +1212,17 @@ export default function ChallengePage() {
                   onClick={() => setShowConfirm(true)}
                   className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white"
                 >
-                  Selesai Ujian
+                  Selesai Sesi
                 </button>
               )}
             </div>
           </div>
         </section>
 
-        {/* =========================================
-            NAVIGASI SOAL
-        ========================================= */}
+        {/* NAVIGASI SOAL */}
 
         <aside className="h-fit rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-bold text-slate-900">
-            Navigasi Soal
-          </h3>
+          <h3 className="font-bold text-slate-900">Navigasi Soal</h3>
 
           <div className="mt-4 grid grid-cols-5 gap-2">
             {questions.map((item, index) => {
@@ -1127,7 +1244,6 @@ export default function ChallengePage() {
                   }`}
                 >
                   {index + 1}
-
                   {marked.includes(index) && (
                     <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-amber-500" />
                   )}
@@ -1141,12 +1257,10 @@ export default function ChallengePage() {
               <span className="h-3 w-3 rounded bg-blue-700" />
               Soal aktif
             </div>
-
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded bg-green-500" />
               Sudah dijawab
             </div>
-
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded bg-amber-500" />
               Ditandai ragu-ragu
@@ -1154,14 +1268,10 @@ export default function ChallengePage() {
           </div>
 
           <div className="mt-6 rounded-lg bg-slate-50 p-4">
-            <p className="text-xs text-slate-500">
-              Progres pengerjaan
-            </p>
-
+            <p className="text-xs text-slate-500">Progres pengerjaan</p>
             <p className="mt-1 text-xl font-extrabold text-slate-900">
               {answeredCount}/{questions.length}
             </p>
-
             <p className="mt-1 text-xs text-slate-500">
               {saving
                 ? "Menyimpan jawaban…"
@@ -1171,20 +1281,19 @@ export default function ChallengePage() {
         </aside>
       </div>
 
-      {/* =========================================
-          KONFIRMASI AKHIR UJIAN
-      ========================================= */}
+      {/* KONFIRMASI AKHIR SESI */}
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="text-xl font-extrabold text-slate-900">
-              Akhiri Ujian?
+              Akhiri Sesi Ujian?
             </h3>
 
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Anda telah menjawab {answeredCount} dari{" "}
-              {questions.length} soal.
+              {questions.length} soal untuk mata pelajaran{" "}
+              <strong>{examInfo.subject}</strong>.
               Setelah diakhiri, jawaban tidak dapat diubah.
             </p>
 

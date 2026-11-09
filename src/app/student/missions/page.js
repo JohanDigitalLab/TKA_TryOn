@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
@@ -10,15 +11,17 @@ const levelLabels = {
 };
 
 export default function MissionsPage() {
+  const router = useRouter();
+
   const [level, setLevel] = useState("");
   const [schoolType, setSchoolType] = useState("");
   const [subjects, setSubjects] = useState([]);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
 
   const [activityType, setActivityType] = useState("latihan");
   const [difficulty, setDifficulty] = useState("sedang");
   const [questionCount, setQuestionCount] = useState("20");
   const [duration, setDuration] = useState("60");
-
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -27,39 +30,70 @@ export default function MissionsPage() {
     setLevel(params.get("level") || "");
     setSchoolType(params.get("schoolType") || "");
 
-    const selectedSubjects = params.get("subjects");
+    const selected = params.get("subjects");
 
-    if (selectedSubjects) {
-      setSubjects(
-        selectedSubjects
-          .split(",")
-          .map((subject) => subject.trim())
-          .filter(Boolean)
-      );
+    if (selected) {
+      const availableSubjects = selected
+        .split(",")
+        .map((subject) => subject.trim())
+        .filter(Boolean);
+
+      setSubjects(availableSubjects);
+
+      // Tidak otomatis memilih semua mata pelajaran.
+      setSelectedSubjects([]);
     }
   }, []);
 
-  const isReady = level && subjects.length > 0;
+  const isReady = Boolean(level && selectedSubjects.length > 0);
+
+  function toggleSubject(subject) {
+    setSelectedSubjects((previous) => {
+      if (previous.includes(subject)) {
+        return previous.filter((item) => item !== subject);
+      }
+
+      return [...previous, subject];
+    });
+
+    setMessage("");
+  }
 
   function saveConfiguration() {
-    if (!isReady) {
+    if (!level || selectedSubjects.length === 0) {
       setMessage(
-        "Data mata pelajaran belum tersedia. Silakan kembali ke halaman pemilihan mata pelajaran."
+        "Pilih minimal satu mata pelajaran sebelum memulai kegiatan."
       );
       return;
     }
 
+    const grade =
+      level === "smp" ? 9 : level === "sma" ? 12 : 6;
+
     const configuration = {
+      simulationId:
+        globalThis.crypto?.randomUUID?.() || `sim-${Date.now()}`,
+
       level,
+      grade,
       schoolType,
-      subjects,
+
+      // Hanya mata pelajaran yang dipilih peserta.
+      subjects: selectedSubjects,
+
       activityType,
-      difficulty: activityType === "latihan" ? difficulty : null,
+
+      difficulty:
+        activityType === "latihan" ? difficulty : null,
+
       questionCount: Number(questionCount),
-      duration:
-        activityType === "simulasi" ? Number(duration) : null,
+      duration: Number(duration),
+
+      currentSubjectIndex: 0,
+      sessionResults: [],
+
+      status: "in_progress",
       savedAt: new Date().toISOString(),
-      status: "draft",
     };
 
     sessionStorage.setItem(
@@ -67,14 +101,18 @@ export default function MissionsPage() {
       JSON.stringify(configuration)
     );
 
-    setMessage(
-      "Konfigurasi berhasil disimpan di sesi browser. Bank soal dan ruang ujian CBT akan dihubungkan pada tahap berikutnya."
+    sessionStorage.setItem(
+      "tryon-simulation-results",
+      JSON.stringify([])
     );
+
+    sessionStorage.removeItem("tryon-exam-result");
+
+    router.push("/student/challenge");
   }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
-
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
@@ -103,7 +141,6 @@ export default function MissionsPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
-
         {/* PAGE TITLE */}
         <section className="mb-8">
           <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
@@ -115,12 +152,12 @@ export default function MissionsPage() {
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Periksa mata pelajaran dan tentukan jenis kegiatan yang ingin
-            dilakukan sebelum masuk ke ruang latihan TKA.
+            Pilih mata pelajaran yang ingin dikerjakan, kemudian
+            tentukan jenis kegiatan dan pengaturan ujian.
           </p>
         </section>
 
-        {/* DATA PESERTA */}
+        {/* INFORMASI UJIAN */}
         <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-900">
             Informasi Ujian
@@ -150,24 +187,61 @@ export default function MissionsPage() {
             </div>
           </div>
 
-          <div className="mt-5">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-              Mata Pelajaran Terpilih
-            </p>
+          <div className="mt-7">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-slate-900">
+                  Pilih Mata Pelajaran
+                </h4>
+                <p className="mt-1 text-sm text-slate-500">
+                  Centang mata pelajaran yang ingin Anda kerjakan.
+                </p>
+              </div>
+
+              <span className="rounded-md bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+                {selectedSubjects.length} DIPILIH
+              </span>
+            </div>
 
             {subjects.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {subjects.map((subject) => (
-                  <span
-                    key={subject}
-                    className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800"
-                  >
-                    {subject}
-                  </span>
-                ))}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {subjects.map((subject, index) => {
+                  const checked = selectedSubjects.includes(subject);
+
+                  return (
+                    <label
+                      key={subject}
+                      className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition ${
+                        checked
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-slate-200 bg-white hover:border-blue-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSubject(subject)}
+                        className="h-5 w-5 accent-blue-700"
+                      />
+
+                      <div className="flex-1">
+                        <p className="font-bold text-slate-900">
+                          {subject}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {checked ? "DIPILIH" : "BELUM DIPILIH"}
+                        </p>
+                      </div>
+
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 font-bold text-blue-700">
+                        {index + 1}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             ) : (
-              <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
                 Data mata pelajaran belum diterima.{" "}
                 <a
                   href="/student/subjects"
@@ -177,13 +251,33 @@ export default function MissionsPage() {
                 </a>
               </div>
             )}
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedSubjects([...subjects])}
+                disabled={subjects.length === 0}
+                className="text-sm font-semibold text-blue-700 hover:text-blue-900 disabled:text-slate-400"
+              >
+                Pilih Semua
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedSubjects([])}
+                disabled={selectedSubjects.length === 0}
+                className="text-sm font-semibold text-slate-500 hover:text-slate-800 disabled:text-slate-300"
+              >
+                Hapus Semua Pilihan
+              </button>
+            </div>
           </div>
 
           <a
             href="/student/subjects"
-            className="mt-5 inline-block text-sm font-bold text-blue-700 hover:text-blue-900"
+            className="mt-6 inline-block text-sm font-bold text-blue-700 hover:text-blue-900"
           >
-            ← Ubah pilihan mata pelajaran
+            ← Ubah pilihan mata pelajaran awal
           </a>
         </section>
 
@@ -198,7 +292,6 @@ export default function MissionsPage() {
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-
             <button
               type="button"
               aria-pressed={activityType === "latihan"}
@@ -255,10 +348,11 @@ export default function MissionsPage() {
               </p>
 
               <p className="mt-4 text-sm font-bold text-blue-700">
-                {activityType === "simulasi" ? "✓ Dipilih" : "Pilih simulasi"}
+                {activityType === "simulasi"
+                  ? "✓ Dipilih"
+                  : "Pilih simulasi"}
               </p>
             </button>
-
           </div>
         </section>
 
@@ -269,8 +363,7 @@ export default function MissionsPage() {
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            Pengaturan berikut masih bersifat prototipe dan belum mengacu
-            pada konfigurasi paket ujian resmi.
+            Pengaturan berlaku untuk setiap mata pelajaran yang dikerjakan.
           </p>
 
           {activityType === "latihan" && (
@@ -309,7 +402,7 @@ export default function MissionsPage() {
                 htmlFor="questionCount"
                 className="mb-2 block text-sm font-bold text-slate-800"
               >
-                Jumlah Soal
+                Jumlah Soal per Mata Pelajaran
               </label>
 
               <select
@@ -331,7 +424,7 @@ export default function MissionsPage() {
                   htmlFor="duration"
                   className="mb-2 block text-sm font-bold text-slate-800"
                 >
-                  Durasi Simulasi
+                  Durasi per Mata Pelajaran
                 </label>
 
                 <select
@@ -369,12 +462,12 @@ export default function MissionsPage() {
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="text-xs text-slate-500">Mata Pelajaran</p>
               <p className="mt-2 font-bold text-slate-900">
-                {subjects.length} mata pelajaran
+                {selectedSubjects.length} mata pelajaran
               </p>
             </div>
 
             <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">Jumlah Soal</p>
+              <p className="text-xs text-slate-500">Jumlah Soal per Sesi</p>
               <p className="mt-2 font-bold text-slate-900">
                 {questionCount} soal
               </p>
@@ -382,7 +475,7 @@ export default function MissionsPage() {
 
             <div className="rounded-lg bg-slate-50 p-4">
               <p className="text-xs text-slate-500">
-                {activityType === "latihan" ? "Kesulitan" : "Durasi"}
+                {activityType === "latihan" ? "Kesulitan" : "Durasi per Sesi"}
               </p>
               <p className="mt-2 font-bold text-slate-900">
                 {activityType === "latihan"
@@ -392,14 +485,44 @@ export default function MissionsPage() {
             </div>
           </div>
 
+          {selectedSubjects.length > 0 && (
+            <div className="mt-5 rounded-lg bg-blue-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                Mata Pelajaran yang Akan Dikerjakan
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedSubjects.map((subject, index) => (
+                  <span
+                    key={subject}
+                    className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-800"
+                  >
+                    Sesi {index + 1}: {subject}
+                  </span>
+                ))}
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-blue-800">
+                Setiap mata pelajaran akan dikerjakan dalam sesi terpisah
+                dengan hasil masing-masing.
+              </p>
+            </div>
+          )}
+
           <button
             type="button"
             disabled={!isReady}
             onClick={saveConfiguration}
             className="mt-6 min-h-12 w-full rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
-            Simpan Konfigurasi →
+            Mulai Kegiatan →
           </button>
+
+          {!isReady && (
+            <p className="mt-3 text-sm text-amber-700">
+              Pilih minimal satu mata pelajaran untuk melanjutkan.
+            </p>
+          )}
 
           {message && (
             <div
@@ -414,7 +537,6 @@ export default function MissionsPage() {
         <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
-
       </div>
     </main>
   );
