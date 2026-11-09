@@ -1,5 +1,67 @@
 
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
 export default function LoginPage() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    setErrorMessage("");
+
+    if (!email.trim() || !password) {
+      setErrorMessage("Email dan password wajib diisi.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) throw error;
+
+      if (!data.session) {
+        throw new Error("Sesi login belum berhasil dibuat.");
+      }
+
+      router.push("/student");
+      router.refresh();
+    } catch (error) {
+      console.error("Login error:", error);
+
+      if (
+        error.message?.toLowerCase().includes("email not confirmed")
+      ) {
+        setErrorMessage(
+          "Email belum dikonfirmasi. Silakan periksa email Anda."
+        );
+      } else if (
+        error.message?.toLowerCase().includes("invalid login credentials")
+      ) {
+        setErrorMessage("Email atau password tidak sesuai.");
+      } else {
+        setErrorMessage(
+          error.message || "Login gagal. Silakan coba kembali."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
@@ -20,15 +82,20 @@ export default function LoginPage() {
           Masuk untuk melanjutkan perjalanan belajar dan persiapan TKA.
         </p>
 
-        <form className="mt-8 space-y-5">
+        <form onSubmit={handleLogin} className="mt-8 space-y-5">
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700">
               Email
             </label>
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
-className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"            />
+              autoComplete="email"
+              required
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
           </div>
 
           <div>
@@ -37,15 +104,30 @@ className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm 
             </label>
             <input
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Masukkan password"
-className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"            />
+              autoComplete="current-password"
+              required
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
           </div>
 
+          {errorMessage && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              {errorMessage}
+            </div>
+          )}
+
           <button
-            type="button"
-            className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-100 hover:bg-blue-700"
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-100 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Masuk ke TKA TryOn →
+            {loading ? "Sedang masuk..." : "Masuk ke TKA TryOn →"}
           </button>
         </form>
 
@@ -57,9 +139,12 @@ className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm 
 
         <p className="text-center text-sm text-slate-500">
           Belum punya akun?{" "}
-          <span className="font-bold text-blue-600">
+          <Link
+            href="/register"
+            className="font-bold text-blue-600 hover:text-blue-700"
+          >
             Daftar sekarang
-          </span>
+          </Link>
         </p>
 
         <p className="mt-8 text-center text-xs text-slate-400">
