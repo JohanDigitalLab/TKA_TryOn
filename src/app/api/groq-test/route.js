@@ -1,10 +1,17 @@
 
+import { connection } from "next/server";
+
 export async function GET() {
+  await connection();
+
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     return Response.json(
-      { success: false, message: "GROQ_API_KEY tidak ditemukan." },
+      {
+        success: false,
+        message: "GROQ_API_KEY tidak ditemukan.",
+      },
       { status: 500 }
     );
   }
@@ -65,7 +72,10 @@ export async function GET() {
     console.error("Groq connection error:", error);
 
     return Response.json(
-      { success: false, message: "Gagal menghubungi Groq API." },
+      {
+        success: false,
+        message: "Gagal menghubungi Groq API.",
+      },
       { status: 500 }
     );
   }
