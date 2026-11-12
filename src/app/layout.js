@@ -1,3 +1,4 @@
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -11,14 +12,46 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://tka-tryon-champion.vercel.app";
+
 export const metadata = {
+  metadataBase: new URL(siteUrl),
+
   title: {
     default: "TKA TryOn",
     template: "%s | TKA TryOn",
   },
+
   description:
     "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
+
   applicationName: "TKA TryOn",
+
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    url: siteUrl,
+    siteName: "TKA TryOn",
+    title: "TKA TryOn — SKILL ON • CONFIDENCE ON",
+    description:
+      "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "TKA TryOn — SKILL ON • CONFIDENCE ON",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "TKA TryOn — SKILL ON • CONFIDENCE ON",
+    description:
+      "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik.",
+    images: ["/opengraph-image.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
