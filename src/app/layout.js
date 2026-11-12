@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
 
 const siteUrl = "https://tka-tryon-champion.vercel.app";
 
+const ogImage = `${siteUrl}/og-image.png`;
+
 export const metadata = {
   metadataBase: new URL(siteUrl),
 
@@ -37,7 +39,7 @@ export const metadata = {
       "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
     images: [
       {
-        url: "/opengraph-image.png",
+        url: ogImage,
         width: 1200,
         height: 630,
         alt: "TKA TryOn — SKILL ON • CONFIDENCE ON",
@@ -50,7 +52,7 @@ export const metadata = {
     title: "TKA TryOn — SKILL ON • CONFIDENCE ON",
     description:
       "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik.",
-    images: ["/opengraph-image.png"],
+    images: [ogImage],
   },
 };
 
