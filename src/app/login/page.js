@@ -67,14 +67,14 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-5 py-8 sm:py-10">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:gap-12">
-        <section className="hidden overflow-hidden rounded-3xl border border-blue-100 bg-blue-50 shadow-sm lg:block">
+        <section className="overflow-hidden rounded-3xl border border-blue-100 bg-blue-50 shadow-sm">
           <Image
             src="/auth-illustration.svg"
             alt="Pelajar mempersiapkan TKA dengan simulasi dan melihat kemajuan belajar"
             width={900}
             height={720}
             priority
-            className="h-auto w-full"
+            className="h-auto max-h-64 w-full object-cover object-center sm:max-h-80 lg:max-h-none"
           />
           <div className="px-8 pb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
