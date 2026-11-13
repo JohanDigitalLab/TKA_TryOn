@@ -1,6 +1,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -103,9 +104,31 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
-      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-300/40 sm:p-9">
+    <main className="min-h-screen bg-slate-100 px-4 py-8 sm:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(480px,640px)] lg:gap-12">
+        <section className="hidden overflow-hidden rounded-3xl border border-blue-100 bg-blue-50 shadow-sm lg:block">
+          <Image
+            src="/auth-illustration.svg"
+            alt="Pelajar mempersiapkan TKA dengan simulasi dan melihat kemajuan belajar"
+            width={900}
+            height={720}
+            priority
+            className="h-auto w-full"
+          />
+          <div className="px-8 pb-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
+              SKILL ON • CONFIDENCE ON
+            </p>
+            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-950">
+              Bangun kebiasaan belajar yang lebih percaya diri
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Buat akun untuk menyimpan perjalanan latihan, mengikuti simulasi, dan memahami progres Anda.
+            </p>
+          </div>
+        </section>
 
+        <div className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-300/40 sm:p-9">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black tracking-tight text-blue-700">
             TKA <span className="text-slate-950">TryOn</span>
@@ -286,6 +309,7 @@ export default function RegisterPage() {
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </p>
 
+        </div>
       </div>
     </main>
   );

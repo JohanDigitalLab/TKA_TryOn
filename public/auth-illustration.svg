@@ -1,0 +1,84 @@
+<svg width="900" height="720" viewBox="0 0 900 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Belajar dan simulasi TKA TryOn</title>
+  <desc id="desc">Ilustrasi layar ujian, grafik kemajuan, dan karakter pelajar yang sedang mempersiapkan TKA.</desc>
+  <defs>
+    <linearGradient id="panel" x1="88" y1="58" x2="806" y2="676" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFF6FF"/>
+      <stop offset="1" stop-color="#DBEAFE"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="164" y1="144" x2="617" y2="531" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <filter id="shadow" x="92" y="91" width="716" height="580" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#1E3A8A" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect x="24" y="24" width="852" height="672" rx="42" fill="url(#panel)"/>
+  <circle cx="760" cy="126" r="72" fill="#BFDBFE" fill-opacity="0.7"/>
+  <circle cx="126" cy="600" r="92" fill="#DBEAFE"/>
+  <path d="M74 181C142 104 229 78 314 104" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 12"/>
+  <path d="M660 586C733 618 790 596 827 550" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 12"/>
+
+  <g filter="url(#shadow)">
+    <rect x="119" y="112" width="526" height="412" rx="24" fill="white"/>
+    <rect x="119" y="112" width="526" height="68" rx="24" fill="url(#screen)"/>
+    <path d="M119 156H645V180H119V156Z" fill="url(#screen)"/>
+    <circle cx="153" cy="146" r="7" fill="#BFDBFE"/>
+    <circle cx="177" cy="146" r="7" fill="#BFDBFE" fill-opacity="0.7"/>
+    <circle cx="201" cy="146" r="7" fill="#BFDBFE" fill-opacity="0.45"/>
+    <text x="238" y="153" fill="white" font-family="Arial, sans-serif" font-size="18" font-weight="700">SIMULASI TKA</text>
+
+    <rect x="153" y="211" width="294" height="22" rx="11" fill="#E2E8F0"/>
+    <rect x="153" y="211" width="204" height="22" rx="11" fill="#60A5FA"/>
+    <text x="471" y="228" fill="#475569" font-family="Arial, sans-serif" font-size="16" font-weight="700">68%</text>
+
+    <rect x="153" y="264" width="296" height="164" rx="18" fill="#F8FAFC"/>
+    <text x="177" y="298" fill="#0F172A" font-family="Arial, sans-serif" font-size="17" font-weight="700">Soal 12 dari 30</text>
+    <rect x="177" y="320" width="210" height="12" rx="6" fill="#CBD5E1"/>
+    <rect x="177" y="346" width="176" height="12" rx="6" fill="#E2E8F0"/>
+    <rect x="177" y="372" width="234" height="12" rx="6" fill="#E2E8F0"/>
+    <circle cx="414" cy="375" r="16" fill="#DBEAFE"/>
+    <path d="M407 375L412 380L422 369" stroke="#2563EB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="473" y="211" width="138" height="217" rx="18" fill="#EFF6FF"/>
+    <text x="495" y="244" fill="#1E3A8A" font-family="Arial, sans-serif" font-size="13" font-weight="700">KEMAJUAN</text>
+    <path d="M495 375L519 350L540 361L566 322L591 338" stroke="#2563EB" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M495 390H591" stroke="#BFDBFE" stroke-width="2"/>
+    <path d="M495 294H591M495 342H591" stroke="#DBEAFE" stroke-width="2" stroke-dasharray="4 6"/>
+    <circle cx="591" cy="338" r="7" fill="#16A34A"/>
+    <text x="495" y="411" fill="#16A34A" font-family="Arial, sans-serif" font-size="12" font-weight="700">Terus berkembang</text>
+
+    <rect x="153" y="457" width="458" height="35" rx="12" fill="#F1F5F9"/>
+    <circle cx="174" cy="474" r="8" fill="#22C55E"/>
+    <text x="194" y="480" fill="#475569" font-family="Arial, sans-serif" font-size="13" font-weight="600">Jawaban tersimpan dengan aman</text>
+  </g>
+
+  <g transform="translate(594 392)">
+    <ellipse cx="116" cy="220" rx="108" ry="22" fill="#93C5FD" fill-opacity="0.38"/>
+    <path d="M82 95C80 62 98 36 130 36C163 36 183 62 181 95L169 163H94L82 95Z" fill="#1E40AF"/>
+    <circle cx="131" cy="74" r="31" fill="#F8C9A4"/>
+    <path d="M99 69C102 40 124 27 148 42C158 48 164 58 164 69C153 61 142 58 129 59C119 60 109 64 99 69Z" fill="#0F172A"/>
+    <circle cx="120" cy="76" r="3" fill="#0F172A"/>
+    <circle cx="143" cy="76" r="3" fill="#0F172A"/>
+    <path d="M125 90C131 94 137 94 143 90" stroke="#B45309" stroke-width="3" stroke-linecap="round"/>
+    <path d="M87 111C59 116 42 135 34 166L17 215H91L104 153L116 221H190L179 144C175 125 157 113 174 111L150 99H111L87 111Z" fill="#2563EB"/>
+    <path d="M87 111L112 129L101 159" stroke="#1D4ED8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M174 111L151 129L162 159" stroke="#1D4ED8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M48 160L20 195" stroke="#F8C9A4" stroke-width="16" stroke-linecap="round"/>
+    <path d="M174 157L203 128" stroke="#F8C9A4" stroke-width="16" stroke-linecap="round"/>
+    <rect x="184" y="104" width="48" height="66" rx="6" transform="rotate(16 184 104)" fill="white" stroke="#1E40AF" stroke-width="4"/>
+    <path d="M195 123L218 130M192 136L214 143M190 149L205 153" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/>
+    <path d="M88 215L78 278" stroke="#1E3A8A" stroke-width="18" stroke-linecap="round"/>
+    <path d="M163 215L177 278" stroke="#1E3A8A" stroke-width="18" stroke-linecap="round"/>
+    <path d="M63 280H92M163 280H194" stroke="#0F172A" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <g transform="translate(62 494)">
+    <rect width="178" height="76" rx="18" fill="white" stroke="#BFDBFE" stroke-width="2"/>
+    <circle cx="38" cy="38" r="20" fill="#DCFCE7"/>
+    <path d="M29 38L35 44L48 30" stroke="#16A34A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="70" y="34" fill="#0F172A" font-family="Arial, sans-serif" font-size="14" font-weight="700">Siap belajar?</text>
+    <text x="70" y="53" fill="#64748B" font-family="Arial, sans-serif" font-size="12">Skill on • Confidence on</text>
+  </g>
+</svg>

@@ -1,6 +1,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -64,9 +65,31 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
+    <main className="min-h-screen bg-slate-50 px-5 py-8 sm:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] lg:gap-12">
+        <section className="hidden overflow-hidden rounded-3xl border border-blue-100 bg-blue-50 shadow-sm lg:block">
+          <Image
+            src="/auth-illustration.svg"
+            alt="Pelajar mempersiapkan TKA dengan simulasi dan melihat kemajuan belajar"
+            width={900}
+            height={720}
+            priority
+            className="h-auto w-full"
+          />
+          <div className="px-8 pb-8">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
+              SKILL ON • CONFIDENCE ON
+            </p>
+            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-950">
+              Siap melanjutkan persiapan TKA?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Masuk untuk melanjutkan latihan, simulasi, dan evaluasi belajar Anda.
+            </p>
+          </div>
+        </section>
 
+        <div className="w-full rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
         <Link href="/" className="mb-6 inline-flex min-h-11 items-center text-sm font-semibold text-slate-600 hover:text-blue-700">
           ← Kembali ke beranda
         </Link>
@@ -166,6 +189,7 @@ export default function LoginPage() {
         <p className="mt-8 text-center text-xs text-slate-400">
           © 2026 TKA TryOn
         </p>
+        </div>
       </div>
     </main>
   );
