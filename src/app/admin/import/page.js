@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
@@ -1305,7 +1306,23 @@ export default function ImportCenterPage() {
         {/* HEADER */}
 
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <span>⌂</span>
+                Dashboard
+              </Link>
+              <Link
+                href="/admin/questions"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <span>▤</span>
+                Bank Soal
+              </Link>
+            </div>
             <p className="text-xs font-bold tracking-[0.18em] text-blue-700">
               TKA TRYON / ACADEMIC CONTENT
             </p>
