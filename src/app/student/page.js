@@ -86,43 +86,19 @@ export default function StudentPage() {
           </p>
         </section>
 
-        {/* INFORMASI PESERTA */}
-        <section className="mb-9 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                MULAI DARI SINI
-              </p>
-
-              <h3 className="mt-2 text-lg font-bold text-slate-900">
-                Pilih aktivitas, lalu atur sesi belajar
-              </h3>
-
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Mulai dari memilih mata pelajaran, tentukan jumlah soal dan
-                durasi, lalu kerjakan sesi Anda. Jenjang mengikuti profil pendidikan Anda.
-              </p>
-            </div>
-
-            <Link href="/student/subjects" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
-              Pilih mata pelajaran →
-            </Link>
-          </div>
-        </section>
-
-        {/* LAYANAN PESERTA */}
+        {/* PILIH AKTIVITAS */}
         <section id="layanan" className="mb-10 scroll-mt-28">
           <div className="mb-5">
             <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
-              LAYANAN PESERTA
+              AKTIVITAS BELAJAR
             </p>
 
             <h3 className="mt-2 text-xl font-extrabold text-slate-950 sm:text-2xl">
-              Pilih Aktivitas Anda
+              Pilih aktivitas Anda
             </h3>
 
             <p className="mt-1 text-sm text-slate-500">
-              Akses fasilitas persiapan dan evaluasi TKA.
+              Pilih Simulasi TKA atau latihan akademik untuk langsung mengatur sesi Anda.
             </p>
           </div>
 
