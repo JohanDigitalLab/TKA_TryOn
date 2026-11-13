@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const PAGE_SIZE = 25;
@@ -75,6 +76,7 @@ const PERMISSIONS = {
   view: "bank_soal.view",
   review: "bank_soal.review",
   edit: "bank_soal.edit",
+  import: "bank_soal.import",
 };
 
 const STIMULUS_TYPES = [
@@ -306,7 +308,7 @@ export default function BankSoalPage() {
         PERMISSIONS.edit,
         "bank_soal.moderate",
         "bank_soal.publish",
-        "bank_soal.import",
+        PERMISSIONS.import,
       ]);
       return true;
     }
@@ -316,6 +318,7 @@ export default function BankSoalPage() {
       PERMISSIONS.view,
       PERMISSIONS.review,
       PERMISSIONS.edit,
+      PERMISSIONS.import,
     ];
 
     const results = await Promise.all(
@@ -455,7 +458,7 @@ export default function BankSoalPage() {
   // MEMUAT BANK SOAL
   // =====================================================
 
-  const loadQuestions = useCallback(async () => {
+  const loadQuestions = useCallback(async (signal) => {
     if (!session || !isAdmin || !can(PERMISSIONS.view)) return;
 
     setLoading(true);
@@ -491,8 +494,10 @@ export default function BankSoalPage() {
         query = query.eq("question_status", filterStatus);
       }
 
+      if (signal) query = query.abortSignal(signal);
       const { data, error: queryError, count } = await query;
 
+      if (signal?.aborted) return;
       if (queryError) throw queryError;
 
       setQuestions(data || []);
@@ -506,12 +511,14 @@ export default function BankSoalPage() {
         );
       });
     } catch (err) {
-      setError(
-        err.message ||
-          "Bank soal belum berhasil dimuat. Periksa akses database dan relasi tabel."
-      );
+      if (!signal?.aborted) {
+        setError(
+          err.message ||
+            "Bank soal belum berhasil dimuat. Periksa akses database dan relasi tabel."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [
     session,
@@ -526,7 +533,9 @@ export default function BankSoalPage() {
   ]);
 
   useEffect(() => {
-    loadQuestions();
+    const controller = new AbortController();
+    startTransition(() => loadQuestions(controller.signal));
+    return () => controller.abort();
   }, [loadQuestions]);
 
   // =====================================================
@@ -719,37 +728,44 @@ export default function BankSoalPage() {
         return "PG Kompleks harus memiliki minimal dua opsi.";
       }
 
-      if (!editorForm.options.some((option) => option.is_correct)) {
-        return "PG Kompleks harus memiliki minimal satu jawaban benar.";
+      const correct = editorForm.options.filter(
+        (option) => option.is_correct
+      ).length;
+
+      if (correct < 1) {
+        return "PG Kompleks harus memiliki minimal satu kunci jawaban.";
       }
     }
 
     if (selectedQuestion.question_type === "PGK_KATEGORI") {
-      if (editorForm.category_items.length < 1) {
-        return "PG Kategori harus memiliki minimal satu pernyataan.";
+      if (editorForm.category_items.length < 2) {
+        return "PG Kategori harus memiliki minimal dua pernyataan.";
       }
 
       if (
         editorForm.category_items.some(
-          (item) =>
-            !item.item_text.trim() ||
-            !["BENAR", "SALAH"].includes(item.correct_category)
+          (item) => !item.item_text.trim()
         )
       ) {
-        return "Lengkapi semua pernyataan dan kunci kategori.";
+        return "Semua pernyataan kategori wajib diisi.";
       }
+    }
+
+    if (
+      selectedQuestion.question_type !== "PGK_KATEGORI" &&
+      editorForm.options.some((option) => !option.option_text.trim())
+    ) {
+      return "Semua teks pilihan jawaban wajib diisi.";
     }
 
     return "";
   }
 
-  async function saveRevision(event) {
-    event.preventDefault();
-
+  async function saveEditor() {
     if (!selectedQuestion || !editorForm) return;
 
     if (!can(PERMISSIONS.edit)) {
-      setEditorError("Permission bank_soal.edit tidak tersedia.");
+      setEditorError("Akun ini tidak memiliki permission bank_soal.edit.");
       return;
     }
 
@@ -759,12 +775,6 @@ export default function BankSoalPage() {
       setEditorError(validationError);
       return;
     }
-
-    const confirmed = window.confirm(
-      "Simpan perubahan sebagai versi baru berstatus PENDING_REVIEW? Versi PUBLISHED sebelumnya tetap dipertahankan."
-    );
-
-    if (!confirmed) return;
 
     setEditorSaving(true);
     setEditorError("");
@@ -776,7 +786,7 @@ export default function BankSoalPage() {
         selectedQuestion.question_type
       );
 
-      const { data, error: rpcError } = await supabase.rpc(
+      const { error: saveError } = await supabase.rpc(
         "save_question_revision",
         {
           p_question_id: selectedQuestion.id,
@@ -784,138 +794,27 @@ export default function BankSoalPage() {
         }
       );
 
-      if (rpcError) throw rpcError;
-
-      if (!data?.success) {
-        throw new Error("Database tidak mengonfirmasi penyimpanan revisi.");
-      }
+      if (saveError) throw saveError;
 
       setEditorSuccess(
-        `Revisi berhasil disimpan sebagai versi ${data.version_number} dengan status ${data.version_status}.`
+        "Revisi soal berhasil disimpan dan menunggu telaah."
       );
 
       setEditorOpen(false);
       setEditorForm(null);
-      setShowAnswerKey(false);
 
       await loadQuestions();
-
-      // Ambil ulang detail soal setelah revisi dibuat.
-      const { data: refreshed, error: refreshError } = await supabase
-        .from("questions")
-        .select(QUESTION_SELECT)
-        .eq("id", selectedQuestion.id)
-        .single();
-
-      if (refreshError) throw refreshError;
-
-      setSelectedQuestion(refreshed);
     } catch (err) {
-      setEditorError(err.message || "Gagal menyimpan revisi soal.");
+      setEditorError(
+        err.message || "Gagal menyimpan revisi soal."
+      );
     } finally {
       setEditorSaving(false);
     }
   }
 
   // =====================================================
-  // LOGIN / LOADING
-  // =====================================================
-
-  if (!authReady) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 text-slate-600">
-        Memeriksa sesi Supabase…
-      </main>
-    );
-  }
-
-  if (!session) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
-        <form
-          onSubmit={handleLogin}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
-        >
-          <div className="mb-6 flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-blue-700 text-xl font-black text-white">
-              T
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold text-slate-900">
-                TKA TryOn
-              </h1>
-              <p className="text-xs text-slate-500">
-                Academic Content Management
-              </p>
-            </div>
-          </div>
-
-          <h2 className="text-lg font-bold text-slate-900">
-            Masuk ke Bank Soal
-          </h2>
-
-          <label className="mt-5 block text-sm font-semibold">
-            Email
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-blue-600"
-          />
-
-          <label className="mt-4 block text-sm font-semibold">
-            Password
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-blue-600"
-          />
-
-          {authError && (
-            <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              {authError}
-            </p>
-          )}
-
-          <button
-            disabled={authLoading}
-            className="mt-5 w-full rounded-lg bg-blue-700 px-4 py-3 font-bold text-white hover:bg-blue-800 disabled:opacity-50"
-          >
-            {authLoading ? "Memeriksa…" : "Masuk"}
-          </button>
-        </form>
-      </main>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
-        <section className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-7 shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900">
-            Akses belum tersedia
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Akun ini belum memiliki permission bank_soal.view.
-          </p>
-          <button
-            onClick={handleLogout}
-            className="mt-5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold"
-          >
-            Keluar
-          </button>
-        </section>
-      </main>
-    );
-  }
-
-  // =====================================================
-  // HALAMAN BANK SOAL
+  // DATA SOAL TERPILIH
   // =====================================================
 
   const selectedVersion = selectedQuestion
@@ -925,73 +824,249 @@ export default function BankSoalPage() {
   const selectedStimulus =
     selectedVersion?.question_stimuli || null;
 
-  return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold tracking-widest text-blue-700">
-              ACADEMIC CONTENT MANAGEMENT
-            </p>
-            <h1 className="mt-2 text-3xl font-extrabold text-slate-900">
-              Bank Soal
-            </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Pusat data soal dan telaah konten akademik TKA TryOn.
-            </p>
+  const selectedOptions = (
+    selectedVersion?.question_options || []
+  )
+    .slice()
+    .sort((a, b) => a.option_order - b.option_order);
+
+  const selectedCategoryItems = (
+    selectedVersion?.question_category_items || []
+  )
+    .slice()
+    .sort((a, b) => a.item_number - b.item_number);
+
+  // =====================================================
+  // LOADING AUTENTIKASI
+  // =====================================================
+
+  if (!authReady) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+          <p className="mt-4 text-sm text-slate-500">
+            Memeriksa sesi pengguna...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // =====================================================
+  // HALAMAN LOGIN
+  // =====================================================
+
+  if (!session) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+        >
+          <div className="mb-7 flex items-center gap-4">
+            <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-700 text-2xl font-black text-white">
+              T
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-extrabold text-slate-900">
+                TKA TryOn
+              </h1>
+              <p className="text-sm text-slate-500">
+                Academic Content Management
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
-              {userRole}
-            </span>
+          <h2 className="text-xl font-bold text-slate-900">
+            Masuk ke Bank Soal
+          </h2>
+
+          <label className="mt-6 block text-sm font-semibold text-slate-700">
+            Email
+          </label>
+
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
+          />
+
+          <label className="mt-5 block text-sm font-semibold text-slate-700">
+            Password
+          </label>
+
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
+          />
+
+          {authError && (
+            <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {authError}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={authLoading}
+            className="mt-6 w-full rounded-lg bg-blue-700 px-4 py-3 font-bold text-white hover:bg-blue-800 disabled:opacity-50"
+          >
+            {authLoading ? "Memeriksa..." : "Masuk"}
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  // =====================================================
+  // AKSES DITOLAK
+  // =====================================================
+
+  if (!isAdmin) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-red-50 text-2xl text-red-600">
+            !
+          </div>
+
+          <h1 className="mt-5 text-xl font-bold text-slate-900">
+            Akses Bank Soal Ditolak
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Akun ini belum memiliki permission bank_soal.view. Silakan
+            hubungi Super Admin untuk mendapatkan kewenangan.
+          </p>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/admin"
+              className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Kembali ke Dashboard
+            </Link>
+
             <button
               onClick={handleLogout}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+              className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
             >
               Keluar
             </button>
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  // =====================================================
+  // TAMPILAN UTAMA BANK SOAL
+  // =====================================================
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-7">
+        {/* HEADER DAN NAVIGASI */}
+
+        <header className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <span>⌂</span>
+                Dashboard
+              </Link>
+
+              {can(PERMISSIONS.import) && (
+                <Link
+                  href="/admin/import"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <span>⇧</span>
+                  Import Center
+                </Link>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+                {userRole}
+              </span>
+
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Keluar
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-bold tracking-[0.18em] text-blue-700">
+              ACADEMIC CONTENT MANAGEMENT
+            </p>
+
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+              Bank Soal
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-500 md:text-base">
+              Pusat data soal dan telaah konten akademik TKA TryOn.
+            </p>
+          </div>
         </header>
 
-        {editorSuccess && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-            {editorSuccess}
-            <button
-              onClick={() => setEditorSuccess("")}
-              className="ml-3 font-bold underline"
-            >
-              Tutup
-            </button>
+        {/* NOTIFIKASI ERROR */}
+
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
           </div>
         )}
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+        {/* STATISTIK */}
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">Total Bank Soal</p>
-            <p className="mt-2 text-3xl font-extrabold text-slate-900">
-              {totalCount.toLocaleString("id-ID")}
+            <p className="mt-3 text-4xl font-extrabold text-slate-950">
+              {totalCount}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">Soal pada Halaman Ini</p>
-            <p className="mt-2 text-3xl font-extrabold text-blue-700">
-              {questions.length}
+            <p className="mt-3 text-4xl font-extrabold text-blue-700">
+              {visibleQuestions.length}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
             <p className="text-sm text-slate-500">Halaman</p>
-            <p className="mt-2 text-3xl font-extrabold text-slate-900">
+            <p className="mt-3 text-4xl font-extrabold text-slate-950">
               {page + 1} / {totalPages}
             </p>
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-bold text-slate-900">
+        {/* PENCARIAN DAN FILTER */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-slate-900">
               Pencarian dan Filter
             </h2>
+
             <button
               onClick={() => {
                 setSearch("");
@@ -1002,19 +1077,19 @@ export default function BankSoalPage() {
                 setFilterStatus("ALL");
                 setPage(0);
               }}
-              className="text-sm font-semibold text-blue-700"
+              className="text-sm font-semibold text-blue-700 hover:text-blue-900"
             >
               Reset Filter
             </button>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             <input
-              type="search"
+              type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Cari kode, isi soal, materi..."
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
             />
 
             <select
@@ -1023,12 +1098,12 @@ export default function BankSoalPage() {
                 setFilterLevel(event.target.value);
                 setPage(0);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             >
               <option value="ALL">Semua Jenjang</option>
-              {filterOptions.levels.map((value) => (
-                <option key={value} value={value}>
-                  {value.toUpperCase()}
+              {filterOptions.levels.map((level) => (
+                <option key={level} value={level}>
+                  {level}
                 </option>
               ))}
             </select>
@@ -1039,12 +1114,12 @@ export default function BankSoalPage() {
                 setFilterGrade(event.target.value);
                 setPage(0);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             >
               <option value="ALL">Semua Kelas</option>
-              {filterOptions.grades.map((value) => (
-                <option key={value} value={value}>
-                  Kelas {value}
+              {filterOptions.grades.map((grade) => (
+                <option key={grade} value={grade}>
+                  Kelas {grade}
                 </option>
               ))}
             </select>
@@ -1055,12 +1130,12 @@ export default function BankSoalPage() {
                 setFilterSubject(event.target.value);
                 setPage(0);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             >
               <option value="ALL">Semua Mata Pelajaran</option>
-              {filterOptions.subjects.map((value) => (
-                <option key={value} value={value}>
-                  {value}
+              {filterOptions.subjects.map((subject) => (
+                <option key={subject} value={subject}>
+                  {subject}
                 </option>
               ))}
             </select>
@@ -1071,7 +1146,7 @@ export default function BankSoalPage() {
                 setFilterType(event.target.value);
                 setPage(0);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             >
               <option value="ALL">Semua Tipe Soal</option>
               <option value="PG_TUNGGAL">Pilihan Ganda</option>
@@ -1085,995 +1160,895 @@ export default function BankSoalPage() {
                 setFilterStatus(event.target.value);
                 setPage(0);
               }}
-              className="rounded-lg border border-slate-300 px-3 py-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
             >
               <option value="ALL">Semua Status</option>
-              <option value="PUBLISHED">Published</option>
               <option value="DRAFT">Draft</option>
               <option value="PENDING_REVIEW">Menunggu Telaah</option>
+              <option value="APPROVED">Disetujui</option>
+              <option value="PUBLISHED">Terbit</option>
               <option value="NEEDS_REVISION">Perlu Revisi</option>
-              <option value="APPROVED">Approved</option>
-              <option value="ARCHIVED">Archived</option>
+              <option value="ARCHIVED">Arsip</option>
             </select>
           </div>
         </section>
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <strong>Gagal memuat Bank Soal.</strong>
-            <p className="mt-1">{error}</p>
-            <button
-              onClick={loadQuestions}
-              className="mt-3 rounded-lg bg-red-700 px-4 py-2 font-bold text-white"
-            >
-              Coba Lagi
-            </button>
-          </div>
-        )}
+        {/* DAFTAR SOAL */}
 
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-6">
             <div>
-              <h2 className="font-bold text-slate-900">Daftar Soal</h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <h2 className="text-lg font-bold text-slate-900">
+                Daftar Soal
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
                 Pilih soal untuk membuka detail dan telaah.
               </p>
             </div>
+
             <button
-              onClick={loadQuestions}
+              onClick={() => loadQuestions()}
               disabled={loading}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
-              {loading ? "Memuat…" : "↻ Muat Ulang"}
+              {loading ? "Memuat..." : "↻ Muat Ulang"}
             </button>
           </div>
 
-          {loading ? (
-            <div className="p-12 text-center text-sm text-slate-500">
-              Mengambil data Bank Soal…
-            </div>
-          ) : visibleQuestions.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="font-semibold text-slate-700">
-                Tidak ada soal yang ditemukan.
-              </p>
-              <p className="mt-2 text-sm text-slate-500">
-                Coba ubah kata kunci atau filter pencarian.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[850px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-6 py-4">Kode Soal</th>
+                  <th className="px-6 py-4">Jenjang / Kelas</th>
+                  <th className="px-6 py-4">Mata Pelajaran</th>
+                  <th className="px-6 py-4">Tipe</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Tanggal</th>
+                  <th className="px-6 py-4">Aksi</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
                   <tr>
-                    <th className="px-5 py-4">Kode / Soal</th>
-                    <th className="px-5 py-4">Jenjang</th>
-                    <th className="px-5 py-4">Mata Pelajaran</th>
-                    <th className="px-5 py-4">Tipe</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4">Tanggal</th>
-                    <th className="px-5 py-4">Detail</th>
+                    <td
+                      colSpan={7}
+                      className="px-6 py-12 text-center text-slate-500"
+                    >
+                      Memuat data soal...
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {visibleQuestions.map((item) => (
+                ) : visibleQuestions.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-6 py-12 text-center text-slate-500"
+                    >
+                      Tidak ada soal yang sesuai dengan pencarian.
+                    </td>
+                  </tr>
+                ) : (
+                  visibleQuestions.map((question) => (
                     <tr
-                      key={item.id}
-                      className={`hover:bg-blue-50/50 ${
-                        selectedQuestion?.id === item.id ? "bg-blue-50" : ""
+                      key={question.id}
+                      className={`transition hover:bg-slate-50 ${
+                        selectedQuestion?.id === question.id
+                          ? "bg-blue-50"
+                          : ""
                       }`}
                     >
-                      <td className="max-w-md px-5 py-4">
-                        <p className="font-bold text-slate-900">
-                          {item.question_code}
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                          {getQuestionText(item)}
-                        </p>
+                      <td className="px-6 py-4 font-semibold text-slate-900">
+                        {question.question_code || "-"}
                       </td>
-                      <td className="px-5 py-4">
-                        <p className="font-semibold">
-                          {item.education_level_id?.toUpperCase()}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Kelas {item.grade}
-                        </p>
-                      </td>
-                      <td className="px-5 py-4">{item.subject_name}</td>
-                      <td className="px-5 py-4">
-                        {labelType(item.question_type)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle(
-                            item.question_status
-                          )}`}
-                        >
-                          {item.question_status}
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {question.education_level_id || "-"}
+                        <span className="block text-xs text-slate-400">
+                          Kelas {question.grade || "-"}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-500">
-                        {formatDate(item.created_at)}
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {question.subject_name || "-"}
                       </td>
-                      <td className="px-5 py-4">
+
+                      <td className="px-6 py-4 text-slate-600">
+                        {labelType(question.question_type)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyle(
+                            question.question_status
+                          )}`}
+                        >
+                          {question.question_status || "-"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-500">
+                        {formatDate(question.created_at)}
+                      </td>
+
+                      <td className="px-6 py-4">
                         <button
                           onClick={() => {
-                            setSelectedQuestion(item);
+                            setSelectedQuestion(question);
                             setShowAnswerKey(false);
                             setEditorOpen(false);
-                            setEditorError("");
                           }}
-                          className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-800"
+                          className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                         >
-                          Telaah
+                          Detail / Telaah
                         </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4">
-            <p className="text-xs text-slate-500">
-              Menampilkan {visibleQuestions.length} soal pada halaman{" "}
-              {page + 1} dari {totalPages}.
+          {/* PAGINATION */}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-6 py-4">
+            <p className="text-sm text-slate-500">
+              Menampilkan halaman {page + 1} dari {totalPages}
             </p>
-            <div className="flex gap-2">
+
+            <div className="flex items-center gap-2">
               <button
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
                 disabled={page === 0 || loading}
-                onClick={() => setPage((value) => value - 1)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
               >
-                ← Sebelumnya
+                Sebelumnya
               </button>
+
               <button
-                disabled={page + 1 >= totalPages || loading}
-                onClick={() => setPage((value) => value + 1)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                onClick={() =>
+                  setPage((current) =>
+                    Math.min(totalPages - 1, current + 1)
+                  )
+                }
+                disabled={page >= totalPages - 1 || loading}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
               >
-                Berikutnya →
+                Berikutnya
               </button>
             </div>
           </div>
         </section>
 
-        {/* DETAIL / TELAAH SOAL */}
+        {/* PANEL DETAIL DAN TELAAH */}
 
-        {selectedQuestion && (
+        {selectedQuestion && selectedVersion && (
           <section
             ref={reviewPanelRef}
-            className="scroll-mt-5 rounded-xl border border-blue-200 bg-white shadow-sm"
+            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-6"
           >
-            {!selectedVersion ? (
-              <div className="p-6 text-sm text-amber-700">
-                Versi soal belum dapat dimuat. Muat ulang Bank Soal.
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <p className="text-xs font-bold tracking-widest text-blue-700">
+                  DETAIL DAN TELAAH SOAL
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                  {selectedQuestion.question_code || "Detail Soal"}
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedQuestion.subject_name || "-"} · Kelas{" "}
+                  {selectedQuestion.grade || "-"} ·{" "}
+                  {labelType(selectedQuestion.question_type)}
+                </p>
               </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-5">
-                  <div>
-                    <p className="text-xs font-bold tracking-widest text-blue-700">
-                      QUESTION REVIEW
-                    </p>
-                    <h2 className="mt-1 text-xl font-extrabold text-slate-900">
-                      Telaah Soal
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {selectedQuestion.question_code} · Versi{" "}
-                      {selectedVersion.version_number}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {can(PERMISSIONS.edit) && (
-                      <button
-                        onClick={openEditor}
-                        className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800"
-                      >
-                        Edit Soal
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setSelectedQuestion(null);
-                        setEditorOpen(false);
-                      }}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
-                    >
-                      Tutup Detail
-                    </button>
-                  </div>
+
+              <button
+                onClick={() => {
+                  setSelectedQuestion(null);
+                  setShowAnswerKey(false);
+                  setEditorOpen(false);
+                }}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Tutup Detail
+              </button>
+            </div>
+
+            {/* METADATA SOAL */}
+
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Elemen", selectedQuestion.element],
+                ["Materi", selectedQuestion.material],
+                ["Submateri", selectedQuestion.sub_material],
+                ["Kompetensi", selectedQuestion.competency],
+                ["Indikator", selectedQuestion.indicator],
+                ["Level Kognitif", selectedQuestion.cognitive_level],
+                ["Kesulitan", selectedQuestion.difficulty],
+                ["Kurikulum", selectedQuestion.curriculum_reference],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-xl bg-slate-50 p-4"
+                >
+                  <p className="text-xs text-slate-400">{label}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">
+                    {value || "-"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* STIMULUS */}
+
+            {selectedStimulus && (
+              <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-bold text-slate-900">
+                    Stimulus
+                  </h3>
+
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                    {selectedStimulus.stimulus_type}
+                  </span>
                 </div>
 
-                {editorError && !editorOpen && (
-                  <div className="m-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                {selectedStimulus.title && (
+                  <h4 className="mt-3 font-semibold text-slate-800">
+                    {selectedStimulus.title}
+                  </h4>
+                )}
+
+                {selectedStimulus.content_text && (
+                  <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    {selectedStimulus.content_text}
+                  </div>
+                )}
+
+                {selectedStimulus.file_url && (
+                  <a
+                    href={selectedStimulus.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-block text-sm font-semibold text-blue-700 underline"
+                  >
+                    Buka berkas stimulus
+                  </a>
+                )}
+
+                {selectedStimulus.media_description && (
+                  <p className="mt-3 text-sm text-slate-600">
+                    Deskripsi media: {selectedStimulus.media_description}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* PERTANYAAN */}
+
+            <div className="mt-6">
+              <h3 className="font-bold text-slate-900">
+                Pertanyaan
+              </h3>
+
+              {selectedVersion.instruction && (
+                <p className="mt-3 text-sm italic text-slate-500">
+                  {selectedVersion.instruction}
+                </p>
+              )}
+
+              <div className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-5 text-sm leading-7 text-slate-800">
+                {getQuestionText(selectedQuestion)}
+              </div>
+            </div>
+
+            {/* PILIHAN JAWABAN */}
+
+            {selectedQuestion.question_type !== "PGK_KATEGORI" && (
+              <div className="mt-6">
+                <h3 className="font-bold text-slate-900">
+                  Pilihan Jawaban
+                </h3>
+
+                <div className="mt-3 space-y-3">
+                  {selectedOptions.map((option) => (
+                    <div
+                      key={option.id}
+                      className={`rounded-xl border p-4 ${
+                        showAnswerKey && option.is_correct
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-sm font-bold text-slate-700">
+                          {option.option_code}
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                            {option.option_text}
+                          </p>
+
+                          {showAnswerKey && option.is_correct && (
+                            <span className="mt-2 inline-block text-xs font-bold text-emerald-700">
+                              ✓ Kunci jawaban
+                            </span>
+                          )}
+
+                          {showAnswerKey && option.explanation && (
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              {option.explanation}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PERNYATAAN KATEGORI */}
+
+            {selectedQuestion.question_type === "PGK_KATEGORI" && (
+              <div className="mt-6">
+                <h3 className="font-bold text-slate-900">
+                  Pernyataan Kategori
+                </h3>
+
+                <div className="mt-3 space-y-3">
+                  {selectedCategoryItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-slate-200 p-4"
+                    >
+                      <p className="text-sm leading-6 text-slate-800">
+                        {item.item_number}. {item.item_text}
+                      </p>
+
+                      {showAnswerKey && (
+                        <div className="mt-2 text-xs font-semibold text-emerald-700">
+                          Jawaban: {item.correct_category}
+                        </div>
+                      )}
+
+                      {showAnswerKey && item.explanation && (
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          {item.explanation}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PEMBAHASAN */}
+
+            {showAnswerKey && selectedVersion.explanation && (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+                <h3 className="font-bold text-amber-900">
+                  Pembahasan
+                </h3>
+
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-amber-900">
+                  {selectedVersion.explanation}
+                </p>
+              </div>
+            )}
+
+            {/* AKSI TELAAH */}
+
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5">
+              <button
+                onClick={() => setShowAnswerKey((value) => !value)}
+                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {showAnswerKey
+                  ? "Sembunyikan Kunci dan Pembahasan"
+                  : "Tampilkan Kunci dan Pembahasan"}
+              </button>
+
+              {can(PERMISSIONS.edit) && (
+                <button
+                  onClick={openEditor}
+                  className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+                >
+                  Edit / Revisi Soal
+                </button>
+              )}
+            </div>
+
+            {/* EDITOR */}
+
+            {editorOpen && editorForm && (
+              <div className="mt-7 rounded-2xl border border-blue-200 bg-blue-50/30 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Editor Revisi Soal
+                    </h3>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      Perubahan disimpan sebagai versi baru untuk ditelaah.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setEditorOpen(false);
+                      setEditorForm(null);
+                      setEditorError("");
+                      setEditorSuccess("");
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Tutup Editor
+                  </button>
+                </div>
+
+                {editorError && (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     {editorError}
                   </div>
                 )}
 
-                <div className="grid gap-6 p-5 lg:grid-cols-[1fr_280px]">
-                  <div className="space-y-5">
-                    {selectedStimulus && (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
-                          Stimulus
-                        </p>
-                        {selectedStimulus.title && (
-                          <h3 className="mt-2 font-bold text-slate-900">
-                            {selectedStimulus.title}
-                          </h3>
-                        )}
-                        {selectedStimulus.content_text && (
-                          <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                            {selectedStimulus.content_text}
-                          </div>
-                        )}
-                        {selectedStimulus.file_url && (
-                          <a
-                            href={selectedStimulus.file_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-3 inline-block text-sm font-semibold text-blue-700 underline"
-                          >
-                            Buka media stimulus
-                          </a>
-                        )}
-                        <p className="mt-3 text-xs text-slate-500">
-                          Kode: {selectedStimulus.stimulus_code} ·{" "}
-                          {selectedStimulus.stimulus_type}
-                        </p>
-                      </div>
-                    )}
-
-                    {selectedVersion.instruction && (
-                      <div className="rounded-lg bg-blue-50 p-4">
-                        <p className="text-xs font-bold text-blue-700">
-                          INSTRUKSI
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-700">
-                          {selectedVersion.instruction}
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <p className="text-xs font-bold uppercase text-slate-500">
-                        Pertanyaan
-                      </p>
-                      <div className="mt-3 whitespace-pre-wrap text-base font-medium leading-8 text-slate-900">
-                        {selectedVersion.question_text}
-                      </div>
-                    </div>
-
-                    {selectedQuestion.question_type !== "PGK_KATEGORI" && (
-                      <div className="space-y-3">
-                        <h3 className="font-bold text-slate-900">
-                          Pilihan Jawaban
-                        </h3>
-                        {(selectedVersion.question_options || [])
-                          .slice()
-                          .sort((a, b) => a.option_order - b.option_order)
-                          .map((option) => (
-                            <div
-                              key={option.id}
-                              className={`rounded-lg border p-4 ${
-                                showAnswerKey && option.is_correct
-                                  ? "border-green-300 bg-green-50"
-                                  : "border-slate-200"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <span className="font-bold">
-                                  {option.option_code}.
-                                </span>
-                                <span className="flex-1 text-sm leading-6">
-                                  {option.option_text}
-                                </span>
-                                {showAnswerKey && option.is_correct && (
-                                  <span className="text-xs font-bold text-green-700">
-                                    KUNCI
-                                  </span>
-                                )}
-                              </div>
-                              {showAnswerKey && option.explanation && (
-                                <p className="mt-2 border-t border-slate-200 pt-2 text-xs leading-5 text-slate-600">
-                                  {option.explanation}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {selectedQuestion.question_type === "PGK_KATEGORI" && (
-                      <div className="space-y-3">
-                        <h3 className="font-bold text-slate-900">
-                          Pernyataan Kategori
-                        </h3>
-                        {(selectedVersion.question_category_items || [])
-                          .slice()
-                          .sort((a, b) => a.item_number - b.item_number)
-                          .map((item) => (
-                            <div
-                              key={item.id}
-                              className="rounded-lg border border-slate-200 p-4"
-                            >
-                              <p className="text-sm font-medium leading-6">
-                                {item.item_number}. {item.item_text}
-                              </p>
-                              <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <span className="rounded-md bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                                  Kategori: {item.category_label}
-                                </span>
-                                {showAnswerKey && (
-                                  <span className="rounded-md bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
-                                    Kunci: {item.correct_category}
-                                  </span>
-                                )}
-                              </div>
-                              {showAnswerKey && item.explanation && (
-                                <p className="mt-3 text-xs leading-5 text-slate-600">
-                                  {item.explanation}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {showAnswerKey && (
-                      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                        <p className="text-xs font-bold uppercase text-green-800">
-                          Pembahasan Umum
-                        </p>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                          {selectedVersion.explanation ||
-                            "Pembahasan umum belum tersedia."}
-                        </p>
-                      </div>
-                    )}
+                {editorSuccess && (
+                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                    {editorSuccess}
                   </div>
+                )}
 
-                  <aside className="space-y-4">
-                    <div className="rounded-xl bg-slate-50 p-4">
-                      <h3 className="font-bold text-slate-900">
-                        Metadata Soal
-                      </h3>
-                      <dl className="mt-4 space-y-3 text-sm">
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Jenjang / Kelas
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.education_level_id?.toUpperCase()}{" "}
-                            / {selectedQuestion.grade}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Mata Pelajaran
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.subject_name}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Kategori Mapel
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.subject_category}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Tipe Soal
-                          </dt>
-                          <dd className="font-semibold">
-                            {labelType(selectedQuestion.question_type)}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">Struktur</dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.question_structure}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Elemen / Materi
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.element || "-"} /{" "}
-                            {selectedQuestion.material || "-"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Indikator
-                          </dt>
-                          <dd className="leading-5">
-                            {selectedQuestion.indicator || "-"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Level Kognitif
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.cognitive_level || "-"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Kesulitan
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.difficulty || "-"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Hak Penggunaan
-                          </dt>
-                          <dd className="font-semibold">
-                            {selectedQuestion.usage_rights}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">
-                            Versi Aktif
-                          </dt>
-                          <dd className="font-semibold">
-                            v{selectedVersion.version_number}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-xs text-slate-500">Status</dt>
-                          <dd>
-                            <span
-                              className={`inline-block rounded-full px-2 py-1 text-xs font-bold ${statusStyle(
-                                selectedQuestion.question_status
-                              )}`}
-                            >
-                              {selectedQuestion.question_status}
-                            </span>
-                          </dd>
-                        </div>
-                      </dl>
-                    </div>
+                {/* INSTRUKSI */}
 
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                      <h3 className="font-bold text-amber-900">
-                        Kontrol Telaah
-                      </h3>
-                      <p className="mt-2 text-xs leading-5 text-amber-800">
-                        Kunci jawaban dan pembahasan hanya ditampilkan melalui
-                        kontrol ini.
-                      </p>
-                      <button
-                        onClick={() =>
-                          setShowAnswerKey((value) => !value)
-                        }
-                        className="mt-4 w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-bold text-white hover:bg-amber-700"
-                      >
-                        {showAnswerKey
-                          ? "Sembunyikan Kunci"
-                          : "Tampilkan Kunci & Pembahasan"}
-                      </button>
-                    </div>
-                  </aside>
-                </div>
-              </>
-            )}
-          </section>
-        )}
-
-        {/* FORM EDITOR */}
-
-        {editorOpen && editorForm && selectedQuestion && (
-          <section className="rounded-xl border border-blue-300 bg-white shadow-lg">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-5">
-              <div>
-                <p className="text-xs font-bold tracking-widest text-blue-700">
-                  QUESTION EDITOR
-                </p>
-                <h2 className="mt-1 text-xl font-extrabold text-slate-900">
-                  Edit Soal
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {selectedQuestion.question_code} ·{" "}
-                  {labelType(selectedQuestion.question_type)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditorOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
-              >
-                Batal
-              </button>
-            </div>
-
-            <form onSubmit={saveRevision} className="space-y-6 p-5">
-              {editorError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {editorError}
-                </div>
-              )}
-
-              <div className="rounded-xl border border-slate-200 p-4">
-                <h3 className="font-bold text-slate-900">
-                  Instruksi dan Pertanyaan
-                </h3>
-
-                <label className="mt-4 block text-sm font-semibold">
+                <label className="mt-5 block text-sm font-semibold text-slate-700">
                   Instruksi
                 </label>
+
                 <textarea
-                  rows={3}
                   value={editorForm.instruction}
                   onChange={(event) =>
                     updateEditorField("instruction", event.target.value)
                   }
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
+                  rows={2}
+                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
                 />
 
-                <label className="mt-4 block text-sm font-semibold">
-                  Teks Pertanyaan *
+                {/* PERTANYAAN */}
+
+                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                  Teks Pertanyaan
                 </label>
+
                 <textarea
-                  required
-                  rows={6}
                   value={editorForm.question_text}
                   onChange={(event) =>
                     updateEditorField("question_text", event.target.value)
                   }
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
+                  rows={6}
+                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-blue-600"
                 />
-              </div>
 
-              {/* STIMULUS */}
+                {/* STIMULUS */}
 
-              <div className="rounded-xl border border-slate-200 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-bold text-slate-900">Stimulus</h3>
-                  <label className="flex items-center gap-2 text-sm font-semibold">
+                <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+                  <label className="flex items-center gap-3 text-sm font-bold text-slate-800">
                     <input
                       type="checkbox"
                       checked={editorForm.stimulus.enabled}
                       onChange={(event) =>
-                        updateStimulusField("enabled", event.target.checked)
+                        updateStimulusField(
+                          "enabled",
+                          event.target.checked
+                        )
                       }
                       className="h-4 w-4 accent-blue-700"
                     />
-                    Gunakan stimulus
+                    Gunakan Stimulus
                   </label>
-                </div>
 
-                {editorForm.stimulus.enabled && (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-semibold">
-                        Jenis Stimulus
-                      </label>
-                      <select
-                        value={editorForm.stimulus.stimulus_type}
-                        onChange={(event) =>
-                          updateStimulusField(
-                            "stimulus_type",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      >
-                        {STIMULUS_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold">
-                        Hak Penggunaan
-                      </label>
-                      <select
-                        value={editorForm.stimulus.usage_rights}
-                        onChange={(event) =>
-                          updateStimulusField(
-                            "usage_rights",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      >
-                        {USAGE_RIGHTS.map((right) => (
-                          <option key={right} value={right}>
-                            {right}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold">
-                        Judul Stimulus
-                      </label>
-                      <input
-                        value={editorForm.stimulus.title}
-                        onChange={(event) =>
-                          updateStimulusField("title", event.target.value)
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold">
-                        Isi Stimulus
-                      </label>
-                      <textarea
-                        rows={5}
-                        value={editorForm.stimulus.content_text}
-                        onChange={(event) =>
-                          updateStimulusField(
-                            "content_text",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold">
-                        URL Media
-                      </label>
-                      <input
-                        value={editorForm.stimulus.file_url}
-                        onChange={(event) =>
-                          updateStimulusField("file_url", event.target.value)
-                        }
-                        placeholder="https://..."
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold">
-                        Deskripsi Media
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={editorForm.stimulus.media_description}
-                        onChange={(event) =>
-                          updateStimulusField(
-                            "media_description",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold">
-                        Sumber Referensi
-                      </label>
-                      <input
-                        value={editorForm.stimulus.source_reference}
-                        onChange={(event) =>
-                          updateStimulusField(
-                            "source_reference",
-                            event.target.value
-                          )
-                        }
-                        className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* PILIHAN GANDA */}
-
-              {selectedQuestion.question_type !== "PGK_KATEGORI" && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-bold text-slate-900">
-                        Pilihan Jawaban
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {selectedQuestion.question_type === "PG_TUNGGAL"
-                          ? "Pilih tepat satu jawaban benar."
-                          : "Pilih satu atau lebih jawaban benar."}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={addOption}
-                      className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700"
-                    >
-                      + Tambah Opsi
-                    </button>
-                  </div>
-
-                  <div className="mt-4 space-y-4">
-                    {editorForm.options.map((option, index) => (
-                      <div
-                        key={index}
-                        className="rounded-lg border border-slate-200 p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <span className="text-sm font-bold text-slate-700">
-                            Opsi {index + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeOption(index)}
-                            disabled={editorForm.options.length <= 2}
-                            className="text-xs font-semibold text-red-600 disabled:opacity-30"
-                          >
-                            Hapus opsi
-                          </button>
-                        </div>
-
-                        <div className="mt-3 grid gap-3 sm:grid-cols-[100px_1fr]">
-                          <div>
-                            <label className="text-xs font-semibold">
-                              Kode
-                            </label>
-                            <input
-                              value={option.option_code}
-                              onChange={(event) =>
-                                updateOption(
-                                  index,
-                                  "option_code",
-                                  event.target.value
-                                )
-                              }
-                              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold">
-                              Teks Opsi
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={option.option_text}
-                              onChange={(event) =>
-                                updateOption(
-                                  index,
-                                  "option_text",
-                                  event.target.value
-                                )
-                              }
-                              className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
-                          <input
-                            type={
-                              selectedQuestion.question_type === "PG_TUNGGAL"
-                                ? "radio"
-                                : "checkbox"
-                            }
-                            name="single-correct-answer"
-                            checked={option.is_correct}
-                            onChange={(event) => {
-                              if (
-                                selectedQuestion.question_type ===
-                                "PG_TUNGGAL"
-                              ) {
-                                setEditorForm((previous) => ({
-                                  ...previous,
-                                  options: previous.options.map(
-                                    (item, itemIndex) => ({
-                                      ...item,
-                                      is_correct: itemIndex === index,
-                                    })
-                                  ),
-                                }));
-                              } else {
-                                updateOption(
-                                  index,
-                                  "is_correct",
-                                  event.target.checked
-                                );
-                              }
-                            }}
-                            className="h-4 w-4 accent-green-700"
-                          />
-                          Jawaban benar
+                  {editorForm.stimulus.enabled && (
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Jenis Stimulus
                         </label>
 
-                        <label className="mt-3 block text-xs font-semibold">
-                          Pembahasan Opsi
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={option.explanation}
+                        <select
+                          value={editorForm.stimulus.stimulus_type}
                           onChange={(event) =>
-                            updateOption(
-                              index,
-                              "explanation",
+                            updateStimulusField(
+                              "stimulus_type",
                               event.target.value
                             )
                           }
-                          className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                        >
+                          {STIMULUS_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Judul Stimulus
+                        </label>
+
+                        <input
+                          value={editorForm.stimulus.title}
+                          onChange={(event) =>
+                            updateStimulusField("title", event.target.value)
+                          }
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* PG KATEGORI */}
-
-              {selectedQuestion.question_type === "PGK_KATEGORI" && (
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-bold text-slate-900">
-                        Pernyataan Kategori
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Tentukan kunci BENAR atau SALAH untuk setiap
-                        pernyataan.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={addCategoryItem}
-                      className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700"
-                    >
-                      + Tambah Pernyataan
-                    </button>
-                  </div>
-
-                  <div className="mt-4 space-y-4">
-                    {editorForm.category_items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="rounded-lg border border-slate-200 p-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-700">
-                            Pernyataan {index + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeCategoryItem(index)}
-                            disabled={editorForm.category_items.length <= 1}
-                            className="text-xs font-semibold text-red-600 disabled:opacity-30"
-                          >
-                            Hapus
-                          </button>
-                        </div>
-
-                        <label className="mt-3 block text-xs font-semibold">
-                          Teks Pernyataan
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Isi Stimulus
                         </label>
+
                         <textarea
-                          rows={3}
-                          value={item.item_text}
+                          rows={5}
+                          value={editorForm.stimulus.content_text}
                           onChange={(event) =>
-                            updateCategoryItem(
-                              index,
-                              "item_text",
+                            updateStimulusField(
+                              "content_text",
                               event.target.value
                             )
                           }
-                          className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm leading-6"
                         />
+                      </div>
 
-                        <label className="mt-3 block text-xs font-semibold">
-                          Kunci Jawaban
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          URL Berkas
                         </label>
-                        <div className="mt-2 flex gap-4">
-                          {["BENAR", "SALAH"].map((category) => (
-                            <label
-                              key={category}
-                              className="flex items-center gap-2 text-sm font-semibold"
-                            >
+
+                        <input
+                          value={editorForm.stimulus.file_url}
+                          onChange={(event) =>
+                            updateStimulusField("file_url", event.target.value)
+                          }
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Hak Penggunaan
+                        </label>
+
+                        <select
+                          value={editorForm.stimulus.usage_rights}
+                          onChange={(event) =>
+                            updateStimulusField(
+                              "usage_rights",
+                              event.target.value
+                            )
+                          }
+                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                        >
+                          {USAGE_RIGHTS.map((right) => (
+                            <option key={right} value={right}>
+                              {right}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Deskripsi Media
+                        </label>
+
+                        <textarea
+                          rows={2}
+                          value={editorForm.stimulus.media_description}
+                          onChange={(event) =>
+                            updateStimulusField(
+                              "media_description",
+                              event.target.value
+                            )
+                          }
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Referensi Sumber
+                        </label>
+
+                        <input
+                          value={editorForm.stimulus.source_reference}
+                          onChange={(event) =>
+                            updateStimulusField(
+                              "source_reference",
+                              event.target.value
+                            )
+                          }
+                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* PILIHAN JAWABAN */}
+
+                {selectedQuestion.question_type !== "PGK_KATEGORI" && (
+                  <div className="mt-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h4 className="font-bold text-slate-800">
+                        Pilihan Jawaban
+                      </h4>
+
+                      <button
+                        onClick={addOption}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                      >
+                        + Tambah Opsi
+                      </button>
+                    </div>
+
+                    <div className="mt-3 space-y-3">
+                      {editorForm.options.map((option, index) => (
+                        <div
+                          key={index}
+                          className="rounded-xl border border-slate-200 bg-white p-4"
+                        >
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+                            <div className="md:col-span-2">
+                              <label className="text-xs font-semibold text-slate-500">
+                                Kode
+                              </label>
+
                               <input
-                                type="radio"
-                                name={`category-${index}`}
-                                checked={item.correct_category === category}
-                                onChange={() =>
-                                  updateCategoryItem(
+                                value={option.option_code}
+                                onChange={(event) =>
+                                  updateOption(
                                     index,
-                                    "correct_category",
-                                    category
+                                    "option_code",
+                                    event.target.value
+                                  )
+                                }
+                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              />
+                            </div>
+
+                            <div className="md:col-span-8">
+                              <label className="text-xs font-semibold text-slate-500">
+                                Teks Jawaban
+                              </label>
+
+                              <textarea
+                                rows={2}
+                                value={option.option_text}
+                                onChange={(event) =>
+                                  updateOption(
+                                    index,
+                                    "option_text",
+                                    event.target.value
+                                  )
+                                }
+                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              />
+                            </div>
+
+                            <div className="flex items-end md:col-span-2">
+                              <button
+                                onClick={() => removeOption(index)}
+                                className="w-full rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                              >
+                                Hapus
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={option.is_correct}
+                                onChange={(event) =>
+                                  updateOption(
+                                    index,
+                                    "is_correct",
+                                    event.target.checked
                                   )
                                 }
                                 className="h-4 w-4 accent-blue-700"
                               />
-                              {category}
+                              Kunci Jawaban
                             </label>
-                          ))}
+
+                            <div className="min-w-[200px] flex-1">
+                              <input
+                                value={option.explanation}
+                                onChange={(event) =>
+                                  updateOption(
+                                    index,
+                                    "explanation",
+                                    event.target.value
+                                  )
+                                }
+                                placeholder="Pembahasan opsi (opsional)"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                              />
+                            </div>
+                          </div>
                         </div>
-
-                        <label className="mt-3 block text-xs font-semibold">
-                          Pembahasan Pernyataan
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={item.explanation}
-                          onChange={(event) =>
-                            updateCategoryItem(
-                              index,
-                              "explanation",
-                              event.target.value
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                        />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* PEMBAHASAN UMUM */}
+                {/* PERNYATAAN KATEGORI */}
 
-              <div className="rounded-xl border border-slate-200 p-4">
-                <h3 className="font-bold text-slate-900">
+                {selectedQuestion.question_type === "PGK_KATEGORI" && (
+                  <div className="mt-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h4 className="font-bold text-slate-800">
+                        Pernyataan Kategori
+                      </h4>
+
+                      <button
+                        onClick={addCategoryItem}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                      >
+                        + Tambah Pernyataan
+                      </button>
+                    </div>
+
+                    <div className="mt-3 space-y-3">
+                      {editorForm.category_items.map((item, index) => (
+                        <div
+                          key={index}
+                          className="rounded-xl border border-slate-200 bg-white p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-sm font-bold text-slate-700">
+                              Pernyataan {index + 1}
+                            </p>
+
+                            <button
+                              onClick={() => removeCategoryItem(index)}
+                              className="text-xs font-semibold text-red-600 hover:underline"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+
+                          <textarea
+                            rows={3}
+                            value={item.item_text}
+                            onChange={(event) =>
+                              updateCategoryItem(
+                                index,
+                                "item_text",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Tulis pernyataan..."
+                            className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                          />
+
+                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="text-xs font-semibold text-slate-500">
+                                Kategori Jawaban
+                              </label>
+
+                              <input
+                                value={item.category_label}
+                                onChange={(event) =>
+                                  updateCategoryItem(
+                                    index,
+                                    "category_label",
+                                    event.target.value
+                                  )
+                                }
+                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-semibold text-slate-500">
+                                Kunci Jawaban
+                              </label>
+
+                              <select
+                                value={item.correct_category}
+                                onChange={(event) =>
+                                  updateCategoryItem(
+                                    index,
+                                    "correct_category",
+                                    event.target.value
+                                  )
+                                }
+                                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              >
+                                <option value="BENAR">BENAR</option>
+                                <option value="SALAH">SALAH</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <input
+                            value={item.explanation}
+                            onChange={(event) =>
+                              updateCategoryItem(
+                                index,
+                                "explanation",
+                                event.target.value
+                              )
+                            }
+                            placeholder="Pembahasan pernyataan (opsional)"
+                            className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* PEMBAHASAN UMUM */}
+
+                <label className="mt-6 block text-sm font-semibold text-slate-700">
                   Pembahasan Umum
-                </h3>
+                </label>
+
                 <textarea
                   rows={5}
                   value={editorForm.explanation}
                   onChange={(event) =>
                     updateEditorField("explanation", event.target.value)
                   }
-                  className="mt-3 w-full rounded-lg border border-slate-300 p-3 text-sm"
-                  placeholder="Tuliskan pembahasan umum soal..."
+                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6"
                 />
-              </div>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-bold text-amber-900">
-                  Alur penyimpanan revisi
-                </p>
-                <p className="mt-2 text-sm leading-6 text-amber-800">
-                  Perubahan akan disimpan sebagai versi baru dengan status
-                  PENDING_REVIEW. Versi PUBLISHED sebelumnya tidak diubah
-                  dan tetap menjadi versi aktif sampai proses telaah dan
-                  publikasi berikutnya.
-                </p>
-              </div>
+                {/* SIMPAN REVISI */}
 
-              <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
-                <button
-                  type="button"
-                  onClick={() => setEditorOpen(false)}
-                  disabled={editorSaving}
-                  className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={editorSaving}
-                  className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
-                >
-                  {editorSaving ? "Menyimpan Revisi..." : "Simpan Versi Baru"}
-                </button>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    onClick={saveEditor}
+                    disabled={editorSaving}
+                    className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
+                  >
+                    {editorSaving
+                      ? "Menyimpan Revisi..."
+                      : "Simpan Revisi"}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setEditorOpen(false);
+                      setEditorForm(null);
+                    }}
+                    disabled={editorSaving}
+                    className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Batal
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
           </section>
         )}
 
+        {/* FOOTER */}
+
         <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
-          © 2026 TKA TryOn · Academic Content Management
+          TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>
     </main>

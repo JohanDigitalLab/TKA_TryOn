@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
 // =====================================================
@@ -292,35 +292,53 @@ function ReviewSession({ session }) {
 // HALAMAN REKAP HASIL
 // =====================================================
 
+function subscribeToResults(onChange) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener("focus", onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("focus", onChange);
+  };
+}
+
+function getResultsSnapshot() {
+  try {
+    return JSON.stringify([
+      sessionStorage.getItem("tryon-simulation-results"),
+      sessionStorage.getItem("tryon-exam-config"),
+    ]);
+  } catch {
+    return "[null,null]";
+  }
+}
+
+function getServerResultsSnapshot() {
+  return null;
+}
+
 export default function StudentResultsPage() {
   const router = useRouter();
-
-  const [results, setResults] = useState([]);
-  const [config, setConfig] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const snapshot = useSyncExternalStore(
+    subscribeToResults,
+    getResultsSnapshot,
+    getServerResultsSnapshot
+  );
+  const loading = snapshot === null;
+  const { results, config } = useMemo(() => {
     try {
-      const savedResults = JSON.parse(
-        sessionStorage.getItem("tryon-simulation-results") || "[]"
-      );
-
-      const savedConfig = JSON.parse(
-        sessionStorage.getItem("tryon-exam-config") || "{}"
-      );
-
-      setResults(
-        Array.isArray(savedResults) ? savedResults : []
-      );
-
-      setConfig(savedConfig || {});
+      const [rawResults, rawConfig] = JSON.parse(snapshot || "[null,null]");
+      const savedResults = JSON.parse(rawResults || "[]");
+      const savedConfig = JSON.parse(rawConfig || "{}");
+      return {
+        results: Array.isArray(savedResults) ? savedResults : [],
+        config: savedConfig && typeof savedConfig === "object" && !Array.isArray(savedConfig)
+          ? savedConfig
+          : {},
+      };
     } catch {
-      setResults([]);
-      setConfig({});
-    } finally {
-      setLoading(false);
+      return { results: [], config: {} };
     }
-  }, []);
+  }, [snapshot]);
 
   const summary = useMemo(() => {
     const totalSubjects = Array.isArray(config.subjects)

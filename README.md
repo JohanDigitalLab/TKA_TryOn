@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# TKA TryOn
 
-## Getting Started
+Platform persiapan, latihan, dan simulasi Tes Kemampuan Akademik (TKA) dengan area peserta dan administrasi konten akademik.
 
-First, run the development server:
+## Teknologi
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js App Router `16.4.5` dan React `19.3.0`.
+- JavaScript dengan Tailwind CSS 4.
+- Supabase Auth, PostgREST, PostgreSQL RPC, dan RLS.
+- Import XLSX/XLS/CSV, DOCX, PDF, gambar, serta OCR.
+- Groq AI untuk menstrukturkan soal hasil import. AI selalu menghasilkan draft yang membutuhkan review manusia.
+
+## Menjalankan lokal
+
+1. Instal dependensi:
+
+   ```bash
+   npm install
+   ```
+
+2. Salin [`.env.example`](.env.example) menjadi `.env.local`, lalu isi kredensial proyek lokal. Jangan commit `.env.local`.
+
+3. Jalankan development server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Buka `http://localhost:3000`.
+
+## Environment variables
+
+- `NEXT_PUBLIC_SUPABASE_URL`: URL proyek Supabase.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: publishable/anon key untuk client dan request yang dibatasi RLS.
+- `GROQ_API_KEY`: key server-only untuk endpoint AI. Jangan menggunakan prefix `NEXT_PUBLIC_`.
+
+Lihat [`.env.example`](.env.example) dan [`docs/SECURITY_AND_DATABASE.md`](docs/SECURITY_AND_DATABASE.md).
+
+## Area aplikasi
+
+- `/`: landing page publik.
+- `/register` dan `/login`: autentikasi peserta.
+- `/student`: dashboard peserta.
+- `/student/subjects`: pilihan mata pelajaran.
+- `/student/missions`: konfigurasi latihan/simulasi.
+- `/student/challenge`: engine CBT.
+- `/student/results`: rekap dan review hasil.
+- `/admin`: dashboard administrasi.
+- `/admin/questions`: bank soal versioned.
+- `/admin/import`: Smart Import Center.
+
+## Alur Smart Import
+
+```text
+Upload → Extract → Structure → Validate → Review → Save as DRAFT
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ekstraksi dokumen tersedia pada `/api/import/extract`. Structuring AI tersedia pada `/api/import/structure`. Keduanya memerlukan autentikasi server dan permission import. Endpoint `/api/groq-test` juga tidak lagi publik dan memerlukan akses Super Admin.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Database dan keamanan
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Repository tidak menyimpan migration SQL saat ini. Aplikasi mengandalkan tabel dan RPC yang sudah terpasang di Supabase. Daftar objek dan checklist RLS/RPC ada pada [`docs/SECURITY_AND_DATABASE.md`](docs/SECURITY_AND_DATABASE.md).
 
-## Learn More
+Sebelum deployment:
 
-To learn more about Next.js, take a look at the following resources:
+- Pastikan RLS dan pemeriksaan user aktif di semua tabel/RPC.
+- Pastikan role dan permission admin dibatasi di database.
+- Rotasi secret yang pernah terekspos melalui dashboard provider.
+- Dokumentasikan schema, signature RPC, foreign key, enum, dan policy sebagai migration versioned.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verifikasi
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm test
+npm run lint
+npm run build
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm run build` harus berhasil. Lint pada area server/API yang diperbarui harus bersih; lint global dapat masih menemukan masalah lama pada page besar yang belum selesai dipecah, terutama aturan React effect dan dependency hook.

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -137,6 +138,7 @@ export default function ChallengePage() {
   const [remaining, setRemaining] = useState(3600);
   const [finished, setFinished] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [navigationWarning, setNavigationWarning] = useState(false);
 
   const [result, setResult] = useState(null);
   const [review, setReview] = useState(null);
@@ -144,17 +146,21 @@ export default function ChallengePage() {
   const [reviewError, setReviewError] = useState("");
   const [showReview, setShowReview] = useState(false);
 
+  const [isFinishing, setIsFinishing] = useState(false);
+
   const [examInfo, setExamInfo] = useState({
     grade: 6,
     subject: "Matematika",
     subjectIndex: 0,
     totalSubjects: 1,
     simulationId: null,
+    resumed: false,
   });
 
   const startedRef = useRef(false);
   const finishingRef = useRef(false);
   const answersRef = useRef({});
+  const pendingSavesRef = useRef(new Map());
 
   const question = questions[current];
 
@@ -170,7 +176,7 @@ export default function ChallengePage() {
   const hasNextSubject = subjectIndex < subjects.length - 1;
 
   // =====================================================
-  // MEMULAI SESI MATA PELAJARAN
+  // MEMULAI / MEMULIHKAN SESI MATA PELAJARAN
   // =====================================================
 
   const startExam = useCallback(async (subjectOverride = null) => {
@@ -236,6 +242,7 @@ export default function ChallengePage() {
         subjectIndex: index,
         totalSubjects: subjectList.length,
         simulationId,
+        resumed: false,
       });
 
       const { data, error: rpcError } = await supabase.rpc(
@@ -259,6 +266,11 @@ export default function ChallengePage() {
           `Soal untuk mata pelajaran ${subject} belum tersedia di bank soal.`
         );
       }
+
+      setExamInfo((previous) => ({
+        ...previous,
+        resumed: Boolean(data.resumed),
+      }));
 
       const mapped = data.questions.map((item, index) => ({
         ...item,
@@ -288,8 +300,15 @@ export default function ChallengePage() {
 
       setAttemptId(data.attempt_id);
       setQuestions(mapped);
-      setRemaining(Number(data.duration_minutes || duration) * 60);
 
+      // Timer menggunakan sisa waktu dari server.
+      setRemaining(
+        Number.isFinite(Number(data.remaining_seconds))
+          ? Math.max(0, Number(data.remaining_seconds))
+          : Number(data.duration_minutes || duration) * 60
+      );
+
+      // Jawaban kosong untuk semua soal sebagai nilai awal.
       const initialAnswers = {};
 
       mapped.forEach((item) => {
@@ -299,8 +318,25 @@ export default function ChallengePage() {
         };
       });
 
+      // Pulihkan jawaban yang telah tersimpan di database.
+      if (data.answers && typeof data.answers === "object") {
+        Object.entries(data.answers).forEach(([questionId, payload]) => {
+          if (initialAnswers[questionId]) {
+            initialAnswers[questionId] = normalizePayload(payload);
+          }
+        });
+      }
+
       answersRef.current = initialAnswers;
       setAnswers(initialAnswers);
+      setCurrent(0);
+      setNavigationWarning(false);
+
+      // Jika waktu sudah habis ketika siswa membuka kembali halaman,
+      // sesi langsung diproses sebagai ujian yang telah berakhir.
+      if (Number(data.remaining_seconds) <= 0) {
+        setRemaining(0);
+      }
     } catch (err) {
       startedRef.current = false;
       setError(err?.message || "Ujian gagal dimulai.");
@@ -310,7 +346,8 @@ export default function ChallengePage() {
   }, []);
 
   useEffect(() => {
-    startExam();
+    const timer = setTimeout(() => startExam(), 0);
+    return () => clearTimeout(timer);
   }, [startExam]);
 
   // =====================================================
@@ -318,32 +355,51 @@ export default function ChallengePage() {
   // =====================================================
 
   const persistAnswer = useCallback(
-    async (questionId, payload) => {
-      if (!attemptId) return;
+    (questionId, payload) => {
+      if (!attemptId) {
+        return Promise.reject(new Error("Sesi ujian belum siap."));
+      }
 
       setSaving(true);
       setError("");
 
-      try {
-        const { error: saveError } = await supabase.rpc(
-          "save_exam_answer",
-          {
-            p_attempt_id: attemptId,
-            p_question_id: questionId,
-            p_answer_payload: payload,
-          }
-        );
+      // Serialisasi penyimpanan per soal.
+      // Jawaban terbaru tidak boleh tertimpa respons lama.
+      const previousSave = pendingSavesRef.current.get(questionId);
 
-        if (saveError) throw saveError;
-      } catch (err) {
-        setError(
-          `Jawaban belum berhasil disimpan: ${
-            err?.message || "Kesalahan koneksi"
-          }`
-        );
-      } finally {
-        setSaving(false);
-      }
+      const savePromise = Promise.resolve(previousSave)
+        .catch(() => {})
+        .then(async () => {
+          const { error: saveError } = await supabase.rpc(
+            "save_exam_answer",
+            {
+              p_attempt_id: attemptId,
+              p_question_id: questionId,
+              p_answer_payload: payload,
+            }
+          );
+
+          if (saveError) throw saveError;
+        })
+        .catch((err) => {
+          setError(
+            `Jawaban belum berhasil disimpan: ${
+              err?.message || "Kesalahan koneksi"
+            }`
+          );
+          throw err;
+        })
+        .finally(() => {
+          if (pendingSavesRef.current.get(questionId) === savePromise) {
+            pendingSavesRef.current.delete(questionId);
+          }
+
+          setSaving(pendingSavesRef.current.size > 0);
+        });
+
+      pendingSavesRef.current.set(questionId, savePromise);
+
+      return savePromise;
     },
     [attemptId]
   );
@@ -353,6 +409,8 @@ export default function ChallengePage() {
   // =====================================================
 
   const updateAnswer = (questionId, payload) => {
+    if (finishingRef.current || finished) return;
+
     const next = {
       ...answersRef.current,
       [questionId]: payload,
@@ -360,11 +418,12 @@ export default function ChallengePage() {
 
     answersRef.current = next;
     setAnswers(next);
-    persistAnswer(questionId, payload);
+
+    persistAnswer(questionId, payload).catch(() => {});
   };
 
   const chooseSingle = (optionCode) => {
-    if (!question || finished) return;
+    if (!question || finished || finishingRef.current) return;
 
     updateAnswer(question.question_id, {
       option_codes: [optionCode],
@@ -373,7 +432,7 @@ export default function ChallengePage() {
   };
 
   const toggleMultiple = (optionCode) => {
-    if (!question || finished) return;
+    if (!question || finished || finishingRef.current) return;
 
     const currentPayload = normalizePayload(
       answersRef.current[question.question_id]
@@ -392,7 +451,7 @@ export default function ChallengePage() {
   };
 
   const chooseCategory = (itemNumber, category) => {
-    if (!question || finished) return;
+    if (!question || finished || finishingRef.current) return;
 
     const currentPayload = normalizePayload(
       answersRef.current[question.question_id]
@@ -444,50 +503,53 @@ export default function ChallengePage() {
   // SIMPAN HASIL SESI
   // =====================================================
 
-  const saveSessionResult = (data, reviewData) => {
-    const currentConfig = getExamConfig();
-    const currentSubjects = normalizeSubjects(currentConfig);
-    const index = Number(currentConfig.currentSubjectIndex || 0);
+  const saveSessionResult = useCallback(
+    (data, reviewData) => {
+      const currentConfig = getExamConfig();
+      const currentSubjects = normalizeSubjects(currentConfig);
+      const index = Number(currentConfig.currentSubjectIndex || 0);
 
-    const sessionResult = {
-      simulationId:
-        currentConfig.simulationId || examInfo.simulationId,
-      subject: examInfo.subject,
-      grade: examInfo.grade,
-      subjectIndex: index,
-      totalSubjects: currentSubjects.length,
-      attemptId,
-      score: Number(data?.score ?? 0),
-      totalQuestions: Number(data?.total_questions ?? questions.length),
-      correctAnswers: Number(data?.correct_answers ?? 0),
-      incorrectOrUnanswered: Number(
-        data?.incorrect_or_unanswered ?? 0
-      ),
-      answeredCount,
-      result: data,
-      review: reviewData || null,
-      completedAt: new Date().toISOString(),
-    };
+      const sessionResult = {
+        simulationId:
+          currentConfig.simulationId || examInfo.simulationId,
+        subject: examInfo.subject,
+        grade: examInfo.grade,
+        subjectIndex: index,
+        totalSubjects: currentSubjects.length,
+        attemptId,
+        score: Number(data?.score ?? 0),
+        totalQuestions: Number(data?.total_questions ?? questions.length),
+        correctAnswers: Number(data?.correct_answers ?? 0),
+        incorrectOrUnanswered: Number(
+          data?.incorrect_or_unanswered ?? 0
+        ),
+        answeredCount,
+        result: data,
+        review: reviewData || null,
+        completedAt: new Date().toISOString(),
+      };
 
-    const previousResults = getSimulationResults();
+      const previousResults = getSimulationResults();
 
-    const updatedResults = [
-      ...previousResults.filter(
-        (item) => item.subjectIndex !== index
-      ),
-      sessionResult,
-    ].sort((a, b) => a.subjectIndex - b.subjectIndex);
+      const updatedResults = [
+        ...previousResults.filter(
+          (item) => item.subjectIndex !== index
+        ),
+        sessionResult,
+      ].sort((a, b) => a.subjectIndex - b.subjectIndex);
 
-    sessionStorage.setItem(
-      "tryon-simulation-results",
-      JSON.stringify(updatedResults)
-    );
+      sessionStorage.setItem(
+        "tryon-simulation-results",
+        JSON.stringify(updatedResults)
+      );
 
-    sessionStorage.setItem(
-      "tryon-exam-result",
-      JSON.stringify(data)
-    );
-  };
+      sessionStorage.setItem(
+        "tryon-exam-result",
+        JSON.stringify(data)
+      );
+    },
+    [answeredCount, attemptId, examInfo, questions.length]
+  );
 
   // =====================================================
   // MENYELESAIKAN SESI
@@ -497,10 +559,15 @@ export default function ChallengePage() {
     if (!attemptId || finishingRef.current || finished) return;
 
     finishingRef.current = true;
+    setIsFinishing(true);
     setSaving(true);
     setError("");
 
     try {
+      // Pastikan semua jawaban yang sedang dikirim selesai
+      // sebelum database menerima perintah submit.
+      await Promise.all([...pendingSavesRef.current.values()]);
+
       const { data, error: submitError } = await supabase.rpc(
         "submit_exam_attempt",
         {
@@ -526,6 +593,8 @@ export default function ChallengePage() {
       saveSessionResult(data, reviewData);
     } catch (err) {
       finishingRef.current = false;
+      setIsFinishing(false);
+
       setError(
         err?.message ||
           "Ujian belum berhasil diselesaikan. Silakan coba kembali."
@@ -533,14 +602,7 @@ export default function ChallengePage() {
     } finally {
       setSaving(false);
     }
-  }, [
-    attemptId,
-    finished,
-    loadReview,
-    examInfo,
-    questions.length,
-    answeredCount,
-  ]);
+  }, [attemptId, finished, loadReview, saveSessionResult]);
 
   // =====================================================
   // LANJUT KE MATA PELAJARAN BERIKUTNYA
@@ -549,6 +611,7 @@ export default function ChallengePage() {
   const nextSubject = () => {
     const currentConfig = getExamConfig();
     const subjectList = normalizeSubjects(currentConfig);
+
     const nextIndex =
       Number(currentConfig.currentSubjectIndex || 0) + 1;
 
@@ -564,10 +627,12 @@ export default function ChallengePage() {
       JSON.stringify(currentConfig)
     );
 
-    // Reset seluruh state sesi sebelumnya.
+    // Reset state sesi sebelumnya.
     startedRef.current = false;
     finishingRef.current = false;
+    setIsFinishing(false);
     answersRef.current = {};
+    pendingSavesRef.current.clear();
 
     setLoading(true);
     setSaving(false);
@@ -580,6 +645,7 @@ export default function ChallengePage() {
     setRemaining(3600);
     setFinished(false);
     setShowConfirm(false);
+    setNavigationWarning(false);
     setResult(null);
     setReview(null);
     setReviewError("");
@@ -589,17 +655,68 @@ export default function ChallengePage() {
   };
 
   // =====================================================
-  // TIMER
+  // PENGAMAN NAVIGASI SAAT UJIAN AKTIF
   // =====================================================
 
   useEffect(() => {
+    if (!attemptId || finished) return;
+
+    const lockState = { tkaExamLock: attemptId };
+
+    // Tambahkan satu entri history untuk menahan tombol Back.
+    window.history.pushState(
+      lockState,
+      "",
+      window.location.href
+    );
+
+    const handlePopState = () => {
+      // Ketika tombol Back ditekan, kembalikan history ke halaman CBT.
+      window.history.pushState(
+        lockState,
+        "",
+        window.location.href
+      );
+
+      setNavigationWarning(true);
+    };
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+
+      event.returnValue =
+        "Ujian masih berlangsung. Jika meninggalkan halaman, sesi tetap berjalan.";
+
+      return event.returnValue;
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [attemptId, finished]);
+
+  // =====================================================
+  // TIMER
+  // =====================================================
+
+  const isTimeExpired = remaining <= 0;
+
+  useEffect(() => {
     if (loading || finished || !attemptId) return;
+
+    if (isTimeExpired) {
+      const timer = setTimeout(() => finishExam(), 0);
+      return () => clearTimeout(timer);
+    }
 
     const timer = setInterval(() => {
       setRemaining((previous) => {
         if (previous <= 1) {
           clearInterval(timer);
-          finishExam();
           return 0;
         }
 
@@ -608,13 +725,15 @@ export default function ChallengePage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [loading, finished, attemptId, finishExam]);
+  }, [loading, finished, attemptId, isTimeExpired, finishExam]);
 
   // =====================================================
   // TANDA RAGU-RAGU
   // =====================================================
 
   const toggleMark = () => {
+    if (finishingRef.current || finished) return;
+
     setMarked((previous) =>
       previous.includes(current)
         ? previous.filter((n) => n !== current)
@@ -959,6 +1078,23 @@ export default function ChallengePage() {
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-800">
+      {navigationWarning && (
+        <div className="fixed left-1/2 top-4 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 shadow-lg">
+          <p className="font-bold">Ujian masih berlangsung</p>
+          <p className="mt-1">
+            Tombol Back tidak mengakhiri ujian. Sesi dan waktu ujian tetap
+            berjalan. Gunakan tombol Selesai jika memang ingin mengakhiri ujian.
+          </p>
+          <button
+            type="button"
+            onClick={() => setNavigationWarning(false)}
+            className="mt-3 rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white"
+          >
+            Mengerti
+          </button>
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div>
@@ -989,18 +1125,34 @@ export default function ChallengePage() {
 
           <button
             onClick={() => setShowConfirm(true)}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+            disabled={isFinishing || saving}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
           >
             Selesai
           </button>
         </div>
       </header>
 
+      {examInfo.resumed && (
+        <div className="mx-auto mt-4 max-w-7xl px-4 lg:px-6">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <strong>Sesi ujian dipulihkan.</strong> Anda melanjutkan attempt
+            sebelumnya. Jawaban tersimpan dan sisa waktu telah dipulihkan.
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto grid max-w-7xl gap-5 p-4 lg:grid-cols-[1fr_290px] lg:p-6">
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           {error && (
             <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
               {error}
+            </p>
+          )}
+
+          {saving && (
+            <p className="mb-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-700">
+              Menyimpan jawaban ke server…
             </p>
           )}
 
@@ -1050,6 +1202,7 @@ export default function ChallengePage() {
                 return (
                   <button
                     key={option.code}
+                    disabled={isFinishing}
                     onClick={() => chooseSingle(option.code)}
                     className={`flex w-full items-start gap-4 rounded-lg border p-4 text-left transition ${
                       active
@@ -1090,6 +1243,7 @@ export default function ChallengePage() {
                 return (
                   <button
                     key={option.code}
+                    disabled={isFinishing}
                     onClick={() => toggleMultiple(option.code)}
                     className={`flex w-full items-start gap-4 rounded-lg border p-4 text-left transition ${
                       active
@@ -1171,6 +1325,7 @@ export default function ChallengePage() {
                               name={`category-${question.question_id}-${number}`}
                               value={category}
                               checked={active}
+                              disabled={isFinishing}
                               onChange={() =>
                                 chooseCategory(number, category)
                               }
@@ -1319,6 +1474,13 @@ export default function ChallengePage() {
               <strong>{examInfo.subject}</strong>.
               Setelah diakhiri, jawaban tidak dapat diubah.
             </p>
+
+            {saving && (
+              <p className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
+                Sistem sedang menyimpan jawaban. Mohon tunggu sebelum
+                mengakhiri ujian.
+              </p>
+            )}
 
             <div className="mt-6 flex justify-end gap-3">
               <button

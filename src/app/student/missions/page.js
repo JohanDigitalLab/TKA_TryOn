@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
@@ -11,39 +11,35 @@ const levelLabels = {
 };
 
 export default function MissionsPage() {
-  const router = useRouter();
+  return (
+    <Suspense fallback={<p className="p-8">Memuat konfigurasi latihan...</p>}>
+      <MissionsConfiguration />
+    </Suspense>
+  );
+}
 
-  const [level, setLevel] = useState("");
-  const [schoolType, setSchoolType] = useState("");
-  const [subjects, setSubjects] = useState([]);
+function MissionsConfiguration() {
+  const params = useSearchParams();
+  return <MissionsForm key={params.toString()} params={params} />;
+}
+
+function MissionsForm({ params }) {
+  const router = useRouter();
+  const level = params.get("level") || "";
+  const schoolType = params.get("schoolType") || "";
+  const subjects = (params.get("subjects") || "")
+    .split(",")
+    .map((subject) => subject.trim())
+    .filter(Boolean);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
 
-  const [activityType, setActivityType] = useState("latihan");
+  const [activityType, setActivityType] = useState(() =>
+    params.get("activityType") === "simulasi" ? "simulasi" : "latihan"
+  );
   const [difficulty, setDifficulty] = useState("sedang");
   const [questionCount, setQuestionCount] = useState("20");
   const [duration, setDuration] = useState("30");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    setLevel(params.get("level") || "");
-    setSchoolType(params.get("schoolType") || "");
-
-    const selected = params.get("subjects");
-
-    if (selected) {
-      const availableSubjects = selected
-        .split(",")
-        .map((subject) => subject.trim())
-        .filter(Boolean);
-
-      setSubjects(availableSubjects);
-
-      // Tidak otomatis memilih semua mata pelajaran.
-      setSelectedSubjects([]);
-    }
-  }, []);
 
   const isReady = Boolean(level && selectedSubjects.length > 0);
 
@@ -71,8 +67,7 @@ export default function MissionsPage() {
       level === "smp" ? 9 : level === "sma" ? 12 : 6;
 
     const configuration = {
-      simulationId:
-        globalThis.crypto?.randomUUID?.() || `sim-${Date.now()}`,
+      simulationId: crypto.randomUUID(),
 
       level,
       grade,
@@ -244,7 +239,7 @@ export default function MissionsPage() {
               <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
                 Data mata pelajaran belum diterima.{" "}
                 <a
-                  href="/student/subjects"
+                  href={`/student/subjects?activityType=${activityType}`}
                   className="font-bold underline"
                 >
                   Kembali memilih mata pelajaran
@@ -274,7 +269,7 @@ export default function MissionsPage() {
           </div>
 
           <a
-            href="/student/subjects"
+            href={`/student/subjects?activityType=${activityType}`}
             className="mt-6 inline-block text-sm font-bold text-blue-700 hover:text-blue-900"
           >
             ← Ubah pilihan mata pelajaran awal
@@ -415,6 +410,7 @@ export default function MissionsPage() {
                 <option value="20">20 Soal</option>
                 <option value="30">30 Soal</option>
                 <option value="40">40 Soal</option>
+                <option value="50">50 Soal</option>
               </select>
             </div>
 

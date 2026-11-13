@@ -2,18 +2,22 @@
   "name": "tka-tryon",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test tests/**/*.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
-    "exceljs": "^4.4.0",
+    "mammoth": "^1.13.0",
     "next": "16.4.5",
+    "pdf-parse": "^2.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

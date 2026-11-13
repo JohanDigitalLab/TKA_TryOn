@@ -1,11 +1,16 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+// ======================================================
+// MENU ADMIN
+// ======================================================
+
 const menu = [
-  { icon: "◫", label: "Dashboard", active: true },
+  { icon: "◫", label: "Dashboard" },
   { icon: "▤", label: "Bank Soal", section: "KONTEN AKADEMIK" },
   { icon: "⇧", label: "Import Center" },
   { icon: "✦", label: "AI Question Factory" },
@@ -44,6 +49,10 @@ const stats = [
   },
 ];
 
+// ======================================================
+// DAFTAR PERMISSION ADMIN OPERATOR
+// ======================================================
+
 const permissionGroups = [
   {
     title: "Bank Soal",
@@ -80,23 +89,42 @@ const permissionGroups = [
       },
     ],
   },
+  {
+    title: "Manajemen Profil Akademik",
+    items: [
+      {
+        code: "education_level.review",
+        label: "Telaah Perubahan Jenjang Pendidikan",
+        description:
+          "Meninjau, menyetujui, atau menolak pengajuan perubahan jenjang pendidikan siswa.",
+      },
+    ],
+  },
 ];
 
-const emptyPermissions = [];
-
 export default function AdminDashboard() {
+  const router = useRouter();
+  // ====================================================
+  // STATE
+  // ====================================================
+
   const [activeMenu, setActiveMenu] = useState("Dashboard");
 
   const [candidates, setCandidates] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedPermissions, setSelectedPermissions] =
-    useState(emptyPermissions);
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
 
   const [search, setSearch] = useState("");
+
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // ====================================================
+  // MEMUAT DAFTAR AKUN
+  // ====================================================
 
   const loadCandidates = useCallback(async () => {
     setLoadingCandidates(true);
@@ -117,11 +145,16 @@ export default function AdminDashboard() {
     setLoadingCandidates(false);
   }, []);
 
-  useEffect(() => {
-    if (activeMenu === "Manajemen Admin") {
-      loadCandidates();
+  function selectMenu(label) {
+    setActiveMenu(label);
+    if (label === "Manajemen Admin") {
+      void loadCandidates();
     }
-  }, [activeMenu, loadCandidates]);
+  }
+
+  // ====================================================
+  // PENCARIAN AKUN
+  // ====================================================
 
   const filteredCandidates = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -136,12 +169,20 @@ export default function AdminDashboard() {
     });
   }, [candidates, search]);
 
+  // ====================================================
+  // MEMILIH ADMIN OPERATOR
+  // ====================================================
+
   function selectOperator(user) {
     setSelectedUser(user);
     setSelectedPermissions(user.permissions || []);
     setError("");
     setSuccess("");
   }
+
+  // ====================================================
+  // MENGUBAH PERMISSION
+  // ====================================================
 
   function togglePermission(code) {
     setSelectedPermissions((current) =>
@@ -150,6 +191,10 @@ export default function AdminDashboard() {
         : [...current, code]
     );
   }
+
+  // ====================================================
+  // MENYIMPAN PENGATURAN ADMIN OPERATOR
+  // ====================================================
 
   async function saveOperator() {
     if (!selectedUser) {
@@ -176,9 +221,8 @@ export default function AdminDashboard() {
       return;
     }
 
-    setSuccess("Pengaturan Admin Operator berhasil disimpan.");
-
-    await loadCandidates();
+    const savedPermissions =
+      data?.permissions || selectedPermissions;
 
     setSelectedUser((current) =>
       current
@@ -186,13 +230,23 @@ export default function AdminDashboard() {
             ...current,
             is_operator: true,
             is_active: true,
-            permissions: data?.permissions || selectedPermissions,
+            permissions: savedPermissions,
           }
         : null
     );
 
+    setSelectedPermissions(savedPermissions);
+
+    setSuccess("Pengaturan Admin Operator berhasil disimpan.");
+
+    await loadCandidates();
+
     setSaving(false);
   }
+
+  // ====================================================
+  // MENONAKTIFKAN ADMIN OPERATOR
+  // ====================================================
 
   async function disableOperator(user) {
     const confirmed = window.confirm(
@@ -220,8 +274,6 @@ export default function AdminDashboard() {
       return;
     }
 
-    setSuccess("Admin Operator berhasil dinonaktifkan.");
-
     if (selectedUser?.user_id === user.user_id) {
       setSelectedUser({
         ...user,
@@ -229,12 +281,20 @@ export default function AdminDashboard() {
         is_active: false,
         permissions: [],
       });
+
       setSelectedPermissions([]);
     }
 
+    setSuccess("Admin Operator berhasil dinonaktifkan.");
+
     await loadCandidates();
+
     setSaving(false);
   }
+
+  // ====================================================
+  // TAMPILAN DASHBOARD UTAMA
+  // ====================================================
 
   function renderDashboard() {
     return (
@@ -245,6 +305,7 @@ export default function AdminDashboard() {
               <h3 className="text-2xl font-bold text-slate-900">
                 Selamat datang, Admin!
               </h3>
+
               <p className="mt-1 text-sm text-slate-500">
                 Pusat kendali konten akademik dan operasional TKA TryOn.
               </p>
@@ -266,6 +327,7 @@ export default function AdminDashboard() {
                 <p className="text-sm font-medium text-slate-500">
                   {stat.label}
                 </p>
+
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-xl text-blue-700">
                   {stat.icon}
                 </span>
@@ -274,7 +336,10 @@ export default function AdminDashboard() {
               <p className="mt-4 text-3xl font-bold text-slate-900">
                 {stat.value}
               </p>
-              <p className="mt-1 text-xs text-slate-400">{stat.note}</p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                {stat.note}
+              </p>
             </div>
           ))}
         </section>
@@ -296,7 +361,9 @@ export default function AdminDashboard() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <button
-                onClick={() => setActiveMenu("Import Center")}
+                onClick={() => {
+                  router.push("/admin/import");
+                }}
                 className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50"
               >
                 Buka Import Center →
@@ -326,9 +393,15 @@ export default function AdminDashboard() {
               ].map(([name, status, color]) => (
                 <div key={name}>
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-medium text-slate-600">{name}</span>
-                    <span className="text-slate-400">{status}</span>
+                    <span className="font-medium text-slate-600">
+                      {name}
+                    </span>
+
+                    <span className="text-slate-400">
+                      {status}
+                    </span>
                   </div>
+
                   <div className="mt-2 h-1.5 rounded-full bg-slate-100">
                     <div className={`h-1.5 w-full rounded-full ${color}`} />
                   </div>
@@ -340,7 +413,10 @@ export default function AdminDashboard() {
 
         <section>
           <div className="mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Akses Cepat</h3>
+            <h3 className="text-lg font-bold text-slate-900">
+              Akses Cepat
+            </h3>
+
             <p className="mt-1 text-sm text-slate-500">
               Pilih area kerja yang ingin dikelola.
             </p>
@@ -355,14 +431,33 @@ export default function AdminDashboard() {
             ].map(([icon, title, desc]) => (
               <button
                 key={title}
-                onClick={() => setActiveMenu(title)}
+                onClick={() => {
+                  if (title === "Bank Soal") {
+                    router.push("/admin/questions");
+                    return;
+                  }
+
+                  if (title === "Import Center") {
+                    router.push("/admin/import");
+                    return;
+                  }
+
+                  selectMenu(title);
+                }}
                 className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
               >
-                <span className="text-2xl text-blue-700">{icon}</span>
-                <h4 className="mt-3 font-bold text-slate-800">{title}</h4>
+                <span className="text-2xl text-blue-700">
+                  {icon}
+                </span>
+
+                <h4 className="mt-3 font-bold text-slate-800">
+                  {title}
+                </h4>
+
                 <p className="mt-1 text-xs leading-5 text-slate-500">
                   {desc}
                 </p>
+
                 <p className="mt-4 text-xs font-semibold text-blue-700">
                   Buka area →
                 </p>
@@ -372,11 +467,17 @@ export default function AdminDashboard() {
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-bold text-slate-800">Workspace Aktif</h3>
+          <h3 className="font-bold text-slate-800">
+            Workspace Aktif
+          </h3>
+
           <p className="mt-2 text-sm text-slate-500">
             Menu terpilih:{" "}
-            <span className="font-semibold text-blue-700">{activeMenu}</span>
+            <span className="font-semibold text-blue-700">
+              {activeMenu}
+            </span>
           </p>
+
           <p className="mt-1 text-xs text-slate-400">
             Modul ini akan dihubungkan ke halaman dan layanan database pada
             tahap pengembangan berikutnya.
@@ -385,6 +486,10 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  // ====================================================
+  // TAMPILAN MANAJEMEN ADMIN
+  // ====================================================
 
   function renderAdminManagement() {
     return (
@@ -417,6 +522,8 @@ export default function AdminDashboard() {
         )}
 
         <section className="grid gap-5 xl:grid-cols-5">
+          {/* DAFTAR AKUN */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
             <div className="flex items-center justify-between gap-2">
               <h4 className="font-bold text-slate-900">
@@ -425,7 +532,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={loadCandidates}
-                disabled={loadingCandidates}
+                disabled={loadingCandidates || saving}
                 className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
               >
                 {loadingCandidates ? "Memuat..." : "↻ Muat ulang"}
@@ -506,13 +613,19 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* PENGATURAN PERMISSION */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
             {!selectedUser ? (
               <div className="flex min-h-[350px] flex-col items-center justify-center text-center">
-                <span className="text-4xl text-slate-300">♙</span>
+                <span className="text-4xl text-slate-300">
+                  ♙
+                </span>
+
                 <h4 className="mt-4 font-bold text-slate-700">
                   Pilih akun pengguna
                 </h4>
+
                 <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
                   Pilih akun dari daftar di sebelah kiri untuk mengatur status
                   Admin Operator dan hak aksesnya.
@@ -555,7 +668,8 @@ export default function AdminDashboard() {
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     Centang kewenangan yang akan diberikan kepada akun ini.
-                    Super Admin tetap memiliki seluruh hak akses.
+                    Super Admin tetap memiliki seluruh hak akses secara
+                    otomatis dan tidak diatur melalui daftar ini.
                   </p>
                 </div>
 
@@ -615,7 +729,9 @@ export default function AdminDashboard() {
                     disabled={saving}
                     className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {saving ? "Menyimpan..." : "Simpan & Aktifkan Operator"}
+                    {saving
+                      ? "Menyimpan..."
+                      : "Simpan & Aktifkan Operator"}
                   </button>
 
                   {selectedUser.is_operator && selectedUser.is_active && (
@@ -632,6 +748,8 @@ export default function AdminDashboard() {
             )}
           </div>
         </section>
+
+        {/* PRINSIP KEAMANAN */}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h4 className="font-bold text-slate-900">
@@ -654,7 +772,10 @@ export default function AdminDashboard() {
               ],
             ].map(([title, description]) => (
               <div key={title} className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-800">{title}</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {title}
+                </p>
+
                 <p className="mt-2 text-xs leading-5 text-slate-500">
                   {description}
                 </p>
@@ -666,8 +787,14 @@ export default function AdminDashboard() {
     );
   }
 
+  // ====================================================
+  // RENDER HALAMAN
+  // ====================================================
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 md:flex">
+      {/* SIDEBAR */}
+
       <aside className="w-full bg-slate-950 text-white md:min-h-screen md:w-64 md:shrink-0">
         <div className="border-b border-white/10 px-6 py-6">
           <div className="flex items-center gap-3">
@@ -676,7 +803,10 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h1 className="text-lg font-bold tracking-wide">TKA TryOn</h1>
+              <h1 className="text-lg font-bold tracking-wide">
+                TKA TryOn
+              </h1>
+
               <p className="text-xs text-slate-400">
                 SKILL ON • CONFIDENCE ON
               </p>
@@ -686,9 +816,17 @@ export default function AdminDashboard() {
 
         <div className="px-4 py-5">
           <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-xs text-slate-400">AREA KERJA</p>
-            <p className="mt-1 font-semibold">Super Admin</p>
-            <p className="text-xs text-slate-400">TKA TryOn Platform</p>
+            <p className="text-xs text-slate-400">
+              AREA KERJA
+            </p>
+
+            <p className="mt-1 font-semibold">
+              Super Admin
+            </p>
+
+            <p className="text-xs text-slate-400">
+              TKA TryOn Platform
+            </p>
           </div>
 
           <nav className="space-y-1">
@@ -701,14 +839,29 @@ export default function AdminDashboard() {
                 )}
 
                 <button
-                  onClick={() => setActiveMenu(item.label)}
+                  onClick={() => {
+                    if (item.label === "Bank Soal") {
+                      router.push("/admin/questions");
+                      return;
+                    }
+
+                    if (item.label === "Import Center") {
+                      router.push("/admin/import");
+                      return;
+                    }
+
+                    selectMenu(item.label);
+                  }}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
                     activeMenu === item.label
                       ? "bg-blue-600 font-semibold text-white"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <span className="w-5 text-center text-lg">{item.icon}</span>
+                  <span className="w-5 text-center text-lg">
+                    {item.icon}
+                  </span>
+
                   {item.label}
 
                   {item.label === "Moderasi Guru" && (
@@ -726,9 +879,14 @@ export default function AdminDashboard() {
           <p className="text-xs text-slate-500">
             TKA TryOn Administration
           </p>
-          <p className="mt-1 text-xs text-slate-400">Platform v1.0</p>
+
+          <p className="mt-1 text-xs text-slate-400">
+            Platform v1.0
+          </p>
         </div>
       </aside>
+
+      {/* MAIN CONTENT */}
 
       <main className="min-w-0 flex-1">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 md:px-8">
@@ -756,21 +914,22 @@ export default function AdminDashboard() {
         </header>
 
         <div className="mx-auto max-w-7xl space-y-7 p-5 md:p-8">
-          {activeMenu === "Dashboard"
-            ? renderDashboard()
-            : activeMenu === "Manajemen Admin"
-            ? renderAdminManagement()
-            : (
-              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-slate-900">
-                  {activeMenu}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Modul ini akan dihubungkan ke halaman dan layanan database
-                  pada tahap pengembangan berikutnya.
-                </p>
-              </section>
-            )}
+          {activeMenu === "Dashboard" ? (
+            renderDashboard()
+          ) : activeMenu === "Manajemen Admin" ? (
+            renderAdminManagement()
+          ) : (
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-slate-900">
+                {activeMenu}
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Modul ini akan dihubungkan ke halaman dan layanan database
+                pada tahap pengembangan berikutnya.
+              </p>
+            </section>
+          )}
 
           <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
             © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON

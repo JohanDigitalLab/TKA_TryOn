@@ -1,7 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const requiredSubjects = {
   sd: ["Bahasa Indonesia", "Matematika"],
@@ -31,31 +33,107 @@ const electiveSubjects = [
   "Produk/Projek Kreatif dan Kewirausahaan",
 ];
 
-const levelOptions = [
-  { value: "sd", label: "SD / MI", grade: "Kelas 6" },
-  { value: "smp", label: "SMP / MTs", grade: "Kelas 9" },
-  { value: "sma", label: "SMA / MA / SMK", grade: "Kelas 12" },
-];
+const levelOptions = {
+  sd: {
+    value: "sd",
+    label: "SD / MI",
+    grade: "Kelas 6",
+  },
+  smp: {
+    value: "smp",
+    label: "SMP / MTs",
+    grade: "Kelas 9",
+  },
+  sma: {
+    value: "sma",
+    label: "SMA / MA / SMK",
+    grade: "Kelas 12",
+  },
+};
 
 export default function SubjectsPage() {
-  const [level, setLevel] = useState("sd");
+  const router = useRouter();
+
+  const [level, setLevel] = useState(null);
   const [schoolType, setSchoolType] = useState("sma");
   const [selectedElectives, setSelectedElectives] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadStudentProfile = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        throw authError;
+      }
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, education_level")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      if (!profile) {
+        setError(
+          "Profil siswa belum ditemukan. Silakan hubungi administrator."
+        );
+        return;
+      }
+
+      const studentLevel = String(
+        profile.education_level || ""
+      ).toLowerCase();
+
+      if (!Object.prototype.hasOwnProperty.call(levelOptions, studentLevel)) {
+        setLevel(null);
+        setError(
+          "Jenjang pendidikan belum ditetapkan pada profil Anda. Silakan selesaikan penetapan jenjang melalui administrator."
+        );
+        return;
+      }
+
+      setLevel(studentLevel);
+    } catch (err) {
+      console.error("Gagal memuat profil siswa:", err);
+
+      setError(
+        err.message ||
+          "Terjadi kesalahan saat memuat profil siswa. Silakan coba kembali."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    startTransition(() => loadStudentProfile());
+  }, [loadStudentProfile]);
+
   const isHighSchool = level === "sma";
 
-  const mandatorySubjects = requiredSubjects[level];
+  const mandatorySubjects = level
+    ? requiredSubjects[level]
+    : [];
 
   const availableElectives = electiveSubjects.filter(
     (subject) =>
       subject !== "Produk/Projek Kreatif dan Kewirausahaan" ||
       schoolType === "smk"
   );
-
-  function changeLevel(value) {
-    setLevel(value);
-    setSelectedElectives([]);
-  }
 
   function toggleElective(subject) {
     setSelectedElectives((previous) => {
@@ -72,6 +150,10 @@ export default function SubjectsPage() {
   }
 
   function handleContinue() {
+    if (!level || !mandatorySubjects.length) {
+      return;
+    }
+
     if (isHighSchool && selectedElectives.length !== 2) {
       return;
     }
@@ -87,12 +169,72 @@ export default function SubjectsPage() {
       subjects: allSubjects.join(","),
     });
 
-    window.location.href = `/student/missions?${params.toString()}`;
+    router.push(`/student/missions?${params.toString()}`);
   }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
+        <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-700" />
+          <h2 className="mt-5 text-lg font-bold text-slate-900">
+            Memuat Profil Siswa
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Sedang memeriksa identitas akademik Anda.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !level) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10 text-slate-800">
+        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-2xl">
+            !
+          </div>
+
+          <h1 className="mt-5 text-xl font-extrabold text-slate-900">
+            Jenjang Pendidikan Belum Tersedia
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {error ||
+              "Jenjang pendidikan belum ditetapkan pada profil Anda."}
+          </p>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setError("");
+                void loadStudentProfile();
+              }}
+              className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800"
+            >
+              Coba Kembali
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/student")}
+              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Kembali ke Dashboard
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const currentLevel = levelOptions[level];
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
-
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
@@ -100,10 +242,12 @@ export default function SubjectsPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
               T
             </div>
+
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
                 TKA <span className="text-blue-700">TryOn</span>
               </h1>
+
               <p className="text-[10px] font-semibold tracking-widest text-slate-500">
                 SKILL ON • CONFIDENCE ON
               </p>
@@ -120,7 +264,6 @@ export default function SubjectsPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-5 py-8 sm:py-10 lg:px-8">
-
         {/* JUDUL */}
         <section className="mb-8">
           <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
@@ -132,57 +275,74 @@ export default function SubjectsPage() {
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Tentukan jenjang pendidikan dan mata pelajaran yang akan digunakan
-            dalam latihan maupun simulasi Tes Kemampuan Akademik.
+            Pilih mata pelajaran yang akan digunakan dalam latihan maupun
+            simulasi Tes Kemampuan Akademik sesuai jenjang pendidikan Anda.
           </p>
         </section>
 
-        {/* PEMILIHAN JENJANG */}
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-5">
-            <h3 className="text-lg font-bold text-slate-900">
-              1. Jenjang Pendidikan
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Pilih jenjang untuk melihat struktur mata uji yang sesuai.
-            </p>
+        {/* JENJANG PENDIDIKAN DARI PROFIL */}
+        <section className="mb-8 rounded-xl border border-blue-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Jenjang Pendidikan
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Jenjang mengikuti identitas akademik yang tercatat pada profil
+                siswa.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-5 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                {currentLevel.grade}
+              </p>
+
+              <p className="mt-1 text-lg font-extrabold text-slate-900">
+                {currentLevel.label}
+              </p>
+
+              <p className="mt-1 text-xs font-semibold text-blue-700">
+                <span aria-hidden="true">✓ </span>
+                Jenjang terverifikasi
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {levelOptions.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => changeLevel(item.value)}
-                aria-pressed={level === item.value}
-                className={`rounded-xl border-2 p-4 text-left transition ${
-                  level === item.value
-                    ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100"
-                    : "border-slate-200 bg-white hover:border-blue-300"
-                }`}
+          <div className="mt-4 flex items-start gap-2 border-t border-slate-100 pt-4">
+            <span className="text-slate-400" aria-hidden="true">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
-                  {item.grade}
-                </p>
-                <p className="mt-2 text-lg font-extrabold text-slate-900">
-                  {item.label}
-                </p>
-                {level === item.value && (
-                  <p className="mt-2 text-xs font-bold text-blue-700">
-                    ✓ Jenjang dipilih
-                  </p>
-                )}
-              </button>
-            ))}
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
+
+            <p className="text-xs leading-5 text-slate-500">
+              Jenjang pendidikan terkunci sebagai identitas akademik. Jika
+              terdapat kesalahan, pengajuan perubahan dilakukan melalui
+              mekanisme resmi dan persetujuan administrator.
+            </p>
           </div>
 
           {isHighSchool && (
             <div className="mt-6 border-t border-slate-100 pt-5">
-              <label className="mb-2 block text-sm font-bold text-slate-800">
+              <label
+                htmlFor="schoolType"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
                 Jenis Satuan Pendidikan
               </label>
 
               <select
+                id="schoolType"
                 value={schoolType}
                 onChange={(event) => {
                   setSchoolType(event.target.value);
@@ -203,7 +363,7 @@ export default function SubjectsPage() {
           <div className="mb-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-slate-900">
-                2. Mata Pelajaran Wajib
+                1. Mata Pelajaran Wajib
               </h3>
 
               <span className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
@@ -244,7 +404,7 @@ export default function SubjectsPage() {
             <div className="mb-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-lg font-bold text-slate-900">
-                  3. Mata Pelajaran Pilihan
+                  2. Mata Pelajaran Pilihan
                 </h3>
 
                 <span className="rounded-md bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
@@ -263,6 +423,7 @@ export default function SubjectsPage() {
               <span className="text-sm font-semibold text-slate-700">
                 Pilihan Anda
               </span>
+
               <span className="text-lg font-extrabold text-blue-700">
                 {selectedElectives.length} / 2
               </span>
@@ -305,7 +466,6 @@ export default function SubjectsPage() {
             </div>
 
             <p className="mt-4 text-xs leading-5 text-slate-500">
-              Catatan: daftar pilihan ini mengikuti informasi resmi TKA.
               Pastikan pilihan sesuai mata pelajaran yang tercatat dalam rapor.
             </p>
           </section>
@@ -330,6 +490,7 @@ export default function SubjectsPage() {
                 <span className="text-sm font-semibold text-slate-800">
                   {subject}
                 </span>
+
                 <span className="text-xs font-bold text-blue-700">
                   WAJIB
                 </span>
@@ -344,6 +505,7 @@ export default function SubjectsPage() {
                 <span className="text-sm font-semibold text-slate-800">
                   {subject}
                 </span>
+
                 <span className="text-xs font-bold text-amber-700">
                   PILIHAN
                 </span>
@@ -354,11 +516,15 @@ export default function SubjectsPage() {
           <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-slate-900">
-                Total {mandatorySubjects.length + selectedElectives.length} mata pelajaran
+                Total{" "}
+                {mandatorySubjects.length + selectedElectives.length} mata
+                pelajaran
               </p>
+
               {isHighSchool && selectedElectives.length !== 2 && (
                 <p className="mt-1 text-xs text-amber-700">
-                  Silakan pilih {2 - selectedElectives.length} mata pelajaran pilihan lagi.
+                  Silakan pilih {2 - selectedElectives.length} mata pelajaran
+                  pilihan lagi.
                 </p>
               )}
             </div>
@@ -377,7 +543,6 @@ export default function SubjectsPage() {
         <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
-
       </div>
     </main>
   );
