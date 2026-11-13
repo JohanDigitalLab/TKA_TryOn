@@ -18,12 +18,13 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tesseract.js": "^7.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "pg": "^8.23.1",
     "tailwindcss": "^4"
   }
 }

@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { normalizePayload } from "@/lib/student/exam";
 import { useRouter } from "next/navigation";
 
 // =====================================================
@@ -19,23 +20,6 @@ function formatDate(value) {
   } catch {
     return "-";
   }
-}
-
-function normalizePayload(payload) {
-  if (!payload || typeof payload !== "object") {
-    return { option_codes: [], category_answers: {} };
-  }
-
-  return {
-    option_codes: Array.isArray(payload.option_codes)
-      ? payload.option_codes
-      : [],
-    category_answers:
-      payload.category_answers &&
-      typeof payload.category_answers === "object"
-        ? payload.category_answers
-        : {},
-  };
 }
 
 function getTypeLabel(type) {

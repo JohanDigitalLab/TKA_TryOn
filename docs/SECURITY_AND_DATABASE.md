@@ -65,4 +65,8 @@ npm run lint
 npm run build
 ```
 
-Lint pada area API/server yang diperbarui harus bersih dari error. Lint global masih dapat melaporkan warning/error lama pada page besar yang belum direfaktor.
+Lint global, pengujian, dan build harus lulus sebelum perubahan diterima.
+
+## Paket audit lanjutan
+
+Status temuan, batas bukti, kebutuhan kontrak histori dan matriks uji akses tersedia di [status audit database](database/AUDIT_STATUS.md). Laporan hasil audit live tersedia di [LIVE_AUDIT_REPORT.md](database/LIVE_AUDIT_REPORT.md). Inventaris schema/policy/RPC dapat dikumpulkan ulang dengan [skrip baca-saja](database/audit-readonly.sql). Audit metadata tidak menggantikan pengujian akses runtime lintas pengguna.

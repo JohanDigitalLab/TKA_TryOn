@@ -20,6 +20,9 @@
 # production
 /build
 
+# Local database audit outputs may contain sensitive function definitions
+/.local/database/
+
 # misc
 .DS_Store
 *.pem
