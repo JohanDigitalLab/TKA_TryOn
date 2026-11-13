@@ -9,7 +9,7 @@ const services = [
       "Kerjakan simulasi ujian dengan tampilan CBT, batas waktu, navigasi soal, dan mekanisme pengerjaan terstruktur.",
     status: "MULAI SIMULASI",
     available: true,
-    href: "/student/subjects",
+    href: "/student/subjects?activityType=simulasi",
   },
   {
     number: "02",
@@ -18,7 +18,7 @@ const services = [
       "Latihan berdasarkan jenjang pendidikan, mata pelajaran, dan kompetensi yang diujikan.",
     status: "MULAI LATIHAN",
     available: true,
-    href: "/student/subjects",
+    href: "/student/subjects?activityType=latihan",
   },
   {
     number: "03",

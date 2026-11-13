@@ -1,8 +1,8 @@
 
 "use client";
 
-import { startTransition, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, startTransition, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const requiredSubjects = {
@@ -52,7 +52,18 @@ const levelOptions = {
 };
 
 export default function SubjectsPage() {
+  return (
+    <Suspense fallback={<p className="p-8">Memuat pilihan mata pelajaran...</p>}>
+      <SubjectsConfiguration />
+    </Suspense>
+  );
+}
+
+function SubjectsConfiguration() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activityType =
+    searchParams.get("activityType") === "simulasi" ? "simulasi" : "latihan";
 
   const [level, setLevel] = useState(null);
   const [schoolType, setSchoolType] = useState("sma");
@@ -169,6 +180,7 @@ export default function SubjectsPage() {
       subjects: allSubjects.join(","),
     });
 
+    params.set("activityType", activityType);
     router.push(`/student/missions?${params.toString()}`);
   }
 
@@ -275,8 +287,8 @@ export default function SubjectsPage() {
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Pilih mata pelajaran yang akan digunakan dalam latihan maupun
-            simulasi Tes Kemampuan Akademik sesuai jenjang pendidikan Anda.
+            Anda memilih {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}.
+            Pilih mata pelajaran yang akan digunakan sesuai jenjang pendidikan Anda.
           </p>
         </section>
 

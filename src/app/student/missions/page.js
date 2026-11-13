@@ -143,12 +143,11 @@ function MissionsForm({ params }) {
           </p>
 
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
-            Konfigurasi Latihan dan Simulasi
+            Persiapan {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Pilih mata pelajaran yang ingin dikerjakan, kemudian
-            tentukan jenis kegiatan dan pengaturan ujian.
+            Pilih mata pelajaran dan atur sesi {activityType === "simulasi" ? "simulasi" : "latihan"} Anda.
           </p>
         </section>
 
@@ -276,81 +275,6 @@ function MissionsForm({ params }) {
           </a>
         </section>
 
-        {/* JENIS KEGIATAN */}
-        <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-900">
-            Jenis Kegiatan
-          </h3>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Pilih bentuk kegiatan akademik yang ingin dilakukan.
-          </p>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              aria-pressed={activityType === "latihan"}
-              onClick={() => {
-                setActivityType("latihan");
-                setMessage("");
-              }}
-              className={`rounded-xl border-2 p-5 text-left transition ${
-                activityType === "latihan"
-                  ? "border-blue-600 bg-blue-50"
-                  : "border-slate-200 hover:border-blue-300"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-extrabold text-slate-900">
-                  Latihan Terarah
-                </span>
-                <span className="text-xl text-blue-700">01</span>
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Latihan berdasarkan mata pelajaran dan tingkat kesulitan.
-                Cocok untuk memperkuat pemahaman materi.
-              </p>
-
-              <p className="mt-4 text-sm font-bold text-blue-700">
-                {activityType === "latihan" ? "✓ Dipilih" : "Pilih latihan"}
-              </p>
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={activityType === "simulasi"}
-              onClick={() => {
-                setActivityType("simulasi");
-                setMessage("");
-              }}
-              className={`rounded-xl border-2 p-5 text-left transition ${
-                activityType === "simulasi"
-                  ? "border-blue-600 bg-blue-50"
-                  : "border-slate-200 hover:border-blue-300"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-extrabold text-slate-900">
-                  Simulasi TKA
-                </span>
-                <span className="text-xl text-blue-700">02</span>
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Simulasi pengerjaan ujian berbasis komputer dengan batas
-                waktu dan navigasi soal.
-              </p>
-
-              <p className="mt-4 text-sm font-bold text-blue-700">
-                {activityType === "simulasi"
-                  ? "✓ Dipilih"
-                  : "Pilih simulasi"}
-              </p>
-            </button>
-          </div>
-        </section>
-
         {/* PENGATURAN */}
         <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-900">
@@ -358,7 +282,7 @@ function MissionsForm({ params }) {
           </h3>
 
           <p className="mt-1 text-sm text-slate-500">
-            Pengaturan berlaku untuk setiap mata pelajaran yang dikerjakan.
+            Pengaturan berlaku untuk setiap mata pelajaran yang dikerjakan dalam {activityType === "simulasi" ? "simulasi" : "latihan"} ini.
           </p>
 
           {activityType === "latihan" && (
@@ -521,7 +445,7 @@ function MissionsForm({ params }) {
             onClick={saveConfiguration}
             className="mt-6 min-h-12 w-full rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
-            Mulai Kegiatan →
+            Mulai {activityType === "simulasi" ? "Simulasi" : "Latihan"} →
           </button>
 
           {!isReady && (
