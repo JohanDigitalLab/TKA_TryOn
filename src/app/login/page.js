@@ -11,6 +11,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -66,6 +67,9 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50">
 
+        <Link href="/" className="mb-6 inline-flex min-h-11 items-center text-sm font-semibold text-slate-600 hover:text-blue-700">
+          ← Kembali ke beranda
+        </Link>
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black tracking-tight text-blue-700">
             TKA <span className="text-slate-900">TryOn</span>
@@ -82,12 +86,13 @@ export default function LoginPage() {
           Masuk untuk melanjutkan perjalanan belajar dan persiapan TKA.
         </p>
 
-        <form onSubmit={handleLogin} className="mt-8 space-y-5">
+        <form onSubmit={handleLogin} aria-busy={loading} className="mt-8 space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
+            <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-slate-700">
               Email
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -99,11 +104,12 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
+            <label htmlFor="login-password" className="mb-2 block text-sm font-semibold text-slate-700">
               Password
             </label>
             <input
-              type="password"
+              id="login-password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Masukkan password"
@@ -112,6 +118,16 @@ export default function LoginPage() {
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
+
+          <button
+            type="button"
+            aria-controls="login-password"
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((previous) => !previous)}
+            className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+          >
+            {showPassword ? "Sembunyikan password" : "Tampilkan password"}
+          </button>
 
           {errorMessage && (
             <div

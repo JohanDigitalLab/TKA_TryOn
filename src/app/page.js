@@ -54,9 +54,9 @@ export default function Home() {
               T
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+              <p className="text-xl font-extrabold tracking-tight text-slate-900">
                 TKA <span className="text-blue-700">TryOn</span>
-              </h1>
+              </p>
               <p className="text-[10px] font-semibold tracking-[0.16em] text-slate-500">
                 SKILL ON • CONFIDENCE ON
               </p>
@@ -103,10 +103,10 @@ export default function Home() {
               PLATFORM SIMULASI TES KEMAMPUAN AKADEMIK
             </div>
 
-            <h2 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight text-slate-950 md:text-5xl">
+            <h1 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight text-slate-950 md:text-5xl">
               Persiapkan TKA dengan{" "}
               <span className="text-blue-700">lebih terarah.</span>
-            </h2>
+            </h1>
 
             <p className="mt-6 max-w-xl text-base leading-7 text-slate-600">
               TKA TryOn menyediakan fasilitas simulasi ujian berbasis komputer,
@@ -123,7 +123,7 @@ export default function Home() {
               </a>
             </div>
 
-            <p className="mt-6 text-xs leading-5 text-slate-400">
+            <p className="mt-6 text-xs leading-5 text-slate-600">
               Platform persiapan dan simulasi independen. Bukan aplikasi resmi penyelenggara TKA.
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function Home() {
                 ))}
               </div>
               <Link href="/register" className="block rounded-lg border border-blue-200 py-3 text-center text-sm font-bold text-blue-700 hover:bg-blue-50">
-                Pilih Jenjang
+                Daftar untuk {level.name}
               </Link>
             </article>
           ))}

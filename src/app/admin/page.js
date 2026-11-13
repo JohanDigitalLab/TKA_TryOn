@@ -792,10 +792,10 @@ export default function AdminDashboard() {
   // ====================================================
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 md:flex">
+    <div className="min-h-screen bg-slate-50 text-slate-800 lg:flex">
       {/* SIDEBAR */}
 
-      <aside className="w-full bg-slate-950 text-white md:min-h-screen md:w-64 md:shrink-0">
+      <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:block lg:min-h-screen">
         <div className="border-b border-white/10 px-6 py-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold">
@@ -912,6 +912,31 @@ export default function AdminDashboard() {
             </div>
           </div>
         </header>
+
+        <nav aria-label="Navigasi admin layar kecil" className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+          <button
+            type="button"
+            onClick={() => selectMenu("Dashboard")}
+            aria-pressed={activeMenu === "Dashboard"}
+            className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+          >
+            Dashboard
+          </button>
+          <button type="button" onClick={() => router.push("/admin/questions")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
+            Bank Soal
+          </button>
+          <button type="button" onClick={() => router.push("/admin/import")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
+            Import Center
+          </button>
+          <button
+            type="button"
+            onClick={() => selectMenu("Manajemen Admin")}
+            aria-pressed={activeMenu === "Manajemen Admin"}
+            className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+          >
+            Manajemen Admin
+          </button>
+        </nav>
 
         <div className="mx-auto max-w-7xl space-y-7 p-5 md:p-8">
           {activeMenu === "Dashboard" ? (

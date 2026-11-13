@@ -24,7 +24,7 @@ const services = [
     number: "03",
     title: "Hasil dan Evaluasi",
     description:
-      "Lihat hasil pengerjaan, capaian kompetensi, dan pembahasan soal untuk mengevaluasi kemampuan akademik.",
+      "Tinjau nilai dan jawaban dari sesi yang dikerjakan di browser ini. Gunakan hasilnya untuk menentukan latihan berikutnya.",
     status: "LIHAT HASIL",
     available: true,
     href: "/student/results",
@@ -55,10 +55,10 @@ export default function StudentPage() {
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-bold text-slate-900">
-                Peserta Demo
+                Ruang belajar
               </p>
               <p className="text-xs text-slate-500">
-                Profil belum terhubung
+                Latihan • Simulasi • Evaluasi
               </p>
             </div>
 
@@ -87,26 +87,26 @@ export default function StudentPage() {
         </section>
 
         {/* INFORMASI PESERTA */}
-        <section className="mb-9 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="mb-9 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                INFORMASI PESERTA
+                MULAI DARI SINI
               </p>
 
               <h3 className="mt-2 text-lg font-bold text-slate-900">
-                Lengkapi profil pendidikan Anda
+                Pilih aktivitas, lalu atur sesi belajar
               </h3>
 
               <p className="mt-1 text-sm leading-6 text-slate-500">
-                Jenjang dan kelas akan digunakan untuk menyesuaikan materi
-                latihan serta paket simulasi TKA.
+                Mulai dari memilih mata pelajaran, tentukan jumlah soal dan
+                durasi, lalu kerjakan sesi Anda. Jenjang mengikuti profil pendidikan Anda.
               </p>
             </div>
 
-            <span className="rounded-md bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-              DEMO
-            </span>
+            <Link href="/student/subjects" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">
+              Pilih mata pelajaran →
+            </Link>
           </div>
         </section>
 
@@ -130,7 +130,7 @@ export default function StudentPage() {
             {services.map((service) => (
               <article
                 key={service.number}
-                className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-blue-700">
