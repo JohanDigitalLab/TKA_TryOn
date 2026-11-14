@@ -14,14 +14,14 @@ Migration awal dan koreksi Tahap 1 telah diterapkan ke Supabase melalui TLS dala
 
 - Scoring ketiga tipe soal memakai snapshot versi soal; opsi asing/duplikat dan kategori/item asing ditolak.
 - Jawaban kategori parsial tetap sah untuk autosave, tetapi tidak mendapat nilai benar sampai seluruh item terjawab benar. Nilai kategori harus berupa string.
-- Save dan submit mengunci attempt; waktu save diperiksa setelah memperoleh lock. Submit terlambat ditolak. Penolakan transaksi tidak menyimpan perubahan status kedaluwarsa.
+- Save dan submit mengunci attempt; waktu save diperiksa setelah memperoleh lock. Save baru setelah deadline ditolak, sedangkan submit terlambat diproses sebagai auto-submit dari jawaban yang sudah tersimpan.
 - Tidak ada privilege pengosongan tabel efektif bagi kedua role API. Helper internal tidak dapat dieksekusi oleh keduanya; RPC save/submit tetap tersedia hanya bagi role terautentikasi.
 - 13 kasus integrasi helper database lulus, menggunakan versi soal yang sudah tersedia tanpa mengubah data siswa. Lint, 17 pengujian regresi, dan production build lulus.
-- Histori dan frontend histori tidak diubah. Belum ada commit atau push.
+- Histori dan frontend histori tidak diubah. Perubahan aplikasi dan dokumentasi sudah di-push ke `origin/main` pada commit `16f07fa`.
 
 Batas verifikasi: belum diuji end-to-end memakai akun A/B, operator, super admin, atau request bersamaan. Correctness kategori pada RPC review belum diselaraskan; default privilege milik pembuat object lain masih membutuhkan hardening terpisah.
 
-Pengujian E2E ditunda atas keputusan pengguna. Kredensial pada `.env.test.local` menunjuk project Supabase yang berbeda dari aplikasi pada `.env.local` dan target database yang telah diaudit, sehingga kedua login ditolak dengan `invalid_credentials`. Tidak ada attempt uji yang dibuat. Pengujian tidak boleh dilanjutkan sampai dua akun dibuat pada project yang sama dengan target aplikasi/database.
+Pengujian E2E sudah dicoba ulang setelah URL dan publishable key pada `.env.test.local` disamakan dengan aplikasi pada `.env.local`. Kedua login tetap ditolak dengan `invalid_credentials`; penyebab tersisa adalah kredensial akun tidak valid, akun belum aktif/terkonfirmasi, atau password tidak cocok. Tidak ada attempt uji yang dibuat. Tidak ada rahasia yang dibaca atau ditampilkan.
 
 Tabel temuan berikut merekam kondisi saat audit awal, sebelum Tahap 1.
 

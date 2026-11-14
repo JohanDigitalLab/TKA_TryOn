@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { normalizePayload } from "@/lib/student/exam";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 // =====================================================
 // HELPER
@@ -302,46 +303,134 @@ function getServerResultsSnapshot() {
 
 export default function StudentResultsPage() {
   const router = useRouter();
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+  const [reviewAttemptId, setReviewAttemptId] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
   const snapshot = useSyncExternalStore(
     subscribeToResults,
     getResultsSnapshot,
     getServerResultsSnapshot
   );
-  const loading = snapshot === null;
-  const { results, config } = useMemo(() => {
+  const loading = snapshot === null || historyLoading;
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHistory() {
+      setHistoryLoading(true);
+      setHistoryError("");
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user) {
+        if (mounted) {
+          setHistoryError("Sesi login tidak ditemukan. Silakan masuk kembali.");
+          setHistoryLoading(false);
+        }
+        return;
+      }
+
+      const { data, error: rpcError } = await supabase.rpc("get_student_exam_history", {
+        p_limit: 50,
+        p_before: null,
+      });
+      if (!mounted) return;
+      if (rpcError) {
+        setHistoryError(rpcError.message || "Histori hasil belum berhasil dimuat.");
+        setHistoryLoading(false);
+        return;
+      }
+      setHistory(Array.isArray(data) ? data : []);
+      setHistoryLoading(false);
+    }
+
+    void loadHistory();
+    return () => { mounted = false; };
+  }, []);
+
+  const { localResults, config } = useMemo(() => {
     try {
       const [rawResults, rawConfig] = JSON.parse(snapshot || "[null,null]");
       const savedResults = JSON.parse(rawResults || "[]");
       const savedConfig = JSON.parse(rawConfig || "{}");
       return {
-        results: Array.isArray(savedResults) ? savedResults : [],
+        localResults: Array.isArray(savedResults) ? savedResults : [],
         config: savedConfig && typeof savedConfig === "object" && !Array.isArray(savedConfig)
           ? savedConfig
           : {},
       };
     } catch {
-      return { results: [], config: {} };
+      return { localResults: [], config: {} };
     }
   }, [snapshot]);
+
+  const results = useMemo(() => {
+    if (history.length === 0) return localResults;
+    return history.map((item, index) => ({
+      attemptId: item.attempt_id,
+      subject: item.subject || item.subject_name || "Mata pelajaran",
+      grade: item.grade,
+      subjectIndex: index,
+      totalSubjects: history.length,
+      score: Number(item.score || 0),
+      totalQuestions: Number(item.total_questions || 0),
+      correctAnswers: Number(item.correct_answers || 0),
+      incorrectOrUnanswered: Number(item.incorrect_or_unanswered || 0),
+      answeredCount: Math.max(0, Number(item.total_questions || 0) - Number(item.incorrect_or_unanswered || 0)),
+      completedAt: item.submitted_at || item.created_at,
+      status: item.status || item.attempt_status,
+      review: item.review || null,
+    }));
+  }, [history, localResults]);
+
+  async function openReview(attemptId) {
+    if (!attemptId || reviewAttemptId === attemptId) {
+      setReviewAttemptId(null);
+      return;
+    }
+    setReviewAttemptId(attemptId);
+    setReviewLoading(true);
+    const { data, error: reviewError } = await supabase.rpc("get_exam_attempt_review", {
+      p_attempt_id: attemptId,
+    });
+    setReviewLoading(false);
+    if (reviewError) {
+      setHistoryError(reviewError.message || "Review jawaban belum berhasil dimuat.");
+      return;
+    }
+    setHistory((previous) => previous.map((item) =>
+      item.attempt_id === attemptId ? { ...item, review: data } : item
+    ));
+  }
+
+  const displayResults = results.filter((item) =>
+    String(item.status || "SUBMITTED").toUpperCase() === "SUBMITTED"
+  );
+
+  const weakestSubject = displayResults.length > 0
+    ? displayResults.reduce((weakest, item) =>
+        Number(item.score || 0) < Number(weakest.score || 0) ? item : weakest
+      )
+    : null;
 
   const summary = useMemo(() => {
     const totalSubjects = Array.isArray(config.subjects)
       ? config.subjects.length
       : 1;
 
-    const completedSubjects = results.length;
+    const completedSubjects = displayResults.length;
 
-    const totalQuestions = results.reduce(
+    const totalQuestions = displayResults.reduce(
       (sum, item) => sum + Number(item.totalQuestions || 0),
       0
     );
 
-    const correctAnswers = results.reduce(
+    const correctAnswers = displayResults.reduce(
       (sum, item) => sum + Number(item.correctAnswers || 0),
       0
     );
 
-    const incorrectAnswers = results.reduce(
+    const incorrectAnswers = displayResults.reduce(
       (sum, item) =>
         sum + Number(item.incorrectOrUnanswered || 0),
       0
@@ -349,7 +438,7 @@ export default function StudentResultsPage() {
 
     const averageScore =
       completedSubjects > 0
-        ? results.reduce(
+        ? displayResults.reduce(
             (sum, item) => sum + Number(item.score || 0),
             0
           ) / completedSubjects
@@ -366,10 +455,10 @@ export default function StudentResultsPage() {
         completedSubjects >= totalSubjects &&
         totalSubjects > 0,
     };
-  }, [results, config]);
+  }, [displayResults, config]);
 
   const simulationId =
-    results[0]?.simulationId || config.simulationId || "-";
+    displayResults[0]?.simulationId || config.simulationId || "-";
 
   if (loading) {
     return (
@@ -381,7 +470,7 @@ export default function StudentResultsPage() {
     );
   }
 
-  if (results.length === 0) {
+  if (!historyLoading && displayResults.length === 0) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100 p-5 text-slate-800">
         <section className="w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm">
@@ -454,6 +543,12 @@ export default function StudentResultsPage() {
           </div>
         </header>
 
+        {historyError && (
+          <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            {historyError}
+          </div>
+        )}
+
         {/* NILAI RATA-RATA */}
 
         <section className="mt-5 rounded-2xl bg-blue-700 p-6 text-white shadow-sm sm:p-8">
@@ -490,6 +585,15 @@ export default function StudentResultsPage() {
             />
           </div>
         </section>
+
+        {weakestSubject && (
+          <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-700">REKOMENDASI BELAJAR</p>
+            <h2 className="mt-2 text-lg font-extrabold text-amber-950">Fokus latihan berikutnya: {weakestSubject.subject}</h2>
+            <p className="mt-2 text-sm leading-6 text-amber-900">Nilai terakhir Anda di mata pelajaran ini adalah {Number(weakestSubject.score || 0).toFixed(2)}. Ulangi latihan dan tinjau pembahasan soal yang masih salah atau kosong.</p>
+            <button type="button" onClick={() => router.push(`/student/subjects?activityType=latihan&subject=${encodeURIComponent(weakestSubject.subject)}`)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">Mulai latihan {weakestSubject.subject}</button>
+          </section>
+        )}
 
         {/* RINGKASAN STATISTIK */}
 
@@ -542,17 +646,30 @@ export default function StudentResultsPage() {
           </div>
 
           <div className="space-y-4">
-            {results
+            {displayResults
               .slice()
-              .sort((a, b) => a.subjectIndex - b.subjectIndex)
+              .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
               .map((session, index) => (
-                <ReviewSession
-                  key={
-                    session.attemptId ||
-                    `${session.subject}-${index}`
-                  }
-                  session={session}
-                />
+                <div key={session.attemptId || `${session.subject}-${index}`}>
+                  <ReviewSession session={session} />
+                  {session.attemptId && (
+                    <button
+                      type="button"
+                      onClick={() => openReview(session.attemptId)}
+                      className="mt-2 w-full rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                    >
+                      {reviewAttemptId === session.attemptId
+                        ? "Tutup review jawaban"
+                        : "Lihat review jawaban dari server"}
+                    </button>
+                  )}
+                  {reviewAttemptId === session.attemptId && reviewLoading && (
+                    <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Memuat review jawaban…</p>
+                  )}
+                  {reviewAttemptId === session.attemptId && session.review && (
+                    <ReviewSession session={{ ...session, review: session.review }} />
+                  )}
+                </div>
               ))}
           </div>
         </section>

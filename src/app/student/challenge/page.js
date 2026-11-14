@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
 
@@ -14,11 +14,14 @@ import { supabase } from "@/lib/supabase";
 // HALAMAN CBT
 // =====================================================
 
-export default function ChallengePage() {
+function ChallengeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const resumeAttemptId = searchParams.get("attemptId");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("idle");
   const [error, setError] = useState("");
 
   const [questions, setQuestions] = useState([]);
@@ -94,58 +97,37 @@ export default function ChallengePage() {
       const currentConfig = getExamConfig();
       const subjectList = normalizeSubjects(currentConfig);
       const index = Number(currentConfig.currentSubjectIndex || 0);
-
-      const subject =
-        subjectOverride ||
-        subjectList[index] ||
-        subjectList[0] ||
-        "Matematika";
-
+      const subject = subjectOverride || subjectList[index] || subjectList[0] || "Matematika";
       const grade = normalizeGrade(currentConfig);
+      const duration = Math.min(240, Math.max(1, Number(currentConfig.duration) || 60));
+      const questionCount = Math.min(100, Math.max(1, Number(currentConfig.questionCount || currentConfig.totalQuestions) || 20));
+      const simulationId = currentConfig.simulationId || `sim-${Date.now()}`;
 
-      const duration = Math.min(
-        240,
-        Math.max(1, Number(currentConfig.duration) || 60)
-      );
-
-      const questionCount = Math.min(
-        100,
-        Math.max(
-          1,
-          Number(
-            currentConfig.questionCount || currentConfig.totalQuestions
-          ) || 20
-        )
-      );
-
-      const simulationId =
-        currentConfig.simulationId || `sim-${Date.now()}`;
-
-      currentConfig.simulationId = simulationId;
-      currentConfig.currentSubjectIndex = index;
-
-      sessionStorage.setItem(
-        "tryon-exam-config",
-        JSON.stringify(currentConfig)
-      );
+      if (!resumeAttemptId) {
+        currentConfig.simulationId = simulationId;
+        currentConfig.currentSubjectIndex = index;
+        sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
+      }
 
       setExamInfo({
         grade,
         subject,
         subjectIndex: index,
-        totalSubjects: subjectList.length,
+        totalSubjects: subjectList.length || 1,
         simulationId,
-        resumed: false,
+        resumed: Boolean(resumeAttemptId),
       });
 
       const { data, error: rpcError } = await supabase.rpc(
-        "start_exam_attempt",
-        {
-          p_grade: grade,
-          p_subject_name: subject,
-          p_question_count: questionCount,
-          p_duration_minutes: duration,
-        }
+        resumeAttemptId ? "resume_exam_attempt" : "start_exam_attempt",
+        resumeAttemptId
+          ? { p_attempt_id: resumeAttemptId }
+          : {
+              p_grade: grade,
+              p_subject_name: subject,
+              p_question_count: questionCount,
+              p_duration_minutes: duration,
+            }
       );
 
       if (rpcError) throw rpcError;
@@ -162,13 +144,16 @@ export default function ChallengePage() {
 
       setExamInfo((previous) => ({
         ...previous,
-        resumed: Boolean(data.resumed),
+        grade: Number(data.grade || previous.grade),
+        subject: data.subject_name || data.subject || previous.subject,
+        resumed: Boolean(resumeAttemptId || data.resumed),
       }));
 
+      const effectiveSubject = data.subject_name || data.subject || subject;
       const mapped = data.questions.map((item, index) => ({
         ...item,
         number: item.question_order || index + 1,
-        subject,
+        subject: effectiveSubject,
         type: normalizeType(item.question_type),
         question: item.question_text,
         stimulus:
@@ -236,7 +221,7 @@ export default function ChallengePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resumeAttemptId]);
 
   useEffect(() => {
     const timer = setTimeout(() => startExam(), 0);
@@ -254,6 +239,7 @@ export default function ChallengePage() {
       }
 
       setSaving(true);
+      setSaveStatus("saving");
       setError("");
 
       // Serialisasi penyimpanan per soal.
@@ -273,8 +259,10 @@ export default function ChallengePage() {
           );
 
           if (saveError) throw saveError;
+          setSaveStatus("saved");
         })
         .catch((err) => {
+          setSaveStatus("error");
           setError(
             `Jawaban belum berhasil disimpan: ${
               err?.message || "Kesalahan koneksi"
@@ -287,7 +275,9 @@ export default function ChallengePage() {
             pendingSavesRef.current.delete(questionId);
           }
 
-          setSaving(pendingSavesRef.current.size > 0);
+          const hasPendingSaves = pendingSavesRef.current.size > 0;
+          setSaving(hasPendingSaves);
+          if (hasPendingSaves) setSaveStatus("saving");
         });
 
       pendingSavesRef.current.set(questionId, savePromise);
@@ -523,6 +513,7 @@ export default function ChallengePage() {
 
     setLoading(true);
     setSaving(false);
+    setSaveStatus("idle");
     setError("");
     setQuestions([]);
     setAttemptId(null);
@@ -591,6 +582,8 @@ export default function ChallengePage() {
   // =====================================================
 
   const isTimeExpired = remaining <= 0;
+  const timerWarning = remaining > 0 && remaining <= 300;
+  const timerCritical = remaining > 0 && remaining <= 60;
 
   useEffect(() => {
     if (loading || finished || !attemptId) return;
@@ -997,17 +990,50 @@ export default function ChallengePage() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-slate-200 px-4 py-2 text-center">
+          <div
+            className={`rounded-lg border px-4 py-2 text-center ${
+              timerCritical
+                ? "border-red-300 bg-red-50"
+                : timerWarning
+                  ? "border-amber-300 bg-amber-50"
+                  : "border-slate-200"
+            }`}
+          >
             <p className="text-[10px] font-bold uppercase text-slate-500">
               Sisa Waktu
             </p>
             <p
+              role="timer"
+              aria-live="polite"
+              aria-atomic="true"
               className={`font-mono text-xl font-extrabold ${
-                remaining < 300 ? "text-red-600" : "text-blue-700"
+                timerCritical
+                  ? "animate-pulse text-red-700"
+                  : timerWarning
+                    ? "text-amber-700"
+                    : "text-blue-700"
               }`}
             >
               {formatTime(remaining)}
             </p>
+            {timerCritical && (
+              <p
+                role="status"
+                aria-live="assertive"
+                className="mt-1 max-w-[10rem] text-[10px] font-bold leading-4 text-red-700"
+              >
+                Waktu hampir habis. Ujian akan dikirim otomatis.
+              </p>
+            )}
+            {timerWarning && !timerCritical && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-1 max-w-[10rem] text-[10px] font-semibold leading-4 text-amber-700"
+              >
+                Sisa waktu kurang dari 5 menit.
+              </p>
+            )}
           </div>
 
           <button
@@ -1037,9 +1063,34 @@ export default function ChallengePage() {
             </p>
           )}
 
-          {saving && (
-            <p className="mb-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-700">
+          {saveStatus === "saving" && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-700"
+            >
               Menyimpan jawaban ke server…
+            </p>
+          )}
+
+          {saveStatus === "saved" && !saving && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mb-4 rounded-lg bg-green-50 p-3 text-xs font-semibold text-green-700"
+            >
+              Jawaban tersimpan.
+            </p>
+          )}
+
+          {saveStatus === "error" && !saving && (
+            <p
+              role="status"
+              aria-live="assertive"
+              className="mb-4 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700"
+            >
+              Jawaban gagal tersimpan. Periksa koneksi lalu pilih jawaban lagi
+              untuk mencoba kembali.
             </p>
           )}
 
@@ -1337,10 +1388,24 @@ export default function ChallengePage() {
             <p className="mt-1 text-xl font-extrabold text-slate-900">
               {answeredCount}/{questions.length}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {saving
+            <p
+              role="status"
+              aria-live="polite"
+              className={`mt-1 text-xs ${
+                saveStatus === "error"
+                  ? "font-semibold text-red-700"
+                  : saveStatus === "saved"
+                    ? "font-semibold text-green-700"
+                    : "text-slate-500"
+              }`}
+            >
+              {saveStatus === "saving"
                 ? "Menyimpan jawaban…"
-                : "Jawaban tersimpan otomatis"}
+                : saveStatus === "error"
+                  ? "Gagal tersimpan"
+                  : saveStatus === "saved"
+                    ? "Tersimpan"
+                    : "Jawaban tersimpan otomatis"}
             </p>
           </div>
         </aside>
@@ -1390,5 +1455,19 @@ export default function ChallengePage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function ChallengePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center bg-slate-100 text-slate-600">
+          <p className="font-semibold">Menyiapkan sesi ujian…</p>
+        </main>
+      }
+    >
+      <ChallengeContent />
+    </Suspense>
   );
 }

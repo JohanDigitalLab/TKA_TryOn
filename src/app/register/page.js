@@ -10,6 +10,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
 
   const inputClass =
     "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
@@ -100,6 +102,26 @@ export default function RegisterPage() {
       setErrorMessage(message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendConfirmation() {
+    setErrorMessage("");
+    setSuccessMessage("");
+    const targetEmail = resendEmail.trim();
+    if (!targetEmail) {
+      setErrorMessage("Masukkan email yang digunakan saat mendaftar.");
+      return;
+    }
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: targetEmail });
+      if (error) throw error;
+      setSuccessMessage("Jika email dapat dikirim ulang, tautan konfirmasi akan masuk ke inbox Anda.");
+    } catch (error) {
+      setErrorMessage(error.message || "Email konfirmasi belum berhasil dikirim ulang.");
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -292,6 +314,15 @@ export default function RegisterPage() {
           </button>
 
         </form>
+
+        <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-bold text-slate-800">Belum menerima email konfirmasi?</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Kirim ulang tautan menggunakan email pendaftaran Anda.</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input type="email" value={resendEmail} onChange={(event) => setResendEmail(event.target.value)} placeholder="nama@email.com" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <button type="button" onClick={handleResendConfirmation} disabled={resendLoading} className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60">{resendLoading ? "Mengirim…" : "Kirim ulang"}</button>
+          </div>
+        </div>
 
         <div className="mt-7 border-t border-slate-200 pt-6 text-center">
           <p className="text-sm text-slate-700">

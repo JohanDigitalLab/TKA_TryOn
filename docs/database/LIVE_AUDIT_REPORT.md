@@ -17,7 +17,7 @@ Hasil verifikasi:
 - Lint, 17 test aplikasi, dan production build berhasil.
 - Tidak ada data siswa, histori, atau pengelompokan simulasi yang diubah.
 
-Belum diverifikasi: isolasi akun A/B, anon melalui API, race request nyata, operator/super admin, dan alur auto-submit pada deadline. Pengujian E2E ditunda karena kredensial pada `.env.test.local` menunjuk project `dzsmeqpysyzrqzrioweu`, sedangkan aplikasi pada `.env.local` menunjuk project `xhuceetgvzcnoiwvbrdu` dan target database yang diaudit berbeda. Kedua login uji ditolak dengan `invalid_credentials`; tidak ada attempt uji yang dibuat. E2E hanya boleh diulang setelah akun dibuat pada project target yang sama. Correctness kategori RPC review belum diperbarui. Default privilege milik pembuat object lain belum dihardening menyeluruh. Temuan di bawah merupakan rekaman kondisi audit awal, bukan seluruhnya kondisi setelah migration.
+Belum diverifikasi: isolasi akun A/B, anon melalui API, race request nyata, operator/super admin, dan alur auto-submit pada deadline. E2E sudah dicoba ulang setelah URL dan publishable key akun uji disamakan dengan aplikasi, tetapi kedua login ditolak dengan `invalid_credentials`. Tidak ada attempt uji yang dibuat; kredensial tidak ditampilkan. E2E dapat dilanjutkan setelah dua akun uji aktif dengan password yang benar pada project target. Correctness kategori RPC review belum diperbarui. Default privilege milik pembuat object lain belum dihardening menyeluruh. Temuan di bawah merupakan rekaman kondisi audit awal, bukan seluruhnya kondisi setelah migration.
 
 ## Ringkasan inventaris
 
