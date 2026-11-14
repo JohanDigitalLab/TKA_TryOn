@@ -114,7 +114,7 @@ function SubjectsConfiguration() {
       if (!Object.prototype.hasOwnProperty.call(levelOptions, studentLevel)) {
         setLevel(null);
         setError(
-          "Jenjang pendidikan belum ditetapkan pada profil Anda. Silakan selesaikan penetapan jenjang melalui administrator."
+          "Jenjang pendidikan belum ditetapkan pada profilmu. Hubungi admin untuk menetapkan jenjang pendidikan sebelum memilih mata pelajaran."
         );
         return;
       }
@@ -200,7 +200,7 @@ function SubjectsConfiguration() {
             Memuat Profil Siswa
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Sedang memeriksa identitas akademik Anda.
+            Sedang memeriksa data jenjang pendidikanmu.
           </p>
         </div>
       </main>
@@ -221,7 +221,7 @@ function SubjectsConfiguration() {
 
           <p className="mt-3 text-sm leading-6 text-slate-600">
             {error ||
-              "Jenjang pendidikan belum ditetapkan pada profil Anda."}
+              "Jenjang pendidikan belum ditetapkan pada profilmu."}
           </p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -294,8 +294,8 @@ function SubjectsConfiguration() {
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Anda memilih {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}.
-            Pilih mata pelajaran yang akan digunakan sesuai jenjang pendidikan Anda.
+            Kamu memilih {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}.
+            Pilih mata pelajaran yang akan digunakan sesuai jenjang pendidikanmu.
           </p>
         </section>
 
@@ -440,7 +440,7 @@ function SubjectsConfiguration() {
 
             <div className="mb-5 flex items-center justify-between rounded-lg bg-slate-50 p-4">
               <span className="text-sm font-semibold text-slate-700">
-                Pilihan Anda
+                Pilihanmu
               </span>
 
               <span className="text-lg font-extrabold text-blue-700">

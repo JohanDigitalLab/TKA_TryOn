@@ -1057,8 +1057,8 @@ function ChallengeContent() {
       {examInfo.resumed && (
         <div className="mx-auto mt-4 max-w-7xl px-4 lg:px-6">
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            <strong>Sesi ujian dipulihkan.</strong> Anda melanjutkan attempt
-            sebelumnya. Jawaban tersimpan dan sisa waktu telah dipulihkan.
+            <strong>Sesi ujian dipulihkan.</strong> Kamu melanjutkan sesi ujian
+            sebelumnya. Jawaban yang tersimpan dimuat kembali. Sisa waktu mengikuti batas akhir sesi.
           </div>
         </div>
       )}
@@ -1441,7 +1441,7 @@ function ChallengeContent() {
             </h3>
 
             <p id="finish-dialog-description" className="mt-3 text-sm leading-6 text-slate-600">
-              Anda telah menjawab {answeredCount} dari{" "}
+              Kamu telah menjawab {answeredCount} dari{" "}
               {questions.length} soal untuk mata pelajaran{" "}
               <strong>{examInfo.subject}</strong>.
               Setelah diakhiri, jawaban tidak dapat diubah.

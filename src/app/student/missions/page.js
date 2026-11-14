@@ -148,7 +148,7 @@ function MissionsForm({ params }) {
           </h2>
 
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Pilih mata pelajaran dan atur sesi {activityType === "simulasi" ? "simulasi" : "latihan"} Anda.
+            Pilih mata pelajaran dan atur sesi {activityType === "simulasi" ? "simulasi" : "latihan"}mu.
           </p>
         </section>
 
@@ -189,7 +189,7 @@ function MissionsForm({ params }) {
                   Pilih Mata Pelajaran
                 </h4>
                 <p className="mt-1 text-sm text-slate-500">
-                  Centang mata pelajaran yang ingin Anda kerjakan.
+                  Centang mata pelajaran yang ingin kamu kerjakan.
                 </p>
               </div>
 

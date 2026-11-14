@@ -3,7 +3,7 @@ const GROQ_MODEL = "openai/gpt-oss-20b";
 const MAX_QUESTIONS = 500;
 const MAX_FIELD_LENGTH = 20000;
 
-const SYSTEM_PROMPT = `Anda adalah mesin ekstraksi soal akademik TKA TryOn.
+const SYSTEM_PROMPT = `Kamu adalah mesin ekstraksi soal akademik TKA TryOn.
 Ubah dokumen sumber menjadi JSON {"questions":[]} tanpa Markdown.
 Pertahankan makna, urutan, dan teks sumber. Jangan membuat soal, opsi, pembahasan,
 atau kunci jawaban. is_correct boleh true hanya bila kunci benar-benar eksplisit

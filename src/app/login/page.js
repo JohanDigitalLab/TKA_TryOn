@@ -78,7 +78,7 @@ function LoginContent() {
         redirectTo: `${window.location.origin}/login?reset=1`,
       });
       if (error) throw error;
-      setSuccessMessage("Tautan reset password telah dikirim. Periksa inbox dan folder spam Anda.");
+      setSuccessMessage("Tautan reset password telah dikirim. Periksa kotak masuk dan folder spam emailmu.");
     } catch (error) {
       setErrorMessage(error.message || "Tautan reset password belum dapat dikirim.");
     } finally {
@@ -122,7 +122,7 @@ function LoginContent() {
         error.message?.toLowerCase().includes("email not confirmed")
       ) {
         setErrorMessage(
-          "Email belum dikonfirmasi. Silakan periksa email Anda."
+          "Email belum dikonfirmasi. Periksa kotak masuk emailmu untuk mengonfirmasi akun."
         );
       } else if (
         error.message?.toLowerCase().includes("invalid login credentials")
@@ -145,7 +145,7 @@ function LoginContent() {
         <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
           <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-blue-700">← Kembali ke login</Link>
           <h1 className="mt-8 text-2xl font-extrabold text-slate-900">Buat password baru</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Gunakan minimal 8 karakter untuk mengamankan akun Anda.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Gunakan minimal 8 karakter untuk mengamankan akunmu.</p>
           <form onSubmit={handlePasswordUpdate} className="mt-6 space-y-4" aria-busy={authBusy}>
             <fieldset disabled={authBusy} className="space-y-4">
             <label className="block text-sm font-semibold text-slate-700">
@@ -185,7 +185,7 @@ function LoginContent() {
               Siap melanjutkan persiapan TKA?
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Masuk untuk melanjutkan latihan, simulasi, dan evaluasi belajar Anda.
+              Masuk untuk melanjutkan latihan, simulasi, dan evaluasi belajarmu.
             </p>
           </div>
         </section>

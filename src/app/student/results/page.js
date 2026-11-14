@@ -540,7 +540,7 @@ export default function StudentResultsPage() {
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {historyError || "Hasil latihan dan simulasi akan muncul di sini setelah Anda menyelesaikan sesi mata pelajaran."}
+            {historyError || "Hasil latihan dan simulasi akan muncul di sini setelah kamu menyelesaikan sesi mata pelajaran."}
           </p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -654,7 +654,7 @@ export default function StudentResultsPage() {
           <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <p className="text-xs font-bold uppercase tracking-wider text-amber-700">REKOMENDASI BELAJAR</p>
             <h2 className="mt-2 text-lg font-extrabold text-amber-950">Fokus latihan berikutnya: {weakestSubject.subject}</h2>
-            <p className="mt-2 text-sm leading-6 text-amber-900">Nilai terakhir Anda di mata pelajaran ini adalah {Number(weakestSubject.score || 0).toFixed(2)}. Ulangi latihan dan tinjau pembahasan soal yang masih salah atau kosong.</p>
+            <p className="mt-2 text-sm leading-6 text-amber-900">Nilai terakhirmu di mata pelajaran ini adalah {Number(weakestSubject.score || 0).toFixed(2)}. Ulangi latihan dan tinjau pembahasan soal yang masih salah atau kosong.</p>
             <button type="button" onClick={() => router.push(`/student/subjects?activityType=latihan&subject=${encodeURIComponent(weakestSubject.subject)}`)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">Mulai latihan {weakestSubject.subject}</button>
           </section>
         )}
