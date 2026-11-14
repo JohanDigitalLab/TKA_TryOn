@@ -1,347 +1,48 @@
-
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
+import { Suspense, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { authLink, joinPath, localPath, text } from "@/lib/school/onboarding.mjs";
+import { Field, inputClass, buttonClass } from "@/components/school/portal";
 
-export default function RegisterPage() {
-  const [method, setMethod] = useState("independent");
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [resendEmail, setResendEmail] = useState("");
-  const [resendLoading, setResendLoading] = useState(false);
-
-  const inputClass =
-    "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100";
-
-  const labelClass = "mb-2 block text-sm font-bold text-slate-800";
-
-  const optionClass = (active) =>
-    `rounded-xl border-2 p-4 text-left transition cursor-pointer ${
-      active
-        ? "border-blue-600 bg-blue-50 text-blue-800"
-        : "border-slate-300 bg-white text-slate-800 hover:border-blue-300"
-    }`;
-
-  async function handleRegister(event) {
-    event.preventDefault();
-
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-
-    const fullName = formData.get("fullName")?.toString().trim();
-    const email = formData.get("email")?.toString().trim();
-    const educationLevel = formData.get("educationLevel")?.toString();
-    const schoolCode = formData.get("schoolCode")?.toString().trim() || "";
-    const password = formData.get("password")?.toString();
-
-    if (!fullName || !email || !educationLevel || !password) {
-      setErrorMessage("Mohon lengkapi seluruh data pendaftaran.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setErrorMessage("Password minimal harus 8 karakter.");
-      return;
-    }
-
-    if (method === "school" && !schoolCode) {
-      setErrorMessage("Masukkan kode bergabung dari sekolah.");
-      return;
-    }
-
-    setLoading(true);
-
+function Register() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const next = localPath(params.get("next"));
+  const [school,setSchool] = useState(next.startsWith("/school/join"));
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  const [notice,setNotice] = useState("");
+  const [destination,setDestination] = useState(next);
+  const [resendEmail,setResendEmail] = useState("");
+  const lock = useRef(false);
+  async function register(event) {
+    event.preventDefault(); if(lock.current) return;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    setError(""); setNotice("");
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            education_level: educationLevel,
-            registration_method: method,
-            school_code: method === "school" ? schoolCode : null,
-          },
-          emailRedirectTo: `${window.location.origin}/login`,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        setSuccessMessage(
-          "Akun berhasil dibuat! Pendaftaran selesai dan Anda sudah dapat masuk."
-        );
-      } else {
-        setSuccessMessage(
-          "Pendaftaran berhasil dikirim! Silakan periksa email Anda dan klik tautan konfirmasi sebelum masuk ke TKA TryOn."
-        );
-      }
-
-      form.reset();
-      setMethod("independent");
-    } catch (error) {
-      console.error("Registration error:", error);
-
-      let message = error.message || "Pendaftaran gagal. Silakan coba kembali.";
-
-      if (message.toLowerCase().includes("already registered")) {
-        message = "Email ini sudah terdaftar. Silakan masuk menggunakan akun tersebut.";
-      } else if (message.toLowerCase().includes("password")) {
-        message = "Password belum memenuhi ketentuan.";
-      } else if (message.toLowerCase().includes("rate limit")) {
-        message = "Terlalu banyak percobaan. Silakan tunggu beberapa saat.";
-      }
-
-      setErrorMessage(message);
-    } finally {
-      setLoading(false);
-    }
+      const name = text(values.full_name,"Nama lengkap",2,160);
+      if(values.password.length < 8) throw new Error("Password minimal 8 karakter.");
+      const target = school ? (values.code?.trim() ? joinPath(values.code) : next.startsWith("/school/join") ? next : "/school/join") : next;
+      lock.current=true; setBusy(true); setDestination(target); setResendEmail(values.email.trim());
+      const { data,error } = await supabase.auth.signUp({ email:values.email.trim(),password:values.password,options:{ data:{ full_name:name,education_level:values.education_level,registration_method:school ? "school" : "independent" },emailRedirectTo:`${window.location.origin}${target}` } });
+      if(error) throw error;
+      setNotice("Pendaftaran dikirim. Verifikasi email untuk melanjutkan. Jika email sudah terdaftar, masuk dengan akun yang ada. Pendaftaran siswa tidak otomatis menggabungkan akun ke sekolah; preview dan konfirmasi undangan dilakukan sesudah verifikasi/login.");
+      if(data.session && data.user?.email_confirmed_at) router.push(target);
+    } catch(e) { setError(e.message || "Pendaftaran belum berhasil."); } finally { lock.current=false; setBusy(false); }
   }
-
-  async function handleResendConfirmation() {
-    setErrorMessage("");
-    setSuccessMessage("");
-    const targetEmail = resendEmail.trim();
-    if (!targetEmail) {
-      setErrorMessage("Masukkan email yang digunakan saat mendaftar.");
-      return;
-    }
-    setResendLoading(true);
-    try {
-      const { error } = await supabase.auth.resend({ type: "signup", email: targetEmail });
-      if (error) throw error;
-      setSuccessMessage("Jika email dapat dikirim ulang, tautan konfirmasi akan masuk ke inbox Anda.");
-    } catch (error) {
-      setErrorMessage(error.message || "Email konfirmasi belum berhasil dikirim ulang.");
-    } finally {
-      setResendLoading(false);
-    }
+  async function resend() {
+    if(lock.current) return;
+    if(!resendEmail.trim()) { setError("Masukkan email pendaftaran."); return; }
+    lock.current=true; setBusy(true); setError(""); setNotice("");
+    try { const { error } = await supabase.auth.resend({ type:"signup",email:resendEmail.trim(),options:{ emailRedirectTo:`${window.location.origin}${destination}` } }); if(error) throw error; setNotice("Jika dapat dikirim ulang, email konfirmasi akan masuk ke inbox Anda. Periksa juga spam."); } catch(e) { setError(e.message || "Email belum dapat dikirim."); } finally { lock.current=false; setBusy(false); }
   }
-
-  return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 sm:py-10">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(480px,640px)] lg:gap-12">
-        <section className="overflow-hidden rounded-3xl border border-blue-100 bg-blue-50 shadow-sm">
-          <Image
-            src="/auth-illustration.svg"
-            alt="Pelajar mempersiapkan TKA dengan simulasi dan melihat kemajuan belajar"
-            width={900}
-            height={720}
-            priority
-            className="h-auto max-h-64 w-full object-cover object-center sm:max-h-80 lg:max-h-none"
-          />
-          <div className="px-8 pb-8">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">
-              SKILL ON • CONFIDENCE ON
-            </p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-950">
-              Bangun kebiasaan belajar yang lebih percaya diri
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Buat akun untuk menyimpan perjalanan latihan, mengikuti simulasi, dan memahami progres Anda.
-            </p>
-          </div>
-        </section>
-
-        <div className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-300/40 sm:p-9">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black tracking-tight text-blue-700">
-            TKA <span className="text-slate-950">TryOn</span>
-          </h1>
-          <p className="mt-2 text-xs font-bold tracking-widest text-slate-600">
-            SKILL ON • CONFIDENCE ON
-          </p>
-        </div>
-
-        <h2 className="text-2xl font-extrabold text-slate-900">
-          Buat Akun Baru
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Mulai perjalanan persiapan Tes Kemampuan Akademik bersama TKA TryOn.
-        </p>
-
-        <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setMethod("independent")}
-            className={optionClass(method === "independent")}
-            disabled={loading}
-          >
-            <span className="block text-2xl">🎓</span>
-            <span className="mt-3 block text-sm font-bold">Daftar Mandiri</span>
-            <span className="mt-1 block text-xs text-slate-600">
-              Belajar secara mandiri
-            </span>
-            {method === "independent" && (
-              <span className="mt-3 block text-xs font-bold text-blue-700">
-                ✓ Pilihan aktif
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMethod("school")}
-            className={optionClass(method === "school")}
-            disabled={loading}
-          >
-            <span className="block text-2xl">🏫</span>
-            <span className="mt-3 block text-sm font-bold">Bergabung Sekolah</span>
-            <span className="mt-1 block text-xs text-slate-600">
-              Gunakan kode dari sekolah
-            </span>
-            {method === "school" && (
-              <span className="mt-3 block text-xs font-bold text-blue-700">
-                ✓ Pilihan aktif
-              </span>
-            )}
-          </button>
-        </div>
-
-        {errorMessage && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-800">
-            <strong className="block mb-1">Pendaftaran Berhasil</strong>
-            {successMessage}
-            <a
-              href="/login"
-              className="mt-3 inline-block font-bold text-blue-700 underline"
-            >
-              Lanjut ke halaman masuk →
-            </a>
-          </div>
-        )}
-
-        <form onSubmit={handleRegister} className="mt-8 space-y-5">
-
-          <div>
-            <label className={labelClass}>Nama Lengkap</label>
-            <input
-              type="text"
-              name="fullName"
-              placeholder="Masukkan nama lengkap"
-              autoComplete="name"
-              className={inputClass}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              type="email"
-              name="email"
-              placeholder="nama@email.com"
-              autoComplete="email"
-              className={inputClass}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Jenjang Pendidikan</label>
-            <select
-              name="educationLevel"
-              defaultValue=""
-              className={`${inputClass} text-slate-800`}
-              required
-              disabled={loading}
-            >
-              <option value="" disabled>
-                Pilih jenjang pendidikan
-              </option>
-              <option value="sd">SD / MI - Kelas 6</option>
-              <option value="smp">SMP / MTs - Kelas 9</option>
-              <option value="sma">SMA / MA / SMK - Kelas 12</option>
-            </select>
-          </div>
-
-          {method === "school" && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <label className={labelClass}>Kode Bergabung Sekolah</label>
-              <input
-                type="text"
-                name="schoolCode"
-                placeholder="Masukkan kode dari sekolah"
-                className={inputClass}
-                required
-                disabled={loading}
-              />
-              <p className="mt-2 text-xs leading-5 text-slate-700">
-                Dapatkan kode bergabung dari guru atau admin sekolah.
-              </p>
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>Password</label>
-            <input
-              type="password"
-              name="password"
-              placeholder="Buat password minimal 8 karakter"
-              autoComplete="new-password"
-              className={inputClass}
-              minLength={8}
-              required
-              disabled={loading}
-            />
-            <p className="mt-2 text-xs text-slate-600">
-              Gunakan password yang mudah diingat dan sulit ditebak.
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-blue-700 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "Sedang Membuat Akun..." : "Buat Akun →"}
-          </button>
-
-        </form>
-
-        <div className="mt-7 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-bold text-slate-800">Belum menerima email konfirmasi?</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">Kirim ulang tautan menggunakan email pendaftaran Anda.</p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input type="email" value={resendEmail} onChange={(event) => setResendEmail(event.target.value)} placeholder="nama@email.com" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <button type="button" onClick={handleResendConfirmation} disabled={resendLoading} className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60">{resendLoading ? "Mengirim…" : "Kirim ulang"}</button>
-          </div>
-        </div>
-
-        <div className="mt-7 border-t border-slate-200 pt-6 text-center">
-          <p className="text-sm text-slate-700">
-            Sudah punya akun?{" "}
-            <a
-              href="/login"
-              className="font-bold text-blue-700 hover:text-blue-900"
-            >
-              Masuk di sini
-            </a>
-          </p>
-        </div>
-
-        <p className="mt-8 text-center text-xs text-slate-500">
-          © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
-        </p>
-
-        </div>
-      </div>
-    </main>
-  );
+  return <main className="min-h-screen bg-slate-50 px-5 py-10"><div className="mx-auto max-w-xl space-y-6 rounded-xl border border-slate-200 bg-white p-6 sm:p-8"><Link href="/" className="font-bold text-blue-800">← Beranda</Link><h1 className="text-3xl font-black">Daftar akun siswa</h1><p>Akun mandiri tetap dapat belajar tanpa sekolah. Staf tidak perlu memilih pendidikan siswa: <Link href="/school/register" className="font-bold text-blue-800 underline">daftar akun staf / sekolah di sini</Link>.</p><div className="flex flex-wrap gap-3"><button type="button" disabled={busy} aria-pressed={!school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-blue-100" onClick={() => setSchool(false)}>Siswa mandiri</button><button type="button" disabled={busy} aria-pressed={school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-blue-100" onClick={() => setSchool(true)}>Siswa undangan sekolah</button></div>
+    {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}{notice && <div role="status" className="space-y-2 rounded border border-green-200 bg-green-50 p-4 text-green-900"><p>{notice}</p><Link href={authLink("login",destination)} className="font-bold underline">Masuk dan lanjutkan →</Link></div>}
+    <form onSubmit={register} aria-busy={busy}><fieldset disabled={busy} className="space-y-4"><Field name="full_name" label="Nama lengkap" autoComplete="name" minLength={2} maxLength={160} required /><Field name="email" label="Email" type="email" autoComplete="email" required /><Field name="education_level" label="Jenjang pendidikan siswa" required options={[{ value:"sd",label:"SD / MI" },{ value:"smp",label:"SMP / MTs" },{ value:"sma",label:"SMA / MA / SMK" }]} />{school && <><Field name="code" label="Kode undangan (opsional bila akan dimasukkan setelah login)" minLength={64} maxLength={64} defaultValue={next.startsWith("/school/join") ? new URL(next,"https://local.invalid").searchParams.get("code") || "" : ""} /><p className="text-sm text-slate-600">Kode digunakan di portal setelah email terverifikasi, bukan sekadar metadata pendaftaran. Permintaan tetap menunggu persetujuan admin.</p></>}<Field name="password" label="Password (minimal 8 karakter)" type="password" autoComplete="new-password" minLength={8} required /><button className={`${buttonClass} w-full`} type="submit">{busy ? "Memproses…" : "Buat akun siswa"}</button></fieldset></form>
+    <section className="space-y-3 border-t border-slate-200 pt-5"><h2 className="font-bold">Kirim ulang verifikasi email</h2><label className="block text-sm font-semibold">Email pendaftaran<input className={inputClass} type="email" value={resendEmail} disabled={busy} onChange={e => setResendEmail(e.target.value)} /></label><button type="button" className={buttonClass} disabled={busy} onClick={resend}>Kirim ulang</button></section><p>Sudah punya akun? <Link href={authLink("login",next)} className="font-bold text-blue-800 underline">Masuk</Link> · <Link href="/school/join" className="font-bold text-blue-800 underline">Gabung sekolah</Link></p>
+  </div></main>;
 }
+export default function RegisterPage() { return <Suspense fallback={<p role="status" className="p-8">Memuat pendaftaran…</p>}><Register /></Suspense>; }

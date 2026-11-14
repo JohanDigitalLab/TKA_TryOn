@@ -55,6 +55,10 @@ const stats = [
 
 const permissionGroups = [
   {
+    title: "Onboarding Sekolah",
+    items: [{ code: "school_onboarding.review", label: "Review Pengajuan Sekolah", description: "Melihat pengajuan serta menyetujui/menolak sekolah. Tidak memberi akses tiket/pesan platform atau pemulihan koordinator." }],
+  },
+  {
     title: "Bank Soal",
     items: [
       {
@@ -146,6 +150,7 @@ export default function AdminDashboard() {
   }, []);
 
   function selectMenu(label) {
+    if (label === "Pengguna & Sekolah") { router.push("/admin/schools"); return; }
     setActiveMenu(label);
     if (label === "Manajemen Admin") {
       void loadCandidates();
@@ -922,6 +927,8 @@ export default function AdminDashboard() {
           >
             Dashboard
           </button>
+          <button type="button" onClick={() => router.push("/admin/schools")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Review sekolah</button>
+          <button type="button" onClick={() => router.push("/school")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Portal sekolah</button>
           <button type="button" onClick={() => router.push("/admin/questions")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
             Bank Soal
           </button>

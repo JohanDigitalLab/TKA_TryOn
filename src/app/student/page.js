@@ -92,6 +92,8 @@ export default function StudentPage() {
           </Link>
           <div className="flex items-center gap-3">
             <nav aria-label="Navigasi siswa" className="flex items-center gap-1 sm:gap-2">
+              <Link href="/school" className="rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-3 sm:text-sm">Sekolah</Link>
+              <Link href="/school/messages" className="rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-3 sm:text-sm">Pesan</Link>
               <Link href="/student/assignments" className="rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-3 sm:text-sm">Tugas</Link>
               <Link href="/student/results" className="rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-3 sm:text-sm">Hasil</Link>
               <Link href="/student/subjects?activityType=latihan" className="rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 sm:px-3 sm:text-sm">Belajar</Link>

@@ -2,10 +2,11 @@
 "use client";
 
 import Image from "next/image";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { authLink, localPath } from "@/lib/school/onboarding.mjs";
 
 function LoginContent() {
   const router = useRouter();
@@ -22,6 +23,9 @@ function LoginContent() {
   const [resetLoading, setResetLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const authLock = useRef(false);
+  const authBusy = loading || resetLoading || updateLoading;
 
   useEffect(() => {
     if (!isResetMode) return;
@@ -41,6 +45,8 @@ function LoginContent() {
       setErrorMessage("Konfirmasi password belum sama.");
       return;
     }
+    if (authLock.current) return;
+    authLock.current = true;
     setUpdateLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -50,6 +56,7 @@ function LoginContent() {
     } catch (error) {
       setErrorMessage(error.message || "Password belum berhasil diperbarui.");
     } finally {
+      authLock.current = false;
       setUpdateLoading(false);
     }
   }
@@ -63,6 +70,8 @@ function LoginContent() {
       return;
     }
 
+    if (authLock.current) return;
+    authLock.current = true;
     setResetLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
@@ -73,6 +82,7 @@ function LoginContent() {
     } catch (error) {
       setErrorMessage(error.message || "Tautan reset password belum dapat dikirim.");
     } finally {
+      authLock.current = false;
       setResetLoading(false);
     }
   }
@@ -86,6 +96,8 @@ function LoginContent() {
       return;
     }
 
+    if (authLock.current) return;
+    authLock.current = true;
     setLoading(true);
 
     try {
@@ -100,7 +112,8 @@ function LoginContent() {
         throw new Error("Sesi login belum berhasil dibuat.");
       }
 
-      router.push("/student");
+      const { data: profile } = await supabase.from("profiles").select("education_level").eq("id",data.user.id).maybeSingle();
+      router.push(localPath(searchParams.get("next"), profile?.education_level ? "/student" : "/school"));
       router.refresh();
     } catch (error) {
       console.error("Login error:", error);
@@ -121,6 +134,7 @@ function LoginContent() {
         );
       }
     } finally {
+      authLock.current = false;
       setLoading(false);
     }
   }
@@ -132,7 +146,8 @@ function LoginContent() {
           <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-blue-700">← Kembali ke login</Link>
           <h1 className="mt-8 text-2xl font-extrabold text-slate-900">Buat password baru</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">Gunakan minimal 8 karakter untuk mengamankan akun Anda.</p>
-          <form onSubmit={handlePasswordUpdate} className="mt-6 space-y-4" aria-busy={updateLoading}>
+          <form onSubmit={handlePasswordUpdate} className="mt-6 space-y-4" aria-busy={authBusy}>
+            <fieldset disabled={authBusy} className="space-y-4">
             <label className="block text-sm font-semibold text-slate-700">
               Password baru
               <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
@@ -143,6 +158,7 @@ function LoginContent() {
             </label>
             {errorMessage && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div>}
             <button type="submit" disabled={updateLoading} className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">{updateLoading ? "Menyimpan…" : "Simpan password baru"}</button>
+            </fieldset>
           </form>
         </section>
       </main>
@@ -194,7 +210,8 @@ function LoginContent() {
           Masuk untuk melanjutkan perjalanan belajar dan persiapan TKA.
         </p>
 
-        <form onSubmit={handleLogin} aria-busy={loading} className="mt-8 space-y-5">
+        <form onSubmit={handleLogin} aria-busy={authBusy} className="mt-8 space-y-5">
+          <fieldset disabled={authBusy} className="space-y-5">
           <div>
             <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-slate-700">
               Email
@@ -271,6 +288,7 @@ function LoginContent() {
           >
             {resetLoading ? "Mengirim tautan…" : "Lupa password? Kirim tautan reset"}
           </button>
+          </fieldset>
         </form>
 
         <div className="my-7 flex items-center gap-3">
@@ -282,13 +300,14 @@ function LoginContent() {
         <p className="text-center text-sm text-slate-500">
           Belum punya akun?{" "}
           <Link
-            href="/register"
+            href={authLink("register", localPath(searchParams.get("next")))}
             className="font-bold text-blue-600 hover:text-blue-700"
           >
             Daftar sekarang
           </Link>
         </p>
 
+        <p className="mt-4 text-center text-sm"><Link href="/school/register" className="font-bold text-blue-700 underline">Akun staf / pendaftaran sekolah</Link> · <Link href="/school/join" className="font-bold text-blue-700 underline">Undangan siswa</Link></p>
         <p className="mt-8 text-center text-xs text-slate-400">
           © 2026 TKA TryOn
         </p>

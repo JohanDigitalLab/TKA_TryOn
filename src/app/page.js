@@ -71,6 +71,7 @@ export default function Home() {
             <a href="#layanan" className="py-1 hover:text-blue-700">
               Layanan
             </a>
+            <Link href="/school" className="py-1 hover:text-blue-700">Sekolah</Link>
             <a href="#tentang" className="py-1 hover:text-blue-700">
               Tentang
             </a>

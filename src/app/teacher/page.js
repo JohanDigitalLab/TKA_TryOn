@@ -116,7 +116,8 @@ export default function TeacherPage() {
   function field(key, value) { setForm((old) => ({ ...old, [key]: value })); }
 
   return <main className="min-h-screen bg-[#f5f6f3] px-5 py-8 text-slate-900"><div className="mx-auto max-w-7xl">
-    <nav className="flex flex-wrap justify-between gap-4 border-b border-slate-300 pb-5 text-sm font-bold"><Link href="/school">← Ruang sekolah</Link><Link href="/student">Ruang siswa →</Link></nav>
+    <nav className="flex flex-wrap justify-between gap-4 border-b border-slate-300 pb-5 text-sm font-bold"><Link href="/school">← Ruang sekolah</Link><Link href="/school/manage">Kelola sekolah</Link><Link href="/school/messages">Pesan sekolah</Link><Link href="/student">Ruang siswa →</Link></nav>
+    <p className="mt-4 text-sm text-slate-600">Akses guru legacy masih tingkat sekolah, belum per kelas/mapel. Undangan atau promosi guru baru tidak tersedia.</p>
     <header className="flex flex-wrap items-end justify-between gap-6 py-9"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Workspace guru & admin</p><h1 className="mt-3 text-4xl font-black tracking-tight">Susun tugas. Pantau hasil.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">Paket soal dikunci saat terbit. Semua penerima mengerjakan versi soal yang sama, dengan satu kesempatan per siswa.</p></div>{memberships.length > 0 && <label className="text-sm font-bold">Sekolah<select className={inputClass} value={schoolId} disabled={busy || loading} onChange={(e) => changeSchool(e.target.value)}>{memberships.map((m) => <option key={m.school_id} value={m.school_id}>{m.name}</option>)}</select></label>}</header>
     {error && <p role="alert" className="mb-5 border-l-2 border-amber-600 bg-amber-50 p-4 text-sm">{error}</p>}
     {message && <p role="status" className="mb-5 border-l-2 border-emerald-600 bg-emerald-50 p-4 text-sm">{message}</p>}
