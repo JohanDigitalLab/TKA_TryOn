@@ -1,9 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getTimeGreeting } from "@/lib/student/greeting.mjs";
+
+function subscribeToClock(onChange) {
+  const timer = window.setInterval(onChange, 30_000);
+  window.addEventListener("focus", onChange);
+  document.addEventListener("visibilitychange", onChange);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener("focus", onChange);
+    document.removeEventListener("visibilitychange", onChange);
+  };
+}
+
+const getGreetingSnapshot = () => getTimeGreeting();
+const getServerGreetingSnapshot = () => "Selamat Datang";
 
 const services = [
   {
@@ -29,6 +44,7 @@ function formatAttemptDate(value) {
 
 export default function StudentPage() {
   const router = useRouter();
+  const greeting = useSyncExternalStore(subscribeToClock, getGreetingSnapshot, getServerGreetingSnapshot);
   const [profile, setProfile] = useState(null);
   const [activeAttempts, setActiveAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +124,7 @@ export default function StudentPage() {
         {error && <div role="alert" aria-live="assertive" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>}
         <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 sm:p-8">
           <p className="text-sm font-semibold text-blue-700">DASHBOARD PESERTA</p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Halo, {profile?.full_name || "Siswa"} 👋</h2>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">{greeting}, {profile?.full_name || "Siswa"} 👋</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">Lanjutkan latihan, kerjakan simulasi, dan pantau perkembangan belajarmu.</p>
           {profile?.education_level && <p className="mt-4 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-blue-700">Jenjang: {profile.education_level}</p>}
         </section>
