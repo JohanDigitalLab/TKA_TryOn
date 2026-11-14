@@ -4,6 +4,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import LearningAccess from "@/components/learning-access";
 
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
@@ -151,6 +152,8 @@ function MissionsForm({ params }) {
             Pilih mata pelajaran dan atur sesi {activityType === "simulasi" ? "simulasi" : "latihan"}mu.
           </p>
         </section>
+
+        <div className="mb-7"><LearningAccess mode={activityType === "latihan" ? "mission" : "simulation"} /></div>
 
         {/* INFORMASI UJIAN */}
         <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

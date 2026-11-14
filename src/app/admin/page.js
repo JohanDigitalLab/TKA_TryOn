@@ -19,6 +19,7 @@ const menu = [
   { icon: "▣", label: "Hasil Ujian" },
   { icon: "♙", label: "Pengguna & Sekolah", section: "MANAJEMEN" },
   { icon: "♙", label: "Manajemen Admin" },
+  { icon: "▤", label: "Langganan" },
   { icon: "⚙", label: "Pengaturan" },
 ];
 
@@ -150,6 +151,7 @@ export default function AdminDashboard() {
   }, []);
 
   function selectMenu(label) {
+    if (label === "Langganan") { router.push("/admin/subscriptions"); return; }
     if (label === "Pengguna & Sekolah") { router.push("/admin/schools"); return; }
     setActiveMenu(label);
     if (label === "Manajemen Admin") {

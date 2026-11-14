@@ -70,7 +70,11 @@ Ekstraksi dokumen tersedia pada `/api/import/extract`. Structuring AI tersedia p
 
 Migration versioned tersedia dalam [`docs/database`](docs/database). Tahap 1 mengeraskan scoring/submit, tahap 2 menyediakan histori/review, dan tahap 3 menambah tugas kelas, snapshot soal/penerima, workflow guru mutatif, serta ranking Top 5 server-side. Panduan hak akses, penerapan, dry-run, dan rollback tersedia pada [`SCHOOL_WORKFLOWS.md`](docs/database/SCHOOL_WORKFLOWS.md). Schema dasar sekolah dan bank soal tetap mengikuti objek Supabase yang sudah diaudit; migration ini bukan bootstrap database kosong.
 
-Mutation tugas serta onboarding hanya melalui RPC yang memeriksa identitas dan role/permission di database. Tabel onboarding tidak ditulis langsung oleh client. Pengelolaan kelas, invite, dan membership memakai kontrak tahap 4 pada [SCHOOL_ONBOARDING.md](docs/database/SCHOOL_ONBOARDING.md). UI tidak memberikan role dari metadata, tidak memakai service credentials, dan tidak membuat API backend baru. Payment gateway sengaja **ditunda**: checkout, transaksi, dan entitlement tidak diaktifkan. Evaluasi topik tidak menebak topik dari urutan soal dan hanya bekerja bila metadata review server tersedia.
+Mutation tugas serta onboarding hanya melalui RPC yang memeriksa identitas dan role/permission di database. Tabel onboarding tidak ditulis langsung oleh client. Pengelolaan kelas, invite, dan membership memakai kontrak tahap 4 pada [SCHOOL_ONBOARDING.md](docs/database/SCHOOL_ONBOARDING.md). UI tidak memberikan role dari metadata, tidak memakai service credentials, dan tidak membuat API backend baru. Payment gateway sengaja **ditunda**: checkout dan transaksi otomatis tidak diaktifkan; aktivasi akses manual disiapkan terpisah pada tahap 6. Evaluasi topik tidak menebak topik dari urutan soal dan hanya bekerja bila metadata review server tersedia.
+
+### Percobaan dan langganan belajar
+
+Implementasi tahap 6 menyediakan satu paket percobaan simulasi dan satu paket latihan per akun, gate server, pemulihan paket multi-mapel, serta aktivasi manual superadmin untuk akun/sekolah. **Baru terverifikasi dry-run; belum diterapkan permanen atau di-deploy.** Payment gateway tetap ditunda. Kebijakan, batas pengujian dan urutan rilis terkoordinasi tersedia pada [LEARNING_ACCESS.md](docs/database/LEARNING_ACCESS.md). Jangan menerapkan gate backend sendirian saat frontend produksi masih versi lama.
 
 ### Onboarding sekolah: operasi dan batas kontrak
 

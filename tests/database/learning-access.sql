@@ -1,0 +1,82 @@
+-- Entire fixture executed under SAVEPOINT and rolled back by runner.
+CREATE TEMP TABLE learning_fixture(student_id uuid,other_id uuid,admin_id uuid,subject_name text,grade integer,package_id uuid,attempt_id uuid);
+GRANT SELECT,UPDATE ON learning_fixture TO authenticated;
+DO $$ DECLARE u uuid:=gen_random_uuid(); o uuid:=gen_random_uuid(); a uuid:=gen_random_uuid(); s text; g integer; BEGIN
+ SELECT q.subject_name,q.grade INTO s,g FROM public.questions q JOIN public.question_versions v ON v.question_id=q.id AND v.is_current
+ WHERE q.grade IN(6,9) AND q.question_status='PUBLISHED' AND q.question_type IN('PG_TUNGGAL','PGK_MA','PGK_KATEGORI') LIMIT 1;
+ IF s IS NULL THEN RAISE EXCEPTION 'Published fixture question required'; END IF;
+ INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data)
+ SELECT x,x::text||'@access.invalid',clock_timestamp(),jsonb_build_object('full_name','Learning fixture','registration_method','independent','education_level',CASE g WHEN 6 THEN 'sd' ELSE 'smp' END) FROM unnest(ARRAY[u,o,a]) x;
+ INSERT INTO public.user_global_roles(user_id,role) VALUES(a,'super_admin');
+ INSERT INTO learning_fixture VALUES(u,o,a,s,g,gen_random_uuid(),NULL);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE c learning_fixture%ROWTYPE; r jsonb; aid uuid; sub jsonb; blocked boolean; BEGIN
+ SELECT * INTO c FROM learning_fixture;
+ PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
+ r:=public.learning_access_context();
+ IF (r->>'subscribed')::boolean OR NOT (r->'trials'->>'simulation')::boolean THEN RAISE EXCEPTION 'Initial context incorrect'; END IF;
+ blocked:=false;
+ BEGIN PERFORM public.learning_subscription_workspace(); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Student can list subscriptions'; END IF;
+ blocked:=false;
+ BEGIN PERFORM public.learning_subscription_set(c.student_id,NULL,true,NULL,0,'Forbidden'); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Student subscription escalation'; END IF;
+ blocked:=false;
+ BEGIN PERFORM private.learning_legacy_start(c.grade,c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Legacy bypass'; END IF;
+ r:=public.start_learning_attempt(c.package_id,'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1);
+ aid:=(r->>'attempt_id')::uuid; UPDATE learning_fixture SET attempt_id=aid;
+ IF aid IS NULL THEN RAISE EXCEPTION 'Trial missing attempt'; END IF;
+ r:=public.start_learning_attempt(c.package_id,'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1);
+ IF (r->>'attempt_id')::uuid<>aid THEN RAISE EXCEPTION 'Retry not idempotent'; END IF;
+ blocked:=false;
+ BEGIN PERFORM public.start_learning_attempt(c.package_id,'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,2,1); EXCEPTION WHEN invalid_parameter_value THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Package mutation allowed'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',c.other_id::text,true);
+ blocked:=false;
+ BEGIN PERFORM public.start_learning_attempt(c.package_id,'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Cross-user package leak'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
+ PERFORM public.submit_exam_attempt(aid);
+ PERFORM public.get_student_exam_history(20);
+ blocked:=false;
+ BEGIN PERFORM public.start_learning_attempt(gen_random_uuid(),'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN
+ IF SQLERRM<>'LEARNING_SUBSCRIPTION_REQUIRED' THEN RAISE; END IF; blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Second simulation allowed'; END IF;
+ blocked:=false;
+ BEGIN PERFORM public.start_exam_attempt(c.grade,c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Public legacy bypass'; END IF;
+ r:=public.start_learning_attempt(gen_random_uuid(),'mission',c.grade,ARRAY[c.subject_name],c.subject_name,1,1);
+ PERFORM public.submit_exam_attempt((r->>'attempt_id')::uuid);
+ blocked:=false;
+ BEGIN PERFORM public.start_learning_attempt(gen_random_uuid(),'mission',c.grade,ARRAY[c.subject_name],c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Second practice allowed'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',c.admin_id::text,true);
+ sub:=public.learning_subscription_set(c.student_id,NULL,true,clock_timestamp()+interval '1 day',0,'Fixture manual activation');
+ blocked:=false;
+ BEGIN PERFORM public.learning_subscription_set(c.student_id,NULL,false,NULL,0,'Stale fixture'); EXCEPTION WHEN serialization_failure THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Stale subscription overwrite'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
+ IF NOT (public.learning_access_context()->>'subscribed')::boolean THEN RAISE EXCEPTION 'Activation failed'; END IF;
+ r:=public.start_learning_attempt(gen_random_uuid(),'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1);
+ aid:=(r->>'attempt_id')::uuid;
+ PERFORM set_config('request.jwt.claim.sub',c.admin_id::text,true);
+ PERFORM public.learning_subscription_set(c.student_id,NULL,false,NULL,(sub->>'revision')::integer,'Fixture deactivation');
+ PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
+ PERFORM public.resume_exam_attempt(aid);
+ PERFORM public.submit_exam_attempt(aid);
+ blocked:=false;
+ BEGIN PERFORM public.start_learning_attempt(gen_random_uuid(),'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Inactive subscription allowed'; END IF;
+ PERFORM set_config('request.jwt.claim.sub','',true);
+ blocked:=false;
+ BEGIN PERFORM public.learning_access_context(); EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'Anonymous context allowed'; END IF;
+END $$;
+RESET ROLE;
+DO $$ DECLARE c learning_fixture%ROWTYPE; BEGIN
+ SELECT * INTO c FROM learning_fixture;
+ IF (SELECT count(*) FROM public.learning_trial_uses WHERE user_id=c.student_id)<>2 THEN RAISE EXCEPTION 'Trial debit incorrect'; END IF;
+ IF (SELECT count(*) FROM public.learning_subscription_audit WHERE actor_id=c.admin_id)<>2 THEN RAISE EXCEPTION 'Subscription audit missing'; END IF;
+END $$;

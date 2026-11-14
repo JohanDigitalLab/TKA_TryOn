@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
+import LearningAccess from "@/components/learning-access";
 
 function subscribeToClock(onChange) {
   const timer = window.setInterval(onChange, 30_000);
@@ -121,6 +122,7 @@ export default function StudentPage() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+        <div className="mb-6"><LearningAccess /></div>
         {error && <div role="alert" aria-live="assertive" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>}
         <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6 sm:p-8">
           <p className="text-sm font-semibold text-blue-700">DASHBOARD PESERTA</p>

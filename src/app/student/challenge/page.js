@@ -110,7 +110,7 @@ function ChallengeContent() {
       const grade = normalizeGrade(currentConfig);
       const duration = Math.min(240, Math.max(1, Number(currentConfig.duration) || 60));
       const questionCount = Math.min(100, Math.max(1, Number(currentConfig.questionCount || currentConfig.totalQuestions) || 20));
-      const simulationId = currentConfig.simulationId || `sim-${Date.now()}`;
+      const simulationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentConfig.simulationId || "") ? currentConfig.simulationId : crypto.randomUUID();
 
       if (!resumeAttemptId && !assignmentId) {
         currentConfig.simulationId = simulationId;
@@ -128,10 +128,13 @@ function ChallengeContent() {
       });
 
       const { data, error: rpcError } = await supabase.rpc(
-        assignmentId ? "start_school_assignment" : resumeAttemptId ? "resume_exam_attempt" : "start_exam_attempt",
+        assignmentId ? "start_school_assignment" : resumeAttemptId ? "resume_exam_attempt" : "start_learning_attempt",
         assignmentId ? { p_assignment_id: assignmentId } : resumeAttemptId
           ? { p_attempt_id: resumeAttemptId }
           : {
+              p_package_id: simulationId,
+              p_mode: currentConfig.activityType === "latihan" ? "mission" : "simulation",
+              p_subjects: subjectList.length ? subjectList : [subject],
               p_grade: grade,
               p_subject_name: subject,
               p_question_count: questionCount,
@@ -223,7 +226,7 @@ function ChallengeContent() {
       }
     } catch (err) {
       startedRef.current = false;
-      setError(err?.message || "Ujian gagal dimulai.");
+      setError(err?.message?.includes("LEARNING_SUBSCRIPTION_REQUIRED") ? "Kesempatan mencoba kegiatan ini sudah digunakan. Aktifkan langganan melalui halaman Paket untuk memulai paket baru. Sesi berjalan dan riwayat hasil tetap dapat diakses." : err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu paket sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
     } finally {
       setLoading(false);
     }
@@ -743,9 +746,7 @@ function ChallengeContent() {
           </p>
 
           <p className="mt-3 text-sm text-slate-500">
-            Pastikan akun siswa sudah login, konfigurasi jenjang
-            dan mata pelajaran sudah dipilih, serta soal tersedia
-            di Supabase.
+            Periksa status akses melalui halaman Paket. Untuk sesi yang sudah dimulai, buka riwayat hasil dan lanjutkan sesi yang masih berjalan.
           </p>
 
           <button
@@ -754,6 +755,10 @@ function ChallengeContent() {
           >
             Kembali ke Dashboard
           </button>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-blue-700">
+            <button onClick={() => router.push("/subscription")} className="min-h-11 underline">Paket dan aktivasi langganan</button>
+            <button onClick={() => router.push("/student/results")} className="min-h-11 underline">Riwayat dan sesi berjalan</button>
+          </div>
         </section>
       </main>
     );
