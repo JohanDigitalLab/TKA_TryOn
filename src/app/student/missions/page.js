@@ -2,6 +2,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const levelLabels = {
@@ -110,8 +111,8 @@ function MissionsForm({ params }) {
     <main className="min-h-screen bg-slate-50 text-slate-800">
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
-          <a href="/student" className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
+          <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
               T
             </div>
@@ -124,14 +125,14 @@ function MissionsForm({ params }) {
                 SKILL ON • CONFIDENCE ON
               </p>
             </div>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/student"
-            className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
           >
             Dashboard
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -251,7 +252,7 @@ function MissionsForm({ params }) {
                 type="button"
                 onClick={() => setSelectedSubjects([...subjects])}
                 disabled={subjects.length === 0}
-                className="text-sm font-semibold text-blue-700 hover:text-blue-900 disabled:text-slate-400"
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-blue-700 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:text-slate-400"
               >
                 Pilih Semua
               </button>
@@ -260,19 +261,19 @@ function MissionsForm({ params }) {
                 type="button"
                 onClick={() => setSelectedSubjects([])}
                 disabled={selectedSubjects.length === 0}
-                className="text-sm font-semibold text-slate-500 hover:text-slate-800 disabled:text-slate-300"
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:text-slate-300"
               >
                 Hapus Semua Pilihan
               </button>
             </div>
           </div>
 
-          <a
+          <Link
             href={`/student/subjects?activityType=${activityType}`}
-            className="mt-6 inline-block text-sm font-bold text-blue-700 hover:text-blue-900"
+            className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-blue-700 hover:text-blue-900"
           >
             ← Ubah pilihan mata pelajaran awal
-          </a>
+          </Link>
         </section>
 
         {/* PENGATURAN */}
@@ -302,7 +303,7 @@ function MissionsForm({ params }) {
                     type="button"
                     aria-pressed={difficulty === value}
                     onClick={() => setDifficulty(value)}
-                    className={`rounded-lg border-2 px-4 py-3 text-sm font-bold ${
+                    className={`min-h-11 rounded-lg border-2 px-4 py-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
                       difficulty === value
                         ? "border-blue-600 bg-blue-50 text-blue-800"
                         : "border-slate-200 text-slate-600 hover:border-blue-300"
@@ -439,11 +440,14 @@ function MissionsForm({ params }) {
             </div>
           )}
 
+          <p role="status" className="mt-5 text-sm text-slate-600">
+            Estimasi total: {selectedSubjects.length * Number(duration)} menit untuk {selectedSubjects.length} mata pelajaran, tidak termasuk jeda.
+          </p>
           <button
             type="button"
             disabled={!isReady}
             onClick={saveConfiguration}
-            className="mt-6 min-h-12 w-full rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+            className="mt-6 min-h-12 w-full rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
           >
             Mulai {activityType === "simulasi" ? "Simulasi" : "Latihan"} →
           </button>

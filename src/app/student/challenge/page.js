@@ -18,6 +18,7 @@ function ChallengeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resumeAttemptId = searchParams.get("attemptId");
+  const assignmentId = searchParams.get("assignmentId");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,6 +58,14 @@ function ChallengeContent() {
   const finishingRef = useRef(false);
   const answersRef = useRef({});
   const pendingSavesRef = useRef(new Map());
+  const confirmDialogRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = confirmDialogRef.current;
+    if (!showConfirm || !dialog) return;
+    dialog.showModal();
+    return () => { if (dialog.open) dialog.close(); };
+  }, [showConfirm]);
 
   const question = questions[current];
 
@@ -69,7 +78,7 @@ function ChallengeContent() {
   const config = getExamConfig();
   const subjects = normalizeSubjects(config);
   const subjectIndex = Number(config.currentSubjectIndex || 0);
-  const hasNextSubject = subjectIndex < subjects.length - 1;
+  const hasNextSubject = !assignmentId && !resumeAttemptId && subjectIndex < subjects.length - 1;
 
   // =====================================================
   // MEMULAI / MEMULIHKAN SESI MATA PELAJARAN
@@ -103,7 +112,7 @@ function ChallengeContent() {
       const questionCount = Math.min(100, Math.max(1, Number(currentConfig.questionCount || currentConfig.totalQuestions) || 20));
       const simulationId = currentConfig.simulationId || `sim-${Date.now()}`;
 
-      if (!resumeAttemptId) {
+      if (!resumeAttemptId && !assignmentId) {
         currentConfig.simulationId = simulationId;
         currentConfig.currentSubjectIndex = index;
         sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
@@ -112,15 +121,15 @@ function ChallengeContent() {
       setExamInfo({
         grade,
         subject,
-        subjectIndex: index,
-        totalSubjects: subjectList.length || 1,
+        subjectIndex: assignmentId ? 0 : index,
+        totalSubjects: assignmentId ? 1 : subjectList.length || 1,
         simulationId,
         resumed: Boolean(resumeAttemptId),
       });
 
       const { data, error: rpcError } = await supabase.rpc(
-        resumeAttemptId ? "resume_exam_attempt" : "start_exam_attempt",
-        resumeAttemptId
+        assignmentId ? "start_school_assignment" : resumeAttemptId ? "resume_exam_attempt" : "start_exam_attempt",
+        assignmentId ? { p_assignment_id: assignmentId } : resumeAttemptId
           ? { p_attempt_id: resumeAttemptId }
           : {
               p_grade: grade,
@@ -190,10 +199,7 @@ function ChallengeContent() {
       const initialAnswers = {};
 
       mapped.forEach((item) => {
-        initialAnswers[item.question_id] = {
-          option_codes: [],
-          category_answers: {},
-        };
+        initialAnswers[item.question_id] = normalizePayload(item.answer_payload);
       });
 
       // Pulihkan jawaban yang telah tersimpan di database.
@@ -221,7 +227,7 @@ function ChallengeContent() {
     } finally {
       setLoading(false);
     }
-  }, [resumeAttemptId]);
+  }, [resumeAttemptId, assignmentId]);
 
   useEffect(() => {
     const timer = setTimeout(() => startExam(), 0);
@@ -389,6 +395,8 @@ function ChallengeContent() {
 
   const saveSessionResult = useCallback(
     (data, reviewData) => {
+      // Hasil tugas tersimpan di database; jangan menimpa cache simulasi mandiri.
+      if (assignmentId) return;
       const currentConfig = getExamConfig();
       const currentSubjects = normalizeSubjects(currentConfig);
       const index = Number(currentConfig.currentSubjectIndex || 0);
@@ -432,7 +440,7 @@ function ChallengeContent() {
         JSON.stringify(data)
       );
     },
-    [answeredCount, attemptId, examInfo, questions.length]
+    [answeredCount, attemptId, assignmentId, examInfo, questions.length]
   );
 
   // =====================================================
@@ -976,7 +984,7 @@ function ChallengeContent() {
       )}
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
             <h1 className="text-lg font-extrabold text-slate-900">
               TKA <span className="text-blue-700">TryOn</span>
@@ -1004,8 +1012,8 @@ function ChallengeContent() {
             </p>
             <p
               role="timer"
-              aria-live="polite"
-              aria-atomic="true"
+              aria-live="off"
+              aria-label="Sisa waktu ujian"
               className={`font-mono text-xl font-extrabold ${
                 timerCritical
                   ? "animate-pulse text-red-700"
@@ -1295,6 +1303,7 @@ function ChallengeContent() {
 
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
             <button
+              aria-pressed={marked.includes(current)}
               onClick={toggleMark}
               className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
                 marked.includes(current)
@@ -1307,7 +1316,7 @@ function ChallengeContent() {
                 : "☆ Tandai Ragu-ragu"}
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <button
                 disabled={current === 0}
                 onClick={() => setCurrent((value) => value - 1)}
@@ -1350,8 +1359,10 @@ function ChallengeContent() {
               return (
                 <button
                   key={item.question_id}
+                  aria-current={current === index ? "step" : undefined}
+                  aria-label={`Soal ${index + 1}, ${answered ? "sudah dijawab" : "belum dijawab"}${marked.includes(index) ? ", ditandai ragu-ragu" : ""}`}
                   onClick={() => setCurrent(index)}
-                  className={`relative h-10 rounded-lg border text-sm font-bold ${
+                  className={`relative h-11 rounded-lg border text-sm font-bold ${
                     current === index
                       ? "border-blue-700 bg-blue-700 text-white"
                       : answered
@@ -1414,13 +1425,22 @@ function ChallengeContent() {
       {/* KONFIRMASI AKHIR SESI */}
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-xl font-extrabold text-slate-900">
+        <dialog
+          ref={confirmDialogRef}
+          aria-labelledby="finish-dialog-title"
+          aria-describedby="finish-dialog-description"
+          onCancel={(event) => {
+            if (saving) event.preventDefault();
+            else setShowConfirm(false);
+          }}
+          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl bg-white p-0 shadow-xl backdrop:bg-black/50"
+        >
+          <div className="p-6">
+            <h3 id="finish-dialog-title" className="text-xl font-extrabold text-slate-900">
               Akhiri Sesi Ujian?
             </h3>
 
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+            <p id="finish-dialog-description" className="mt-3 text-sm leading-6 text-slate-600">
               Anda telah menjawab {answeredCount} dari{" "}
               {questions.length} soal untuk mata pelajaran{" "}
               <strong>{examInfo.subject}</strong>.
@@ -1452,7 +1472,7 @@ function ChallengeContent() {
               </button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </main>
   );

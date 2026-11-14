@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { normalizePayload } from "@/lib/student/exam";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -32,12 +33,61 @@ function getTypeLabel(type) {
   return "Pilihan Ganda Tunggal";
 }
 
+function performanceLabel(score) {
+  if (score >= 80) {
+    return {
+      label: "Kuat",
+      tone: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    };
+  }
+
+  if (score >= 60) {
+    return {
+      label: "Cukup",
+      tone: "text-amber-700 bg-amber-50 border-amber-200",
+    };
+  }
+
+  return {
+    label: "Perlu Pendalaman",
+    tone: "text-rose-700 bg-rose-50 border-rose-200",
+  };
+}
+
+function getQuestionTopic(item) {
+  return item.topic || item.theme || item.competency || item.indicator || "";
+}
+
+function buildTopicAnalysis(results) {
+  const buckets = new Map();
+
+  results.forEach((session) => {
+    (session.review?.questions || []).forEach((question) => {
+      const topic = String(getQuestionTopic(question)).trim();
+      if (!topic) return;
+
+      const current = buckets.get(topic) || { topic, total: 0, correct: 0 };
+      current.total += 1;
+      current.correct += question.is_correct === true ? 1 : 0;
+      buckets.set(topic, current);
+    });
+  });
+
+  return Array.from(buckets.values())
+    .map((item) => ({
+      ...item,
+      score: item.total ? (item.correct / item.total) * 100 : 0,
+    }))
+    .sort((a, b) => a.score - b.score);
+}
+
 // =====================================================
 // KOMPONEN REVIEW
 // =====================================================
 
 function ReviewSession({ session }) {
   const [expanded, setExpanded] = useState(false);
+  const reviewId = useId();
 
   const questions = session.review?.questions || [];
 
@@ -96,7 +146,7 @@ function ReviewSession({ session }) {
                   : "border-slate-200 bg-white"
               }`}
             >
-              <div className="flex items-start gap-2">
+              <div className="flex flex-wrap items-start gap-2 break-words">
                 <strong>{option.option_code}.</strong>
 
                 <span className="flex-1">
@@ -126,6 +176,8 @@ function ReviewSession({ session }) {
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <button
         type="button"
+        aria-expanded={expanded}
+        aria-controls={reviewId}
         onClick={() => setExpanded((value) => !value)}
         className="flex w-full flex-wrap items-center justify-between gap-4 p-5 text-left hover:bg-slate-50"
       >
@@ -159,7 +211,7 @@ function ReviewSession({ session }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-200 p-5">
+        <div id={reviewId} className="border-t border-slate-200 p-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg bg-slate-50 p-3">
               <p className="text-xs text-slate-500">Total Soal</p>
@@ -306,6 +358,7 @@ export default function StudentResultsPage() {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
+  const [reloadHistory, setReloadHistory] = useState(0);
   const [reviewAttemptId, setReviewAttemptId] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const snapshot = useSyncExternalStore(
@@ -346,7 +399,7 @@ export default function StudentResultsPage() {
 
     void loadHistory();
     return () => { mounted = false; };
-  }, []);
+  }, [reloadHistory]);
 
   const { localResults, config } = useMemo(() => {
     try {
@@ -365,7 +418,10 @@ export default function StudentResultsPage() {
   }, [snapshot]);
 
   const results = useMemo(() => {
-    if (history.length === 0) return localResults;
+    // Database adalah sumber kebenaran. Cache session hanya dipakai sebagai
+    // fallback transisi ketika RPC histori benar-benar gagal, bukan ketika
+    // akun memang belum memiliki hasil.
+    if (historyError) return localResults;
     return history.map((item, index) => ({
       attemptId: item.attempt_id,
       subject: item.subject || item.subject_name || "Mata pelajaran",
@@ -381,7 +437,7 @@ export default function StudentResultsPage() {
       status: item.status || item.attempt_status,
       review: item.review || null,
     }));
-  }, [history, localResults]);
+  }, [history, historyError, localResults]);
 
   async function openReview(attemptId) {
     if (!attemptId || reviewAttemptId === attemptId) {
@@ -460,6 +516,9 @@ export default function StudentResultsPage() {
   const simulationId =
     displayResults[0]?.simulationId || config.simulationId || "-";
 
+  const topicAnalysis = useMemo(() => buildTopicAnalysis(displayResults), [displayResults]);
+  const isUsingLocalFallback = Boolean(historyError && history.length === 0 && localResults.length > 0);
+
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100">
@@ -474,23 +533,24 @@ export default function StudentResultsPage() {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100 p-5 text-slate-800">
         <section className="w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm">
-          <div className="text-5xl">📊</div>
+          <div aria-hidden="true" className="text-5xl">📊</div>
 
           <h1 className="mt-4 text-2xl font-extrabold text-slate-900">
-            Belum Ada Hasil Ujian
+            {historyError ? "Hasil belum dapat dimuat" : "Belum Ada Hasil Ujian"}
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Hasil simulasi akan muncul di halaman ini setelah
-            siswa menyelesaikan sesi mata pelajaran.
+            {historyError || "Hasil latihan dan simulasi akan muncul di sini setelah Anda menyelesaikan sesi mata pelajaran."}
           </p>
 
-          <button
-            onClick={() => router.push("/student")}
-            className="mt-6 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800"
-          >
-            Kembali ke Dashboard
-          </button>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            {historyError ? (
+              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="min-h-11 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800">Coba kembali</button>
+            ) : (
+              <Link href="/student/subjects?activityType=latihan" className="min-h-11 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800">Mulai latihan pertama</Link>
+            )}
+            <Link href="/student" className="min-h-11 rounded-lg border border-slate-300 px-6 py-3 font-bold text-slate-700">Dashboard</Link>
+          </div>
         </section>
       </main>
     );
@@ -499,7 +559,10 @@ export default function StudentResultsPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-800">
       <div className="mx-auto max-w-5xl">
-        {/* HEADER */}
+        <nav aria-label="Navigasi hasil" className="mb-5 flex flex-wrap gap-3 print:hidden">
+          <Link href="/student" className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700">← Dashboard</Link>
+          <Link href="/student/subjects?activityType=latihan" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Mulai latihan</Link>
+        </nav>
 
         <header className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -546,6 +609,7 @@ export default function StudentResultsPage() {
         {historyError && (
           <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             {historyError}
+            {isUsingLocalFallback && " Menampilkan cache perangkat sementara; hasil server tetap menjadi sumber kebenaran."}
           </div>
         )}
 
@@ -594,6 +658,24 @@ export default function StudentResultsPage() {
             <button type="button" onClick={() => router.push(`/student/subjects?activityType=latihan&subject=${encodeURIComponent(weakestSubject.subject)}`)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">Mulai latihan {weakestSubject.subject}</button>
           </section>
         )}
+
+        <section className="mt-8 border-y border-slate-300 py-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Evaluasi kemampuan</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Peta topik yang sudah terukur</h2>
+            </div>
+            <p className="max-w-sm text-right text-xs leading-5 text-slate-500">Klasifikasi hanya dihitung dari metadata topik yang dikirim oleh review server. Tidak ada topik yang ditebak dari urutan soal.</p>
+          </div>
+          {topicAnalysis.length ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {topicAnalysis.map((item) => {
+                const status = performanceLabel(item.score);
+                return <article key={item.topic} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-bold text-slate-900">{item.topic}</h3><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-blue-700" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>;
+              })}
+            </div>
+          ) : <div className="mt-5 border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">Analisis topik akan tampil setelah review server menyediakan metadata topik atau indikator kompetensi. Untuk saat ini, gunakan ringkasan per mata pelajaran di bawah sebagai acuan belajar.</div>}
+        </section>
 
         {/* RINGKASAN STATISTIK */}
 

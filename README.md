@@ -40,11 +40,15 @@ Lihat [`.env.example`](.env.example) dan [`docs/SECURITY_AND_DATABASE.md`](docs/
 
 - `/`: landing page publik.
 - `/register` dan `/login`: autentikasi peserta.
+- `/subscription`: informasi paket Siswa Mandiri dan Sekolah. Halaman ini belum mengaktifkan pembayaran, entitlement, atau transaksi nyata.
 - `/student`: dashboard peserta.
 - `/student/subjects`: pilihan mata pelajaran.
 - `/student/missions`: konfigurasi latihan/simulasi.
 - `/student/challenge`: engine CBT.
-- `/student/results`: rekap dan review hasil.
+- `/student/results`: rekap, review jawaban, rekomendasi mapel, dan analisis topik bila metadata review tersedia.
+- `/school`: dashboard sekolah berbasis membership aktif, kelas, profil akademik siswa, dan undangan yang diizinkan RLS.
+- `/teacher`: buat/edit draft tugas kelas, publish/cancel, monitoring submit, dan ranking Top 5 khusus staf sekolah.
+- `/student/assignments`: jadwal dan pengerjaan tugas sekolah dengan konfigurasi serta snapshot soal dari server.
 - `/admin`: dashboard administrasi.
 - `/admin/questions`: bank soal versioned.
 - `/admin/import`: Smart Import Center.
@@ -59,7 +63,9 @@ Ekstraksi dokumen tersedia pada `/api/import/extract`. Structuring AI tersedia p
 
 ## Database dan keamanan
 
-Repository tidak menyimpan migration SQL saat ini. Aplikasi mengandalkan tabel dan RPC yang sudah terpasang di Supabase. Daftar objek dan checklist RLS/RPC ada pada [`docs/SECURITY_AND_DATABASE.md`](docs/SECURITY_AND_DATABASE.md).
+Migration versioned tersedia dalam [`docs/database`](docs/database). Tahap 1 mengeraskan scoring/submit, tahap 2 menyediakan histori/review, dan tahap 3 menambah tugas kelas, snapshot soal/penerima, workflow guru mutatif, serta ranking Top 5 server-side. Panduan hak akses, penerapan, dry-run, dan rollback tersedia pada [`SCHOOL_WORKFLOWS.md`](docs/database/SCHOOL_WORKFLOWS.md). Schema dasar sekolah dan bank soal tetap mengikuti objek Supabase yang sudah diaudit; migration ini bukan bootstrap database kosong.
+
+Mutation tugas hanya melalui RPC yang memeriksa role sekolah di database. Tabel baru memakai RLS tanpa akses langsung client. Kelas, invite, dan membership tetap tidak dimutasi dari UI. Payment gateway sengaja **ditunda** atas instruksi pengguna: checkout, transaksi, dan entitlement tidak diaktifkan. Evaluasi topik tidak menebak topik dari urutan soal dan hanya bekerja bila metadata review server tersedia.
 
 Sebelum deployment:
 
@@ -77,3 +83,11 @@ npm run build
 ```
 
 `npm run build` harus berhasil. Lint pada area server/API yang diperbarui harus bersih; lint global dapat masih menemukan masalah lama pada page besar yang belum selesai dipecah, terutama aturan React effect dan dependency hook.
+
+## UX student dan aksesibilitas
+
+Alur student mendukung navigasi internal tanpa reload pada dashboard, pemilihan mapel, konfigurasi sesi, dan halaman hasil. Histori dari database menjadi sumber kebenaran ketika RPC berhasil; `sessionStorage` hanya menjadi fallback transisi ketika RPC histori gagal. Empty state histori hasil dibedakan dari kegagalan pemuatan data, sesi ujian aktif ditampilkan sebagai aksi untuk melanjutkan, dan validasi pemilihan mapel diumumkan sebagai pesan yang dapat dibaca pembaca layar.
+
+Halaman CBT menggunakan dialog konfirmasi native, target sentuh yang lebih besar, status autosave/timer yang tidak mengumumkan setiap detik, label navigasi soal yang menyatakan status jawaban, serta dukungan `prefers-reduced-motion`. Halaman subscription bersifat informasional sampai payment gateway, validasi webhook, dan rekonsiliasi transaksi dikonfigurasi. Visual global memakai permukaan off-white, garis tipis, hierarki tipografi yang tegas, dan aksen biru tanpa menjadikan gradient, shadow besar, atau rounded card sebagai pola utama.
+
+Pemeriksaan mencakup unit test, lint, build produksi, dan dry-run migration dengan integration test database yang di-rollback. Lihat panduan workflow sekolah untuk cakupan serta keterbatasan. Pengujian visual pada perangkat mobile, pembaca layar, dan E2E browser tetap perlu dilakukan secara manual.

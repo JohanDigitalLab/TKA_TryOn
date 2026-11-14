@@ -42,10 +42,10 @@ const services = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800">
+    <main className="min-h-screen bg-[#f5f6f3] text-slate-800">
 
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#f5f6f3]">
         <div className="mx-auto grid max-w-7xl grid-cols-2 items-center gap-y-3 px-5 py-4 md:grid-cols-[1fr_auto_1fr] lg:px-8">
 
           {/* LOGO KIRI */}
@@ -79,6 +79,12 @@ export default function Home() {
           {/* AKUN KANAN */}
           <div className="flex items-center justify-self-end gap-2 md:col-start-3 md:row-start-1">
             <Link
+              href="/subscription"
+              className="hidden rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex sm:px-4"
+            >
+              Paket
+            </Link>
+            <Link
               href="/login"
               className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:px-4"
             >
@@ -99,7 +105,7 @@ export default function Home() {
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:px-8 lg:py-24">
           <div>
-            <div className="mb-6 inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">
+            <div className="mb-6 inline-flex border-l-2 border-blue-700 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800">
               PLATFORM SIMULASI TES KEMAMPUAN AKADEMIK
             </div>
 
@@ -118,6 +124,9 @@ export default function Home() {
               <Link href="/register" className="rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-800">
                 Mulai Persiapan
               </Link>
+              <Link href="/subscription" className="rounded-lg border border-slate-300 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                Lihat Paket
+              </Link>
               <a href="#jenjang" className="rounded-lg border border-slate-300 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
                 Lihat Jenjang
               </a>
@@ -128,7 +137,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm md:p-8">
+          <div className="border border-slate-200 bg-white p-6 md:p-8">
             <div className="flex items-center justify-between border-b border-slate-200 pb-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">TKA TRYON</p>
@@ -212,7 +221,7 @@ export default function Home() {
 
       {/* TENTANG */}
       <section id="tentang" className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
-        <div className="rounded-2xl bg-slate-900 px-6 py-10 text-white md:px-10">
+        <div className="border-l-4 border-blue-600 bg-slate-900 px-6 py-10 text-white md:px-10">
           <h3 className="text-2xl font-extrabold">TKA TryOn</h3>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
             Platform independen untuk membantu siswa mengenal karakteristik Tes Kemampuan Akademik,

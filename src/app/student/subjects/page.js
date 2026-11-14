@@ -2,6 +2,7 @@
 "use client";
 
 import { Suspense, startTransition, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -68,6 +69,7 @@ function SubjectsConfiguration() {
   const [level, setLevel] = useState(null);
   const [schoolType, setSchoolType] = useState("sma");
   const [selectedElectives, setSelectedElectives] = useState([]);
+  const [validationMessage, setValidationMessage] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -147,6 +149,7 @@ function SubjectsConfiguration() {
   );
 
   function toggleElective(subject) {
+    setValidationMessage("");
     setSelectedElectives((previous) => {
       if (previous.includes(subject)) {
         return previous.filter((item) => item !== subject);
@@ -162,12 +165,16 @@ function SubjectsConfiguration() {
 
   function handleContinue() {
     if (!level || !mandatorySubjects.length) {
+      setValidationMessage("Profil belum siap digunakan. Periksa jenjang pendidikan lalu coba lagi.");
       return;
     }
 
     if (isHighSchool && selectedElectives.length !== 2) {
+      setValidationMessage(`Pilih tepat 2 mata pelajaran pilihan. Saat ini ${selectedElectives.length} mata pelajaran dipilih.`);
       return;
     }
+
+    setValidationMessage("");
 
     const allSubjects = [
       ...mandatorySubjects,
@@ -249,8 +256,8 @@ function SubjectsConfiguration() {
     <main className="min-h-screen bg-slate-50 text-slate-800">
       {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
-          <a href="/student" className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
+          <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
               T
             </div>
@@ -264,14 +271,14 @@ function SubjectsConfiguration() {
                 SKILL ON • CONFIDENCE ON
               </p>
             </div>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/student"
-            className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
           >
             Kembali ke Dashboard
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -539,13 +546,18 @@ function SubjectsConfiguration() {
                   pilihan lagi.
                 </p>
               )}
+              {validationMessage && (
+                <p id="subjects-validation" role="alert" aria-live="assertive" className="mt-2 text-xs font-semibold text-red-700">
+                  {validationMessage}
+                </p>
+              )}
             </div>
 
             <button
               type="button"
               onClick={handleContinue}
-              disabled={isHighSchool && selectedElectives.length !== 2}
-              className="min-h-12 rounded-lg bg-blue-700 px-7 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              aria-describedby={validationMessage ? "subjects-validation" : undefined}
+              className="min-h-12 rounded-lg bg-blue-700 px-7 py-3 text-sm font-bold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
             >
               Lanjut ke Persiapan Ujian →
             </button>
