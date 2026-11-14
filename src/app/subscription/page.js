@@ -71,11 +71,6 @@ export default function SubscriptionPage() {
           ))}
         </section>
 
-        <section className="mx-auto mt-8 max-w-3xl border-l-2 border-amber-500 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-          <p className="font-bold">Catatan aktivasi</p>
-          <p className="mt-1">Belum ada pembayaran atau transaksi yang dianggap berhasil. Aktivasi paket akan dilakukan setelah payment gateway, validasi webhook, dan rekonsiliasi transaksi dikonfigurasi.</p>
-        </section>
-
         <div className="mt-10 text-center"><Link href="/" className="text-sm font-bold text-blue-700 hover:text-blue-900">← Kembali ke beranda</Link></div>
       </div>
     </main>

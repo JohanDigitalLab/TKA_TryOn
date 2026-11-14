@@ -54,7 +54,10 @@ test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async
   assert.ok(subscription.includes('href: "/school/register"'));
   assert.ok(subscription.includes('href="/register?method=school"'));
   assert.ok(subscription.includes("href={plan.href}"));
+  assert.ok(!subscription.includes("Catatan aktivasi"));
+  assert.ok(!subscription.includes("Belum ada pembayaran atau transaksi yang dianggap berhasil."));
   const register = await read("../src/app/register/page.js");
+  assert.ok(register.includes('school && <section aria-label="Pilihan pendaftaran"'));
   assert.ok(register.includes("{context.method ? ("));
   assert.ok(register.includes("{level ? ("));
   assert.ok(register.includes("registrationEducationLevel(context, values.education_level)"));

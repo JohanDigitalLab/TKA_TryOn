@@ -82,7 +82,7 @@ function Register({ context }) {
         <h1 className="text-3xl font-black">{context.method ? school ? "Daftar siswa sekolah" : "Daftar siswa mandiri" : "Daftar akun siswa"}</h1>
         <p>{school ? "Gunakan undangan dari admin sekolah untuk bergabung. Pendaftaran akun tidak langsung mengaktifkan keanggotaan sekolah." : "Belajar secara mandiri tanpa perlu bergabung ke sekolah."} Untuk guru atau staf sekolah, <Link href="/school/register" className="font-bold text-blue-800 underline">daftar akun staf / sekolah di sini</Link>.</p>
         {context.method ? (
-          <section aria-label="Pilihan pendaftaran" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+          school && <section aria-label="Pilihan pendaftaran" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
             <p>Jenis pendaftaran: <strong>{school ? "Siswa undangan sekolah" : "Siswa mandiri"}</strong></p>
             <p className="mt-1">Pilihan dari halaman sebelumnya sudah diterapkan.</p>
           </section>
