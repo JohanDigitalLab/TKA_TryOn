@@ -3,6 +3,8 @@ import Link from "next/link";
 const plans = [
   {
     name: "Siswa Mandiri",
+    href: "/register?method=independent",
+    action: "Daftar siswa mandiri →",
     price: "Rp49.000",
     suffix: "sekali bayar sampai lulus",
     tone: "blue",
@@ -15,6 +17,8 @@ const plans = [
   },
   {
     name: "Sekolah",
+    href: "/school/register",
+    action: "Daftarkan sekolah →",
     price: "Rp25.000",
     suffix: "per siswa",
     tone: "slate",
@@ -61,7 +65,8 @@ export default function SubscriptionPage() {
               <ul className={`mt-7 space-y-3 text-sm ${plan.tone === "blue" ? "text-slate-600" : "text-slate-200"}`}>
                 {plan.features.map((feature) => <li key={feature} className="flex gap-3"><span className="font-bold text-blue-400" aria-hidden="true">✓</span><span>{feature}</span></li>)}
               </ul>
-              <Link href="/register" className={`mt-8 block rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}>Coba fitur sekarang →</Link>
+              <Link href={plan.href} className={`mt-8 block rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}>{plan.action}</Link>
+              {plan.tone === "slate" && <p className="mt-3 text-center text-xs leading-5 text-slate-300">Sudah mendapat undangan sebagai siswa? <Link href="/register?method=school" className="font-bold text-white underline">Daftar siswa sekolah</Link>.</p>}
             </article>
           ))}
         </section>

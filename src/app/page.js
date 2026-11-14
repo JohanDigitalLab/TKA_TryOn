@@ -1,21 +1,25 @@
 
 import Link from "next/link";
+import { studentRegistrationPath } from "@/lib/student/registration.mjs";
 
 const levels = [
   {
     name: "SD / MI",
+    value: "sd",
     grade: "KELAS 6",
     description: "Persiapan Tes Kemampuan Akademik jenjang Sekolah Dasar.",
     subjects: ["Bahasa Indonesia", "Matematika"],
   },
   {
     name: "SMP / MTs",
+    value: "smp",
     grade: "KELAS 9",
     description: "Persiapan Tes Kemampuan Akademik jenjang Sekolah Menengah Pertama.",
     subjects: ["Bahasa Indonesia", "Matematika"],
   },
   {
     name: "SMA / MA / SMK",
+    value: "sma",
     grade: "KELAS 12",
     description: "Persiapan Tes Kemampuan Akademik jenjang Sekolah Menengah Atas.",
     subjects: ["Mata Pelajaran Wajib", "Mata Pelajaran Pilihan"],
@@ -193,7 +197,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <Link href="/register" className="block rounded-lg border border-blue-200 py-3 text-center text-sm font-bold text-blue-700 hover:bg-blue-50">
+              <Link href={studentRegistrationPath({ level: level.value })} className="block rounded-lg border border-blue-200 py-3 text-center text-sm font-bold text-blue-700 hover:bg-blue-50">
                 Daftar untuk {level.name}
               </Link>
             </article>
