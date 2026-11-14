@@ -74,7 +74,7 @@ Mutation tugas serta onboarding hanya melalui RPC yang memeriksa identitas dan r
 
 ### Onboarding sekolah: operasi dan batas kontrak
 
-**UI onboarding sudah diimplementasikan; backend tahap 4 baru diimplementasikan/dry-run dengan rollback, belum diterapkan live.** Frontend menampilkan pesan rollout belum tersedia bila RPC belum terpasang. Commit/push kode tidak menerapkan migrasi database. Deployment hosting belum diverifikasi; pengujian E2E browser multi-role belum dilakukan. Penerapan backend tetap membutuhkan persetujuan rollout terpisah dan prosedur pemilik backend.
+**UI onboarding sudah diimplementasikan dan backend tahap 4 sudah diterapkan live.** Runner memverifikasi TLS serta project identity guard, menjalankan verifikasi idempotensi dan integration fixture, lalu me-rollback fixture setelah pemeriksaan. Commit/push kode tidak menerapkan migrasi database. Deployment hosting belum diverifikasi; pengujian E2E browser multi-role belum dilakukan. Payment gateway tetap ditunda.
 
 1. Staf membuka `/school/register`, membuat akun atau memakai akun existing, lalu memverifikasi email. Pendidikan hanya untuk signup siswa; staf dapat menuju portal sekolah tanpa prompt pendidikan siswa. Profil siswa yang terbuka di editor sebelumnya tidak ada sebagai route pada checkout ini; tidak ditambahkan prompt global baru.
 2. Ajukan data sekolah lengkap dan pernyataan kewenangan. NPSN **wajib tepat 8 angka**, termasuk nol di depan. Tidak ada alur tanpa NPSN/manual, penyimpanan draft, pengeditan aplikasi pending, atau status needs_revision. Penolakan dapat diikuti pengajuan baru sebagai histori baru.

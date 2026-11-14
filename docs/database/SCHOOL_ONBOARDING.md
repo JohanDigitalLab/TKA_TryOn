@@ -2,7 +2,7 @@
 
 ## Status dan batas perubahan
 
-Backend tersedia pada [migrasi tahap 4](migration-stage-4-school-onboarding.sql), [runner](../../scripts/migrate-school-onboarding.cjs), dan [integration test](../../tests/database/school-onboarding.sql). UI onboarding, pengelolaan sekolah, undangan siswa, pesan/tiket, transfer koordinator, dan review platform sudah diimplementasikan bersama helper serta unit test frontend; lihat [panduan aplikasi](../../README.md). Payment ditunda. **Migrasi tahap 4 hanya diverifikasi melalui dry-run dengan rollback; belum diterapkan permanen/live.** Commit/push kode bukan penerapan database. Deployment hosting belum diverifikasi dan pengujian E2E browser multi-role belum dilakukan.
+Backend tersedia pada [migrasi tahap 4](migration-stage-4-school-onboarding.sql), [runner](../../scripts/migrate-school-onboarding.cjs), dan [integration test](../../tests/database/school-onboarding.sql). UI onboarding, pengelolaan sekolah, undangan siswa, pesan/tiket, transfer koordinator, dan review platform sudah diimplementasikan bersama helper serta unit test frontend; lihat [panduan aplikasi](../../README.md). Payment ditunda. **Migrasi tahap 4 sudah diterapkan permanen/live dan diverifikasi dengan TLS serta project identity guard; fixture integration test di-rollback setelah verifikasi.** Commit/push kode bukan penerapan database. Deployment hosting belum diverifikasi dan pengujian E2E browser multi-role belum dilakukan.
 
 Prasyarat backend: schema hasil audit lokal serta migrasi tahap 1–3 sudah diterapkan. [Aturan agen](../../AGENTS.md) berlaku untuk perubahan frontend. UI memakai RPC melalui client Supabase yang sudah ada, tanpa endpoint API Next.js baru.
 
