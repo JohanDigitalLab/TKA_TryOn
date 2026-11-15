@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -78,7 +79,10 @@ function Register({ context }) {
   return (
     <main className="min-h-screen bg-slate-50 px-5 py-10">
       <div className="mx-auto max-w-xl space-y-6 rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
-        <Link href="/" className="font-bold text-blue-800">← Beranda</Link>
+        <Link href="/" className="inline-flex items-center gap-3 font-bold text-blue-800">
+          <BrandLogo className="h-14 w-14" />
+          <span>← Beranda TKA TryOn</span>
+        </Link>
         <h1 className="text-3xl font-black">{context.method ? school ? "Daftar siswa sekolah" : "Daftar siswa mandiri" : "Daftar akun siswa"}</h1>
         <p>{school ? "Gunakan undangan dari admin sekolah untuk bergabung. Pendaftaran akun tidak langsung mengaktifkan keanggotaan sekolah." : "Belajar secara mandiri tanpa perlu bergabung ke sekolah."} Untuk guru atau staf sekolah, <Link href="/school/register" className="font-bold text-blue-800 underline">daftar akun staf / sekolah di sini</Link>.</p>
         {context.method ? (

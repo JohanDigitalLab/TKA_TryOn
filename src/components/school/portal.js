@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -70,7 +71,13 @@ function PortalContent({ title, children }) {
   const portal = { user, context, params, busy, run, reload };
   const Content = children;
   return <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900"><div className="mx-auto max-w-6xl space-y-6">
-    <nav aria-label="Navigasi portal" className="flex flex-wrap gap-4 border-b border-slate-200 pb-4 text-sm font-bold text-blue-800">{[["/","Beranda"],["/school","Sekolah"],["/school/register","Daftarkan sekolah"],["/school/join","Gabung siswa"],["/school/manage","Kelola sekolah"],["/school/messages","Pesan"],["/student","Ruang siswa"],["/teacher","Tugas staf"]].map(([href,label]) => <Link key={href} href={href}>{label}</Link>)}{context?.can_review_applications && <Link href="/admin/schools">Review platform</Link>}{user && <button disabled={busy} type="button" onClick={() => run(async () => { const { error } = await supabase.auth.signOut(); if(error) throw error; }, null, "Kamu sudah keluar dari akun.")}>Keluar</button>}</nav>
+    <nav aria-label="Navigasi portal" className="flex flex-wrap items-center gap-4 border-b border-slate-200 pb-4 text-sm font-bold text-blue-800">
+      <Link href="/" aria-label="Kembali ke beranda TKA TryOn" className="mr-2 inline-flex items-center gap-2 text-slate-900">
+        <BrandLogo className="h-11 w-11" />
+        <span>TKA TryOn</span>
+      </Link>
+      {[["/","Beranda"],["/school","Sekolah"],["/school/register","Daftarkan sekolah"],["/school/join","Gabung siswa"],["/school/manage","Kelola sekolah"],["/school/messages","Pesan"],["/student","Ruang siswa"],["/teacher","Tugas staf"]].map(([href,label]) => <Link key={href} href={href}>{label}</Link>)}{context?.can_review_applications && <Link href="/admin/schools">Review platform</Link>}{user && <button disabled={busy} type="button" onClick={() => run(async () => { const { error } = await supabase.auth.signOut(); if(error) throw error; }, null, "Kamu sudah keluar dari akun.")}>Keluar</button>}
+    </nav>
     <header><h1 className="text-3xl font-black">{title}</h1>{user && <p className="mt-2 text-sm text-slate-600">Akun: {user.email}</p>}</header>
     {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}{notice && <p role="status" className="rounded border border-green-200 bg-green-50 p-4 text-green-900">{notice}</p>}
     {!ready ? <p role="status">Memeriksa akun…</p> : !user ? <>{<Content {...portal} guest />}<Panel title="Sudah memiliki akun?"><Link className={buttonClass} href={authLink("login",next)}>Masuk untuk melanjutkan</Link></Panel></> : !user.email_confirmed_at ? <Panel title="Verifikasi email diperlukan"><p>Konfirmasi email terlebih dahulu, kemudian masuk kembali. Akun guru dan staf tidak perlu mengisi jenjang pendidikan siswa.</p><button className={buttonClass} disabled={busy} onClick={() => run(async () => { const { error } = await supabase.auth.resend({ type: "signup", email: user.email, options: { emailRedirectTo: `${window.location.origin}${next}` } }); if(error) throw error; },null,"Permintaan verifikasi sudah diproses. Periksa kotak masuk dan folder spam emailmu.")}>Kirim ulang verifikasi</button></Panel> : context ? <><button type="button" className="text-sm font-bold text-blue-800 underline" disabled={busy} onClick={() => run(async () => true,null,"Data akun dan akses sekolah sudah diperbarui.")}>Perbarui data akun dan sekolah</button>{<Content {...portal} />}</> : <button className={buttonClass} disabled={busy} onClick={() => run(async () => true)}>Coba muat portal kembali</button>}

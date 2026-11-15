@@ -3,6 +3,7 @@
 
 import Image from "next/image";
 import { Suspense, useEffect, useRef, useState } from "react";
+import BrandLogo from "@/components/brand-logo";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -144,6 +145,13 @@ function LoginContent() {
       <main className="grid min-h-screen place-items-center bg-slate-50 px-5 py-8">
         <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
           <Link href="/login" className="text-sm font-semibold text-slate-600 hover:text-blue-700">← Kembali ke login</Link>
+          <div className="mt-8 flex items-center gap-3">
+            <BrandLogo className="h-14 w-14" />
+            <div>
+              <p className="text-xl font-black tracking-tight text-blue-700">TKA <span className="text-slate-900">TryOn</span></p>
+              <p className="text-[10px] font-bold tracking-widest text-slate-400">SKILL ON • CONFIDENCE ON</p>
+            </div>
+          </div>
           <h1 className="mt-8 text-2xl font-extrabold text-slate-900">Buat password baru</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">Gunakan minimal 8 karakter untuk mengamankan akunmu.</p>
           <form onSubmit={handlePasswordUpdate} className="mt-6 space-y-4" aria-busy={authBusy}>
@@ -194,8 +202,9 @@ function LoginContent() {
         <Link href="/" className="mb-6 inline-flex min-h-11 items-center text-sm font-semibold text-slate-600 hover:text-blue-700">
           ← Kembali ke beranda
         </Link>
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black tracking-tight text-blue-700">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandLogo className="h-20 w-20" priority />
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-blue-700">
             TKA <span className="text-slate-900">TryOn</span>
           </h1>
           <p className="mt-2 text-xs font-bold tracking-widest text-slate-400">
