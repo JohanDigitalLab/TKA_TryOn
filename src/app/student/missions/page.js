@@ -1,6 +1,8 @@
 
 "use client";
 
+import BrandLogo from "@/components/brand-logo";
+
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -114,9 +116,7 @@ function MissionsForm({ params }) {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
-              T
-            </div>
+            <BrandLogo className="h-12 w-14" />
 
             <div>
               <h1 className="text-xl font-extrabold text-slate-900">

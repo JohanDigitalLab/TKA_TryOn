@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
 import LearningAccess from "@/components/learning-access";
+import BrandLogo from "@/components/brand-logo";
 
 function subscribeToClock(onChange) {
   const timer = window.setInterval(onChange, 30_000);
@@ -104,7 +105,7 @@ export default function StudentPage() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <Link href="/" aria-label="Kembali ke halaman utama TKA TryOn" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">T</div>
+            <BrandLogo className="h-12 w-14" />
             <div><h1 className="text-xl font-extrabold tracking-tight text-slate-900">TKA <span className="text-blue-700">TryOn</span></h1><p className="text-[10px] font-semibold tracking-widest text-slate-500">SKILL ON • CONFIDENCE ON</p></div>
           </Link>
           <div className="flex items-center gap-3">

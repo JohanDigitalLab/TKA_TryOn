@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 520" role="img" aria-labelledby="title desc">
+  <title id="title">Rajawali TKA TryOn</title>
+  <desc id="desc">Rajawali gagah mencengkeram huruf TKA tiga dimensi.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eff6ff"/>
+      <stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#facc15"/>
+      <stop offset="0.55" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#60a5fa"/>
+      <stop offset="0.5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fb7185"/>
+      <stop offset="0.55" stop-color="#e11d48"/>
+      <stop offset="1" stop-color="#881337"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#172554" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <ellipse cx="320" cy="461" rx="205" ry="22" fill="#172554" opacity=".16"/>
+  <g filter="url(#shadow)">
+    <!-- dimensional TKA blocks -->
+    <g stroke="#172554" stroke-width="5" stroke-linejoin="round">
+      <path fill="#1d4ed8" d="M177 302h112v34H255v92h-38v-92h-40z"/>
+      <path fill="#1e40af" d="M289 302h38l20 49 20-49h39l-40 83v43h-38v-43z"/>
+      <path fill="#be123c" d="M404 302h38l22 74 22-74h38l-41 134h-38z"/>
+      <path fill="url(#blue)" d="M177 302h112l-11 13H190z"/>
+      <path fill="url(#blue)" d="M289 302h38l20 49-10 13-29-48z"/>
+      <path fill="url(#red)" d="M404 302h38l22 74-11 18-27-79z"/>
+    </g>
+    <!-- eagle wings -->
+    <path fill="#334155" stroke="#172033" stroke-width="7" stroke-linejoin="round" d="M315 174C254 93 145 69 48 102c68 16 112 51 143 91-56-22-111-18-154 7 80 5 137 34 176 74 25-37 55-67 102-100z"/>
+    <path fill="#475569" stroke="#172033" stroke-width="7" stroke-linejoin="round" d="M325 174C387 93 496 69 592 102c-67 16-112 51-143 91 56-22 111-18 154 7-80 5-137 34-176 74-25-37-55-67-102-100z"/>
+    <path fill="none" stroke="#94a3b8" stroke-width="7" stroke-linecap="round" d="M72 113c76 15 117 50 151 91M568 113c-76 15-117 50-151 91M74 184c61 2 111 26 148 58M566 184c-61 2-111 26-148 58" opacity=".75"/>
+    <!-- eagle body and head -->
+    <path fill="#1e293b" stroke="#172033" stroke-width="7" d="M270 153c14-31 45-51 70-51s56 20 70 51l-16 132c-4 37-26 62-54 62s-50-25-54-62z"/>
+    <path fill="#f8fafc" stroke="#172033" stroke-width="6" d="M287 146c-5-51 26-91 66-91s71 40 66 91c-4 34-29 58-66 58s-62-24-66-58z"/>
+    <path fill="#f8fafc" stroke="#172033" stroke-width="6" d="M319 202l-32 39 35-18 31 23 31-23 35 18-32-39z"/>
+    <path fill="#facc15" stroke="#92400e" stroke-width="5" d="M351 155l-45 20 44 19 45-19z"/>
+    <circle cx="326" cy="132" r="7" fill="#172033"/><circle cx="374" cy="132" r="7" fill="#172033"/>
+    <path fill="none" stroke="#172033" stroke-width="6" stroke-linecap="round" d="M334 175c12 8 24 8 36 0"/>
+    <!-- talons gripping letters -->
+    <g fill="none" stroke="url(#gold)" stroke-width="11" stroke-linecap="round">
+      <path d="M285 252c-17 21-25 42-24 65 1 12 11 16 19 6l14-18"/>
+      <path d="M328 260c-5 24-4 43 6 58 6 9 16 7 17-4l1-22"/>
+      <path d="M370 260c5 24 4 43-6 58-6 9-16 7-17-4l-1-22"/>
+      <path d="M413 252c17 21 25 42 24 65-1 12-11 16-19 6l-14-18"/>
+    </g>
+    <path fill="none" stroke="#fef3c7" stroke-width="4" stroke-linecap="round" d="M277 267c-7 14-9 27-7 39M424 267c7 14 9 27 7 39"/>
+  </g>
+</svg>

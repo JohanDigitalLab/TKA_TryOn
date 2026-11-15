@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import BrandLogo from "@/components/brand-logo";
 import { readSpreadsheet, parseSheet, readCsvRows } from "@/lib/import/spreadsheet";
 import { validateWorkbook } from "@/lib/import/tqbs";
 import { supabase } from "@/lib/supabase";
@@ -919,9 +920,7 @@ export default function ImportCenterPage() {
           className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
         >
           <div className="mb-5 flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-700 text-xl font-bold text-white">
-              T
-            </div>
+            <BrandLogo className="h-14 w-14" />
             <div>
               <h1 className="text-xl font-bold text-slate-900">
                 TKA TryOn

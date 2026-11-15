@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BrandLogo from "@/components/brand-logo";
 import { supabase } from "@/lib/supabase";
 
 export default function AdminLayout({ children }) {
@@ -108,9 +109,7 @@ export default function AdminLayout({ children }) {
           className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
         >
           <div className="mb-7 flex items-center gap-4">
-            <div className="grid h-14 w-14 place-items-center rounded-xl bg-blue-700 text-2xl font-black text-white">
-              T
-            </div>
+            <BrandLogo className="h-16 w-16" />
 
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 import LearningAccess from "@/components/learning-access";
 
 const plans = [
@@ -38,7 +39,7 @@ export default function SubscriptionPage() {
       <header className="border-b border-slate-200 bg-[#f5f6f3]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="Kembali ke beranda TKA TryOn">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">T</span>
+            <BrandLogo className="h-12 w-14" />
             <span>
               <span className="block text-xl font-extrabold tracking-tight text-slate-900">TKA <span className="text-blue-700">TryOn</span></span>
               <span className="block text-[10px] font-semibold tracking-widest text-slate-500">SKILL ON • CONFIDENCE ON</span>

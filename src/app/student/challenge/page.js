@@ -3,6 +3,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import BrandLogo from "@/components/brand-logo";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
 
@@ -990,6 +991,7 @@ function ChallengeContent() {
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <BrandLogo className="h-12 w-14" />
           <div>
             <h1 className="text-lg font-extrabold text-slate-900">
               TKA <span className="text-blue-700">TryOn</span>

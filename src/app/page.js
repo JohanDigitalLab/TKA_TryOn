@@ -1,5 +1,6 @@
 
 import Link from "next/link";
+import BrandLogo from "@/components/brand-logo";
 import { studentRegistrationPath } from "@/lib/student/registration.mjs";
 
 const levels = [
@@ -54,9 +55,7 @@ export default function Home() {
 
           {/* LOGO KIRI */}
           <Link href="/" className="flex items-center gap-3 justify-self-start">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-700 text-lg font-black text-white">
-              T
-            </div>
+            <BrandLogo className="h-14 w-16" priority />
             <div>
               <p className="text-xl font-extrabold tracking-tight text-slate-900">
                 TKA <span className="text-blue-700">TryOn</span>
