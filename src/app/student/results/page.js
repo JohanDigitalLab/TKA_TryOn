@@ -6,6 +6,7 @@ import Link from "next/link";
 import { normalizePayload } from "@/lib/student/exam";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ScoreLineChart from "@/components/student/score-line-chart";
 
 // =====================================================
 // HELPER
@@ -54,7 +55,24 @@ function performanceLabel(score) {
   };
 }
 
-function getClassification(question) {
+function officialMathTheme(value, grade) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const themes = grade === 9
+    ? new Map([
+        ["bilangan", "Bilangan"],
+        ["aljabar", "Aljabar"],
+        ["geometri dan pengukuran", "Geometri dan Pengukuran"],
+        ["data dan peluang", "Data dan Peluang"],
+      ])
+    : new Map([
+        ["bilangan", "Bilangan"],
+        ["geometri dan pengukuran", "Geometri dan Pengukuran"],
+        ["data", "Data"],
+      ]);
+  return themes.get(normalized) || "";
+}
+
+function getClassification(question, session = {}) {
   const classification = question.classification || {};
   const source = question.source_metadata || classification.source_metadata || classification.source || {};
   const topicNode = classification.topic && typeof classification.topic === "object"
@@ -63,15 +81,25 @@ function getClassification(question) {
   const topicFromNodes = Array.isArray(classification.nodes)
     ? classification.nodes.find((node) => node?.dimension === "topic")
     : null;
+  const isMathematics = String(session.subject || question.subject || "").toLowerCase().includes("matematika");
+  const grade = Number(session.grade || question.grade);
+  const mathTheme = officialMathTheme(
+    question.element
+    || source.element
+    || classification.element
+    || classification.math_domain
+    || (Array.isArray(classification.nodes)
+      ? classification.nodes.find((node) => node?.dimension === "math_domain")?.label
+      : ""),
+    grade === 9 ? 9 : 6,
+  );
 
   return {
-    theme: String(
-      question.theme
-      || source.material
-      || source.theme
-      || classification.material
-      || ""
-    ).trim(),
+    // Material/Tema lama dapat berisi konteks stimulus seperti "Belanja kebutuhan sekolah".
+    // Untuk Matematika, hanya elemen resmi TKA yang boleh menjadi tema analitik.
+    theme: isMathematics
+      ? mathTheme
+      : String(question.theme || source.material || source.theme || classification.material || "").trim(),
     topic: String(
       question.topic
       || source.sub_material
@@ -91,7 +119,7 @@ function buildAnalysis(results, field) {
 
   results.forEach((session) => {
     (session.review?.questions || []).forEach((question) => {
-      const classification = getClassification(question);
+      const classification = getClassification(question, session);
       const theme = classification.theme || "Tema belum tersedia";
       const topic = classification.topic || "Topik belum tersedia";
       const label = field === "theme" ? theme : `${theme} · ${topic}`;
@@ -751,9 +779,7 @@ export default function StudentResultsPage() {
               </select>
             </label>
           </div>
-          {trend.length ? <div className="mt-5 overflow-x-auto"><div className="flex min-w-[520px] items-end gap-3 border-b border-slate-200 px-2 pb-2" style={{ height: 190 }}>
-            {trend.map((item, index) => <div key={item.attemptId} className="flex h-full min-w-16 flex-1 flex-col items-center justify-end gap-2"><span className="text-xs font-bold text-blue-700">{Number(item.score || 0).toFixed(0)}</span><div className="w-full max-w-14 rounded-t-lg bg-blue-600" style={{ height: `${Math.max(8, Math.min(100, Number(item.score || 0)))}%` }} title={`${packageLabel(item)}: ${item.score}`} /><span className="text-[10px] text-slate-500">Sesi {index + 1}</span></div>)}
-          </div></div> : <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Belum ada sesi pada paket ini.</p>}
+          <ScoreLineChart sessions={trend} />
         </section>
 
         <section className="mt-8 border-y border-slate-300 py-7">
