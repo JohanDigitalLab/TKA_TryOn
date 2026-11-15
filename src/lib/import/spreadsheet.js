@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 
 export const SPREADSHEET_LIMITS = Object.freeze({
   bytes: 10 * 1024 * 1024,
-  sheets: 20,
+  sheets: 50,
   rows: 10000,
   columns: 100,
   cells: 250000,
@@ -10,7 +10,7 @@ export const SPREADSHEET_LIMITS = Object.freeze({
 const forbiddenHeaders = new Set(["__proto__", "prototype", "constructor"]);
 const clean = (value) => String(value ?? "").trim();
 
-function validateHeaders(headers) {
+export function validateHeaders(headers) {
   const seen = new Set();
   for (const header of headers) {
     if (!header) continue;
@@ -32,7 +32,7 @@ export function readSpreadsheet(buffer) {
     cellHTML: false, cellFormula: false, bookVBA: false,
   });
   if (workbook.SheetNames.length > SPREADSHEET_LIMITS.sheets) {
-    throw new Error("Spreadsheet maksimal memiliki 20 sheet.");
+    throw new Error(`Spreadsheet maksimal memiliki ${SPREADSHEET_LIMITS.sheets} sheet.`);
   }
   let cells = 0;
   for (const name of workbook.SheetNames) {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { readSpreadsheet, parseSheet, readCsvRows } from "@/lib/import/spreadsheet";
 import { validateWorkbook } from "@/lib/import/tqbs";
 import { supabase } from "@/lib/supabase";
+import { isV81Workbook, parseV81Workbook } from "@/lib/import/v81";
 
 /* =========================================================
    TKA TRYON — SMART IMPORT CENTER
@@ -156,6 +157,8 @@ export default function ImportCenterPage() {
   const [documentResult, setDocumentResult] = useState(null);
   const [workbookResult, setWorkbookResult] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [duplicateMode, setDuplicateMode] = useState("skip");
+  const [databasePreview, setDatabasePreview] = useState(null);
   const [activeQuestion, setActiveQuestion] = useState(0);
 
   const [filter, setFilter] = useState("ALL");
@@ -179,14 +182,12 @@ export default function ImportCenterPage() {
       return;
     }
 
-    const { data, error: roleError } = await supabase
-      .from("user_global_roles")
-      .select("role")
-      .eq("user_id", currentSession.user.id)
-      .eq("role", "super_admin")
-      .maybeSingle();
+    const { data, error: permissionError } = await supabase.rpc(
+      "admin_has_permission",
+      { p_permission_code: "bank_soal.import" }
+    );
 
-    setIsAdmin(!roleError && !!data);
+    setIsAdmin(!permissionError && data === true);
   }
 
   useEffect(() => {
@@ -260,6 +261,8 @@ export default function ImportCenterPage() {
     setFileInfo(null);
     setDocumentResult(null);
     setWorkbookResult(null);
+    setDatabasePreview(null);
+    setDuplicateMode("skip");
     setSavedBatch(null);
     setSavingDraft(false);
     setQuestions([]);
@@ -354,6 +357,14 @@ export default function ImportCenterPage() {
       setNotice(
         "CSV berhasil dibaca. Lanjutkan pemetaan menjadi struktur soal."
       );
+      return;
+    }
+
+    setDatabasePreview(null);
+    if (isV81Workbook(workbook)) {
+      const result = parseV81Workbook(workbook, selectedFile.name);
+      setWorkbookResult(result);
+      setNotice("Workbook v8.1 dibaca hanya dari empat sheet sumber. Periksa rincian dan cek database sebelum menyimpan.");
       return;
     }
 
@@ -537,6 +548,34 @@ export default function ImportCenterPage() {
      RPC: public.save_ai_question_draft_batch
   ------------------------------------------------------- */
 
+  async function handleV81Import(preview = true) {
+    if (!isAdmin || workbookResult?.format !== "TRYON_V8_1" || workbookResult.counts.ERROR || savingDraft) return;
+    if (!preview && (!databasePreview || !window.confirm("Simpan workbook sebagai soal nonaktif untuk review? Versi terbit tidak akan ditimpa."))) return;
+    setSavingDraft(true);
+    setError("");
+    try {
+      const { data, error: importError } = await supabase.rpc("save_question_import_batch", {
+        p_payload: {
+          format: "TRYON_V8_1", fileName: workbookResult.fileName,
+          questions: workbookResult.questions, mode: duplicateMode, preview,
+        },
+      });
+      if (importError || !data?.success) throw new Error(importError?.message || data?.message || "Penyimpanan gagal; transaksi tidak diselesaikan.");
+      if (preview) {
+        setDatabasePreview(data);
+        setNotice("Pemeriksaan database selesai. Pilih mode dan konfirmasi penyimpanan.");
+      } else {
+        setDatabasePreview(null);
+        setNotice(`Impor selesai: ${data.questions_imported} baru, ${data.questions_updated} revisi, ${data.questions_skipped} dilewati, 0 gagal. Batch ${data.batch_code}. Semua versi impor nonaktif.`);
+      }
+    } catch (importError) {
+      setDatabasePreview(null);
+      setError(`Impor v8.1: ${importError.message} Tidak ada penyimpanan parsial; periksa sheet/baris yang dilaporkan.`);
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
   async function handleSaveDraft() {
     if (savingDraft) return;
 
@@ -549,7 +588,7 @@ export default function ImportCenterPage() {
     }
 
     if (!isAdmin) {
-      setError("Akses ditolak. Fitur ini hanya untuk Super Admin.");
+      setError("Akses ditolak. Izin Import Soal dari superadmin diperlukan.");
       return;
     }
 
@@ -941,11 +980,11 @@ export default function ImportCenterPage() {
       <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
         <section className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-7">
           <h1 className="text-xl font-bold text-slate-900">
-            Akses Super Admin diperlukan
+            Izin Import Soal diperlukan
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Akun ini belum memiliki role super_admin pada
-            user_global_roles.
+            Akunmu belum memiliki izin Import Soal. Superadmin dapat
+            memberikan izin ini melalui Manajemen Admin.
           </p>
           <button
             onClick={handleLogout}
@@ -999,7 +1038,7 @@ export default function ImportCenterPage() {
 
           <div className="flex items-center gap-3">
             <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-              Super Admin terverifikasi
+              Izin impor terverifikasi
             </span>
             <button
               onClick={handleLogout}
@@ -1322,7 +1361,7 @@ export default function ImportCenterPage() {
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
             <div>
               <p className="text-xs font-bold tracking-widest text-blue-700">
-                TQBS VALIDATION
+                {workbookResult.format === "TRYON_V8_1" ? "WORKBOOK v8.1 VALIDATION" : "TQBS VALIDATION"}
               </p>
               <h2 className="mt-2 break-all text-lg font-bold text-slate-900">
                 {workbookResult.fileName}
@@ -1352,6 +1391,42 @@ export default function ImportCenterPage() {
                 </div>
               ))}
             </div>
+
+            {workbookResult.format === "TRYON_V8_1" && (
+              <div className="space-y-4 text-sm text-slate-700">
+                <p>{workbookResult.totalSheets} sheet total · {workbookResult.recognizedSheets.length} sumber dikenali · {workbookResult.ignoredSheets.length} diabaikan</p>
+                <details><summary>Sheet yang diabaikan</summary><p>{workbookResult.ignoredSheets.join(", ")}</p></details>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {Object.entries({ sheet: workbookResult.sourceCounts, ...workbookResult.breakdown }).map(([group, values]) => (
+                    <div key={group} className="rounded-xl border p-3">
+                      <h3 className="font-bold capitalize">{group}</h3>
+                      {Object.entries(values).map(([label, value]) => <p key={label}>{label}: {value}</p>)}
+                    </div>
+                  ))}
+                </div>
+                <p className="rounded-lg bg-amber-50 p-3">Kandidat → PENDING_REVIEW; rekonstruksi → NEEDS_REVISION. Semua versi tidak aktif. Hak penggunaan belum diverifikasi; tidak otomatis dianggap ORISINAL.</p>
+                <details>
+                  <summary>Pratinjau seluruh soal dan metadata sumber</summary>
+                  <div className="max-h-96 space-y-2 overflow-auto">
+                    {workbookResult.questions.map(q => <details key={`${q.sheet}-${q.rowNumber}`} className="rounded border p-2">
+                      <summary>{q.id} · {q.type} · {q.sheet}:{q.rowNumber}</summary>
+                      <pre className="whitespace-pre-wrap break-words">{JSON.stringify({ sumber: q.raw, opsi: q.options, kategori: q.category_items }, null, 2)}</pre>
+                    </details>)}
+                  </div>
+                </details>
+                <label className="block">ID yang sudah ada
+                  <select className="ml-2 rounded border p-2" value={duplicateMode} disabled={savingDraft} onChange={event => { setDuplicateMode(event.target.value); setDatabasePreview(null); }}>
+                    <option value="skip">Lewati ID yang sudah ada</option>
+                    <option value="upsert">Buat revisi nonaktif jika isi berubah</option>
+                  </select>
+                </label>
+                {databasePreview && <p>Database: {databasePreview.existing_count} ID sudah ada; {databasePreview.new_count} baru. {databasePreview.existing_ids?.join(", ")}</p>}
+                <div className="flex flex-wrap gap-3">
+                  <button className="rounded-lg border px-4 py-2 disabled:opacity-50" disabled={savingDraft || workbookResult.counts.ERROR > 0} onClick={() => handleV81Import(true)}>Cek ID di database</button>
+                  <button className="rounded-lg bg-blue-700 px-4 py-2 text-white disabled:opacity-50" disabled={savingDraft || workbookResult.counts.ERROR > 0 || !databasePreview} onClick={() => handleV81Import(false)}>{savingDraft ? "Memproses…" : "Simpan 474 soal untuk review"}</button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-bold text-slate-900">

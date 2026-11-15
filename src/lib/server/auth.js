@@ -89,16 +89,7 @@ export async function requireAdminPermission(request, permissionCode = "bank_soa
       console.error("Role verification failed:", role.error.message);
       return authError(500, "Gagal memverifikasi hak akses.");
     }
-    if (role.allowed) {
-      return {
-        allowed: true,
-        user: identity.user,
-        supabase: identity.supabase,
-        role: SUPER_ADMIN_ROLE,
-        permissions: [permissionCode],
-      };
-    }
-
+    // Every actor, including superadmin, must pass the active-account permission guard.
     const { data, error } = await identity.supabase.rpc("admin_has_permission", {
       p_permission_code: permissionCode,
     });
@@ -112,7 +103,7 @@ export async function requireAdminPermission(request, permissionCode = "bank_soa
       allowed: true,
       user: identity.user,
       supabase: identity.supabase,
-      role: "operator",
+      role: role.allowed ? SUPER_ADMIN_ROLE : "operator",
       permissions: [permissionCode],
     };
   } catch (error) {

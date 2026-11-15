@@ -76,6 +76,8 @@ const PERMISSIONS = {
   view: "bank_soal.view",
   review: "bank_soal.review",
   edit: "bank_soal.edit",
+  moderate: "bank_soal.moderate",
+  publish: "bank_soal.publish",
   import: "bank_soal.import",
 };
 
@@ -132,11 +134,8 @@ function statusStyle(status) {
 function currentVersion(question) {
   const versions = [...(question?.question_versions || [])];
 
-  return (
-    versions.find((version) => version.is_current) ||
-    versions.sort((a, b) => b.version_number - a.version_number)[0] ||
-    null
-  );
+  // The admin workspace reviews the latest revision, not just the published one.
+  return versions.sort((a, b) => b.version_number - a.version_number)[0] || null;
 }
 
 function getQuestionText(question) {
@@ -264,6 +263,9 @@ export default function BankSoalPage() {
   const [editorSaving, setEditorSaving] = useState(false);
   const [editorError, setEditorError] = useState("");
   const [editorSuccess, setEditorSuccess] = useState("");
+  const [workflowNotes, setWorkflowNotes] = useState("");
+  const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [workflowMessage, setWorkflowMessage] = useState("");
 
   const can = useCallback(
     (permission) => isAdmin && permissions.includes(permission),
@@ -299,27 +301,8 @@ export default function BankSoalPage() {
       return false;
     }
 
-    if (superAdmin) {
-      setIsAdmin(true);
-      setUserRole("Super Admin");
-      setPermissions([
-        PERMISSIONS.view,
-        PERMISSIONS.review,
-        PERMISSIONS.edit,
-        "bank_soal.moderate",
-        "bank_soal.publish",
-        PERMISSIONS.import,
-      ]);
-      return true;
-    }
-
     // Operator diperiksa melalui permission RPC.
-    const requestedPermissions = [
-      PERMISSIONS.view,
-      PERMISSIONS.review,
-      PERMISSIONS.edit,
-      PERMISSIONS.import,
-    ];
+    const requestedPermissions = Object.values(PERMISSIONS);
 
     const results = await Promise.all(
       requestedPermissions.map((permission) =>
@@ -348,7 +331,7 @@ export default function BankSoalPage() {
     }
 
     setIsAdmin(true);
-    setUserRole("Admin Operator");
+    setUserRole(superAdmin ? "Super Admin" : "Admin Operator");
     setPermissions(granted);
 
     return true;
@@ -810,6 +793,38 @@ export default function BankSoalPage() {
       );
     } finally {
       setEditorSaving(false);
+    }
+  }
+
+  async function handleWorkflow(action) {
+    const version = currentVersion(selectedQuestion);
+    if (!version || workflowBusy) return;
+    const required = action === "REVIEW" ? PERMISSIONS.review
+      : action === "PUBLISH" ? PERMISSIONS.publish : PERMISSIONS.moderate;
+    if (!can(required)) return;
+    if (workflowNotes.trim().length < 5) {
+      setWorkflowMessage("Isi catatan pemeriksaan minimal 5 karakter.");
+      return;
+    }
+    if (!window.confirm(`Jalankan tindakan ${action} untuk versi ${version.version_number}?`)) return;
+    setWorkflowBusy(true);
+    setWorkflowMessage("");
+    try {
+      const { data, error: actionError } = await supabase.rpc("review_question_version", {
+        p_question_id: selectedQuestion.id,
+        p_version_id: version.id,
+        p_action: action,
+        p_notes: workflowNotes.trim(),
+      });
+      if (actionError) throw actionError;
+      if (!data?.success) throw new Error("Tindakan belum dikonfirmasi server.");
+      setWorkflowMessage(`Tindakan berhasil. Status versi: ${data.version_status}.`);
+      setWorkflowNotes("");
+      await loadQuestions();
+    } catch (err) {
+      setWorkflowMessage(err.message || "Tindakan gagal. Muat ulang dan periksa izinmu.");
+    } finally {
+      setWorkflowBusy(false);
     }
   }
 
@@ -1561,6 +1576,35 @@ export default function BankSoalPage() {
                   Edit / Revisi Soal
                 </button>
               )}
+            </div>
+
+            <div key={selectedVersion.id} className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="font-bold text-slate-900">Telaah, moderasi, dan publikasi</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Versi terbaru: {selectedVersion.version_number} · {selectedVersion.version_status}.
+                Versi harus ditelaah lalu disetujui sebelum diterbitkan. Revisi tidak otomatis mengganti versi terbit.
+              </p>
+              <label className="mt-4 block text-sm font-semibold text-slate-700">
+                Catatan pemeriksaan
+                <textarea value={workflowNotes} onChange={(event) => setWorkflowNotes(event.target.value)}
+                  maxLength={4000} rows={3} disabled={workflowBusy}
+                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 font-normal" />
+              </label>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {[
+                  ["REVIEW", "Simpan telaah", PERMISSIONS.review, ["DRAFT", "PENDING_REVIEW", "NEEDS_REVISION"]],
+                  ["REQUEST_REVISION", "Minta revisi", PERMISSIONS.moderate, ["DRAFT", "PENDING_REVIEW"]],
+                  ["APPROVE", "Setujui versi", PERMISSIONS.moderate, ["DRAFT", "PENDING_REVIEW"]],
+                  ["PUBLISH", "Terbitkan soal", PERMISSIONS.publish, ["APPROVED"]],
+                ].filter(([, , permission, statuses]) => can(permission) && statuses.includes(selectedVersion.version_status))
+                  .map(([action, label]) => (
+                    <button key={action} onClick={() => handleWorkflow(action)} disabled={workflowBusy}
+                      className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                      {label}
+                    </button>
+                  ))}
+              </div>
+              {workflowMessage && <p role="status" className="mt-3 text-sm text-slate-700">{workflowMessage}</p>}
             </div>
 
             {/* EDITOR */}

@@ -680,6 +680,13 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                  Untuk alur impor sampai terbit, berikan seluruh izin Bank Soal:
+                  melihat, telaah, edit, moderasi, publikasi, dan impor.
+                  Setiap izin tetap dapat diberikan terpisah sesuai tanggung jawab operator.
+                  Soal impor wajib ditelaah dan disetujui sebelum diterbitkan.
+                </div>
+
                 {permissionGroups.map((group) => (
                   <div key={group.title} className="mt-5">
                     <h6 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
