@@ -29,9 +29,11 @@ test("teks aplikasi memakai sapaan kamu/-mu tanpa mengubah kata seperti beranda"
 
 test("review Matematika memakai elemen TKA sebagai tema, bukan konteks soal", async () => {
   const source = await read("src/app/student/results/page.js");
-  assert.match(source, /question\.element\s*\n\s*\|\| source\.element/);
+  assert.match(source, /question\.element/);
+  assert.match(source, /source\.element/);
   assert.match(source, /officialMathTheme\(/);
-  assert.doesNotMatch(source, /source\.material\s*\n\s*\|\| source\.theme[\s\S]*?theme: String/);
+  assert.match(source, /source\.material/);
+  assert.match(source, /theme:\s*isMathematics\s*\n\s*\?\s*mathTheme/);
 });
 
 test("pemulihan ujian tidak menjanjikan pengaturan ulang waktu", async () => {

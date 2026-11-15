@@ -63,11 +63,53 @@ function officialMathTheme(value, grade) {
         ["aljabar", "Aljabar"],
         ["geometri dan pengukuran", "Geometri dan Pengukuran"],
         ["data dan peluang", "Data dan Peluang"],
+        ["objek geometri", "Geometri dan Pengukuran"],
+        ["bangun datar", "Geometri dan Pengukuran"],
+        ["bangun ruang", "Geometri dan Pengukuran"],
+        ["transformasi geometri", "Geometri dan Pengukuran"],
+        ["pengukuran", "Geometri dan Pengukuran"],
+        ["data", "Data dan Peluang"],
+        ["penyajian data", "Data dan Peluang"],
+        ["peluang", "Data dan Peluang"],
       ])
     : new Map([
         ["bilangan", "Bilangan"],
+        ["bilangan rasional", "Bilangan"],
+        ["kelipatan dan faktor", "Bilangan"],
+        ["operasi perkalian dan penjumlahan", "Bilangan"],
+        ["operasi perkalian", "Bilangan"],
+        ["operasi penjumlahan", "Bilangan"],
+        ["operasi campuran", "Bilangan"],
+        ["operasi bilangan cacah", "Bilangan"],
+        ["operasi bilangan dan pemecahan masalah", "Bilangan"],
+        ["kpk dan fpb", "Bilangan"],
+        ["pecahan senilai", "Bilangan"],
+        ["pembagian pecahan dengan bilangan asli", "Bilangan"],
+        ["pengurangan pecahan", "Bilangan"],
+        ["penjumlahan pecahan", "Bilangan"],
+        ["perbandingan dan pengurutan pecahan", "Bilangan"],
+        ["persentase dalam konteks belanja", "Bilangan"],
+        ["persentase dan aritmetika sosial", "Bilangan"],
         ["geometri dan pengukuran", "Geometri dan Pengukuran"],
+        ["objek geometri", "Geometri dan Pengukuran"],
+        ["bangun datar", "Geometri dan Pengukuran"],
+        ["bangun ruang", "Geometri dan Pengukuran"],
+        ["pengukuran", "Geometri dan Pengukuran"],
+        ["waktu", "Geometri dan Pengukuran"],
+        ["konversi satuan panjang", "Geometri dan Pengukuran"],
+        ["satuan massa", "Geometri dan Pengukuran"],
+        ["waktu dan durasi", "Geometri dan Pengukuran"],
+        ["pengukuran dan geometri", "Geometri dan Pengukuran"],
+        ["keliling dan luas", "Geometri dan Pengukuran"],
+        ["keliling persegi panjang", "Geometri dan Pengukuran"],
+        ["luas gabungan sederhana", "Geometri dan Pengukuran"],
+        ["volume balok", "Geometri dan Pengukuran"],
+        ["kubus dan balok", "Geometri dan Pengukuran"],
+        ["luas persegi panjang", "Geometri dan Pengukuran"],
+        ["konstruksi bangun ruang dan visualisasi spasial", "Geometri dan Pengukuran"],
         ["data", "Data"],
+        ["penyajian data", "Data"],
+        ["diagram gambar", "Data"],
       ]);
   return themes.get(normalized) || "";
 }
@@ -83,16 +125,19 @@ function getClassification(question, session = {}) {
     : null;
   const isMathematics = String(session.subject || question.subject || "").toLowerCase().includes("matematika");
   const grade = Number(session.grade || question.grade);
-  const mathTheme = officialMathTheme(
-    question.element
-    || source.element
-    || classification.element
-    || classification.math_domain
-    || (Array.isArray(classification.nodes)
+  const mathGrade = grade === 9 ? 9 : 6;
+  const mathTheme = [
+    question.element,
+    source.element,
+    classification.element,
+    classification.math_domain,
+    Array.isArray(classification.nodes)
       ? classification.nodes.find((node) => node?.dimension === "math_domain")?.label
-      : ""),
-    grade === 9 ? 9 : 6,
-  );
+      : "",
+    // Data historis lama dapat menyimpan subelemen resmi pada material.
+    source.material,
+    source.sub_material,
+  ].map((value) => officialMathTheme(value, mathGrade)).find(Boolean) || "";
 
   return {
     // Material/Tema lama dapat berisi konteks stimulus seperti "Belanja kebutuhan sekolah".
