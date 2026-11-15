@@ -54,33 +54,67 @@ function performanceLabel(score) {
   };
 }
 
-function getQuestionTopic(item) {
-  return item.topic || item.theme || item.competency || item.indicator || "";
+function getClassification(question) {
+  const classification = question.classification || {};
+  const source = question.source_metadata || classification.source_metadata || classification.source || {};
+  const topicNode = classification.topic && typeof classification.topic === "object"
+    ? classification.topic
+    : {};
+  const topicFromNodes = Array.isArray(classification.nodes)
+    ? classification.nodes.find((node) => node?.dimension === "topic")
+    : null;
+
+  return {
+    theme: String(
+      question.theme
+      || source.material
+      || source.theme
+      || classification.material
+      || ""
+    ).trim(),
+    topic: String(
+      question.topic
+      || source.sub_material
+      || source.topic
+      || classification.sub_material
+      || topicNode.label
+      || topicFromNodes?.label
+      || question.competency
+      || question.indicator
+      || ""
+    ).trim(),
+  };
 }
 
-function buildTopicAnalysis(results) {
+function buildAnalysis(results, field) {
   const buckets = new Map();
 
   results.forEach((session) => {
     (session.review?.questions || []).forEach((question) => {
-      const topic = String(getQuestionTopic(question)).trim();
-      if (!topic) return;
-
-      const current = buckets.get(topic) || { topic, total: 0, correct: 0 };
+      const classification = getClassification(question);
+      const theme = classification.theme || "Tema belum tersedia";
+      const topic = classification.topic || "Topik belum tersedia";
+      const label = field === "theme" ? theme : `${theme} · ${topic}`;
+      const current = buckets.get(label) || { label, theme, topic, total: 0, correct: 0 };
       current.total += 1;
       current.correct += question.is_correct === true ? 1 : 0;
-      buckets.set(topic, current);
+      buckets.set(label, current);
     });
   });
 
   return Array.from(buckets.values())
-    .map((item) => ({
-      ...item,
-      score: item.total ? (item.correct / item.total) * 100 : 0,
-    }))
-    .sort((a, b) => a.score - b.score);
+    .map((item) => ({ ...item, score: item.total ? (item.correct / item.total) * 100 : 0 }))
+    .sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
 }
 
+function packageKey(item) {
+  return item.packageId || item.simulationId || item.configSnapshot?.simulationId || item.attemptId;
+}
+
+function packageLabel(item) {
+  const mode = item.mode === "mission" ? "Latihan" : "Simulasi TKA";
+  return `${mode} · Kelas ${item.grade || "-"} · ${item.subject || "Paket"}`;
+}
 // =====================================================
 // KOMPONEN REVIEW
 // =====================================================
@@ -356,11 +390,13 @@ function getServerResultsSnapshot() {
 export default function StudentResultsPage() {
   const router = useRouter();
   const [history, setHistory] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState("all");
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [reloadHistory, setReloadHistory] = useState(0);
   const [reviewAttemptId, setReviewAttemptId] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState("");
   const snapshot = useSyncExternalStore(
     subscribeToResults,
     getResultsSnapshot,
@@ -374,6 +410,7 @@ export default function StudentResultsPage() {
     async function loadHistory() {
       setHistoryLoading(true);
       setHistoryError("");
+      setReviewError("");
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData?.user) {
         if (mounted) {
@@ -426,6 +463,9 @@ export default function StudentResultsPage() {
       attemptId: item.attempt_id,
       subject: item.subject || item.subject_name || "Mata pelajaran",
       grade: item.grade,
+      mode: item.mode || item.config_snapshot?.mode || "legacy",
+      packageId: item.package_id || item.config_snapshot?.package_id || null,
+      configSnapshot: item.config_snapshot || null,
       subjectIndex: index,
       totalSubjects: history.length,
       score: Number(item.score || 0),
@@ -436,8 +476,34 @@ export default function StudentResultsPage() {
       completedAt: item.submitted_at || item.created_at,
       status: item.status || item.attempt_status,
       review: item.review || null,
+      reviewError: item.reviewError || "",
     }));
   }, [history, historyError, localResults]);
+
+  useEffect(() => {
+    const pending = results.filter((item) => item.attemptId && !item.review && !item.reviewError && String(item.status || "").toUpperCase() === "SUBMITTED");
+    if (!pending.length) return undefined;
+    let active = true;
+    Promise.all(pending.map(async (item) => {
+      try {
+        const { data, error } = await supabase.rpc("get_exam_attempt_review", { p_attempt_id: item.attemptId });
+        if (error) throw error;
+        if (!Array.isArray(data?.questions)) throw new Error("Respons review server tidak valid.");
+        return { attemptId: item.attemptId, review: data, reviewError: "" };
+      } catch (error) {
+        return { attemptId: item.attemptId, review: null, reviewError: error.message || "Review belum berhasil dimuat." };
+      }
+    })).then((reviews) => {
+      if (!active) return;
+      const failed = reviews.find((review) => review.reviewError);
+      if (failed) setReviewError(failed.reviewError);
+      setHistory((previous) => previous.map((item) => {
+        const found = reviews.find((review) => review.attemptId === item.attempt_id);
+        return found ? { ...item, review: found.review, reviewError: found.reviewError } : item;
+      }));
+    });
+    return () => { active = false; };
+  }, [results]);
 
   async function openReview(attemptId) {
     if (!attemptId || reviewAttemptId === attemptId) {
@@ -446,23 +512,34 @@ export default function StudentResultsPage() {
     }
     setReviewAttemptId(attemptId);
     setReviewLoading(true);
+    setReviewError("");
     const { data, error: reviewError } = await supabase.rpc("get_exam_attempt_review", {
       p_attempt_id: attemptId,
     });
     setReviewLoading(false);
     if (reviewError) {
-      setHistoryError(reviewError.message || "Review jawaban belum berhasil dimuat.");
+      setReviewError(reviewError.message || "Review jawaban belum berhasil dimuat.");
       return;
     }
     setHistory((previous) => previous.map((item) =>
-      item.attempt_id === attemptId ? { ...item, review: data } : item
+      item.attempt_id === attemptId ? { ...item, review: data, reviewError: "" } : item
     ));
   }
 
   const displayResults = results.filter((item) =>
     String(item.status || "SUBMITTED").toUpperCase() === "SUBMITTED"
+    && (selectedPackage === "all" || packageKey(item) === selectedPackage)
   );
 
+  const packageOptions = useMemo(() => {
+    const seen = new Map();
+    results.filter((item) => String(item.status || "").toUpperCase() === "SUBMITTED").forEach((item) => {
+      const key = packageKey(item);
+      if (!seen.has(key)) seen.set(key, { key, label: packageLabel(item), count: 0 });
+      seen.get(key).count += 1;
+    });
+    return [...seen.values()];
+  }, [results]);
   const weakestSubject = displayResults.length > 0
     ? displayResults.reduce((weakest, item) =>
         Number(item.score || 0) < Number(weakest.score || 0) ? item : weakest
@@ -516,7 +593,9 @@ export default function StudentResultsPage() {
   const simulationId =
     displayResults[0]?.simulationId || config.simulationId || "-";
 
-  const topicAnalysis = useMemo(() => buildTopicAnalysis(displayResults), [displayResults]);
+  const themeAnalysis = useMemo(() => buildAnalysis(displayResults, "theme"), [displayResults]);
+  const topicAnalysis = useMemo(() => buildAnalysis(displayResults, "topic"), [displayResults]);
+  const trend = useMemo(() => displayResults.slice().sort((a, b) => new Date(a.completedAt || 0) - new Date(b.completedAt || 0)), [displayResults]);
   const isUsingLocalFallback = Boolean(historyError && history.length === 0 && localResults.length > 0);
 
   if (loading) {
@@ -659,6 +738,24 @@ export default function StudentResultsPage() {
           </section>
         )}
 
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Paket evaluasi</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Perkembangan sesuai paket</h2>
+            </div>
+            <label className="text-sm font-semibold text-slate-700">Pilih paket
+              <select value={selectedPackage} onChange={(event) => setSelectedPackage(event.target.value)} className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold">
+                <option value="all">Semua sesi</option>
+                {packageOptions.map((option) => <option key={option.key} value={option.key}>{option.label} ({option.count})</option>)}
+              </select>
+            </label>
+          </div>
+          {trend.length ? <div className="mt-5 overflow-x-auto"><div className="flex min-w-[520px] items-end gap-3 border-b border-slate-200 px-2 pb-2" style={{ height: 190 }}>
+            {trend.map((item, index) => <div key={item.attemptId} className="flex h-full min-w-16 flex-1 flex-col items-center justify-end gap-2"><span className="text-xs font-bold text-blue-700">{Number(item.score || 0).toFixed(0)}</span><div className="w-full max-w-14 rounded-t-lg bg-blue-600" style={{ height: `${Math.max(8, Math.min(100, Number(item.score || 0)))}%` }} title={`${packageLabel(item)}: ${item.score}`} /><span className="text-[10px] text-slate-500">Sesi {index + 1}</span></div>)}
+          </div></div> : <p className="mt-5 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">Belum ada sesi pada paket ini.</p>}
+        </section>
+
         <section className="mt-8 border-y border-slate-300 py-7">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -667,14 +764,26 @@ export default function StudentResultsPage() {
             </div>
             <p className="max-w-sm text-right text-xs leading-5 text-slate-500">Klasifikasi hanya dihitung dari metadata topik yang dikirim oleh review server. Tidak ada topik yang ditebak dari urutan soal.</p>
           </div>
-          {topicAnalysis.length ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {reviewError && (
+            <div role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p>Review tema dan topik belum berhasil dimuat. Riwayat dan nilai tetap tersedia.</p>
+              <p className="mt-1 text-xs">{reviewError}</p>
+              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="mt-3 rounded-lg border border-amber-400 px-4 py-2 font-bold">Coba muat ulang review</button>
+            </div>
+          )}
+          {themeAnalysis.length ? <>
+            <h3 className="mt-6 text-lg font-extrabold text-slate-900">Hasil per Tema</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {themeAnalysis.map((item) => { const status = performanceLabel(item.score); return <article key={item.label} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h4 className="font-bold text-slate-900">{item.label}</h4><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-emerald-600" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>; })}
+            </div>
+            <h3 className="mt-6 text-lg font-extrabold text-slate-900">Hasil per Topik</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {topicAnalysis.map((item) => {
                 const status = performanceLabel(item.score);
-                return <article key={item.topic} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-bold text-slate-900">{item.topic}</h3><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-blue-700" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>;
+                return <article key={item.label} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-bold text-slate-900">{item.topic}</h3><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-blue-700" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>;
               })}
             </div>
-          ) : <div className="mt-5 border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">Analisis topik akan tampil setelah review server menyediakan metadata topik atau indikator kompetensi. Untuk saat ini, gunakan ringkasan per mata pelajaran di bawah sebagai acuan belajar.</div>}
+          </> : <div className="mt-5 border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">Analisis tema dan topik akan tampil setelah review server menyediakan metadata klasifikasi.</div>}
         </section>
 
         {/* RINGKASAN STATISTIK */}
