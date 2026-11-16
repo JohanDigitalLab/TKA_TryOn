@@ -14,7 +14,7 @@ test('Smart Import memakai izin operator dan tidak lagi membatasi role superadmi
 });
 
 test('Bank Soal memuat izin moderasi dan publikasi serta mengirim versi eksplisit',async()=>{
- const ui=await read('src/app/admin/questions/page.js');
+ const ui=await read('src/components/admin/questions-workspace.js');
  for(const code of ['view','review','edit','moderate','publish','import']) assert.ok(ui.includes(`bank_soal.${code}`));
  assert.match(ui,/Object.values\(PERMISSIONS\)/);
  assert.match(ui,/p_version_id: version.id/);
