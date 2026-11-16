@@ -81,6 +81,7 @@ const PERMISSIONS = {
   moderate: "bank_soal.moderate",
   publish: "bank_soal.publish",
   import: "bank_soal.import",
+  archive: "bank_soal.archive",
 };
 
 const STIMULUS_TYPES = [
@@ -302,6 +303,13 @@ export default function QuestionsWorkspace({ questionId = null }) {
   const [workflowNotes, setWorkflowNotes] = useState("");
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [workflowMessage, setWorkflowMessage] = useState("");
+  const archiveDialog = useRef(null);
+  const archiveInFlight = useRef(false);
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState("");
+  const [archiveMessage, setArchiveMessage] = useState("");
 
   const can = useCallback(
     (permission) => isAdmin && permissions.includes(permission),
@@ -407,6 +415,10 @@ export default function QuestionsWorkspace({ questionId = null }) {
       setAuthReady(false);
       setSession(newSession);
       setSelectedQuestion(null);
+      archiveDialog.current?.close();
+      setArchiveTarget(null);
+      setArchiveReason("");
+      setArchiveMessage("");
       setEditorOpen(false);
       setEditorForm(null);
       setShowAnswerKey(false);
@@ -883,6 +895,48 @@ export default function QuestionsWorkspace({ questionId = null }) {
       );
     } finally {
       setEditorSaving(false);
+    }
+  }
+
+  function openArchive(question) {
+    if (!can(PERMISSIONS.archive) || question.question_status === "ARCHIVED" || archiveInFlight.current) return;
+    setArchiveTarget(question);
+    setArchiveReason("");
+    setArchiveError("");
+    setArchiveMessage("");
+    archiveDialog.current?.showModal();
+  }
+
+  async function handleArchive(event) {
+    event.preventDefault();
+    if (archiveInFlight.current || !archiveTarget || !can(PERMISSIONS.archive)) return;
+    const version = currentVersion(archiveTarget);
+    if (!version || archiveReason.trim().length < 5 || archiveReason.trim().length > 2000) {
+      setArchiveError("Isi alasan pengarsipan 5–2000 karakter.");
+      return;
+    }
+    archiveInFlight.current = true;
+    setArchiveBusy(true);
+    setArchiveError("");
+    try {
+      const { data, error: archiveFailure } = await supabase.rpc("archive_question", {
+        p_question_id: archiveTarget.id,
+        p_expected_status: archiveTarget.question_status,
+        p_expected_version_id: version.id,
+        p_reason: archiveReason.trim(),
+      });
+      if (archiveFailure) throw archiveFailure;
+      if (!data?.success || data.question_status !== "ARCHIVED") throw new Error("Pengarsipan belum dikonfirmasi server.");
+      archiveDialog.current?.close();
+      setArchiveTarget(null);
+      setArchiveReason("");
+      setArchiveMessage("Soal berhasil diarsipkan. Isi dan riwayat tetap tersimpan.");
+      await loadQuestions();
+    } catch (err) {
+      setArchiveError(err.message || "Pengarsipan gagal. Muat ulang dan periksa izinmu.");
+    } finally {
+      archiveInFlight.current = false;
+      setArchiveBusy(false);
     }
   }
 
@@ -1403,13 +1457,14 @@ export default function QuestionsWorkspace({ questionId = null }) {
                             Detail / Telaah
                           </a>
                           <button
-                            disabled
-                            aria-label={`Hapus ${question.question_code || "soal"} belum tersedia`}
-                            aria-describedby="question-delete-help"
-                            title="Penghapusan soal belum tersedia melalui fungsi dan permission saat ini."
-                            className="min-h-9 cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-400"
+                            onClick={() => openArchive(question)}
+                            disabled={!can(PERMISSIONS.archive) || question.question_status === "ARCHIVED" || archiveBusy || loading}
+                            aria-label={`Arsipkan ${question.question_code || "soal"}`}
+                            aria-describedby="question-archive-help"
+                            title={!can(PERMISSIONS.archive) ? "Izin arsip soal diperlukan." : "Arsipkan tanpa menghapus isi dan riwayat soal."}
+                            className="min-h-9 rounded-lg border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            Hapus
+                            {question.question_status === "ARCHIVED" ? "Diarsipkan" : "Arsipkan"}
                           </button>
                         </div>
                       </td>
@@ -1454,11 +1509,39 @@ export default function QuestionsWorkspace({ questionId = null }) {
           <div className="space-y-1 border-t border-slate-100 bg-slate-50/70 px-6 py-3 text-xs leading-relaxed text-slate-500">
             <p>Detail / Telaah dibuka pada satu tab terpisah yang digunakan kembali untuk soal berikutnya.</p>
             <p>Tambah Soal Baru menggunakan Import Center. Pencarian berlaku pada halaman yang sedang ditampilkan.</p>
-            <p id="question-delete-help">Hapus belum tersedia: belum ada fungsi dan permission penghapusan soal.</p>
+            <p id="question-archive-help">Arsipkan memerlukan izin khusus dan alasan. Soal terkait attempt, jawaban, atau assignment akan ditolak. Isi serta riwayat tidak dihapus.</p>
+            {archiveMessage && <p role="status" className="font-semibold text-emerald-700">{archiveMessage}</p>}
           </div>
         </section>
 
         </>)}
+
+        <dialog ref={archiveDialog} aria-labelledby="archive-title" aria-describedby="archive-description"
+          onCancel={(event) => { if (archiveBusy) event.preventDefault(); }}
+          className="fixed inset-0 m-auto w-full max-w-lg rounded-2xl p-6 shadow-xl backdrop:bg-slate-900/50">
+          <form onSubmit={handleArchive}>
+            <h2 id="archive-title" className="text-lg font-bold">Arsipkan {archiveTarget?.question_code || "soal"}?</h2>
+            <p id="archive-description" className="mt-3 text-sm text-slate-600">
+              Soal tidak akan tersedia untuk penggunaan baru. Isi, versi, dan riwayat tetap tersimpan.
+              Server menolak soal yang terkait attempt, jawaban, atau assignment. Tidak tersedia pemulihan melalui halaman ini.
+            </p>
+            <label className="mt-4 block text-sm font-semibold">
+              Alasan pengarsipan (5–2000 karakter)
+              <textarea autoFocus required minLength={5} maxLength={2000} rows={4} value={archiveReason}
+                onChange={(event) => setArchiveReason(event.target.value)} disabled={archiveBusy}
+                className="mt-2 w-full rounded-lg border border-slate-300 p-3 font-normal" />
+            </label>
+            {archiveError && <p role="alert" className="mt-3 text-sm text-red-700">{archiveError}</p>}
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" disabled={archiveBusy} onClick={() => archiveDialog.current?.close()}
+                className="rounded-lg border px-4 py-2 disabled:opacity-50">Batal</button>
+              <button type="submit" disabled={archiveBusy || archiveReason.trim().length < 5 || !can(PERMISSIONS.archive)}
+                className="rounded-lg bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                {archiveBusy ? "Mengarsipkan..." : "Ya, arsipkan soal"}
+              </button>
+            </div>
+          </form>
+        </dialog>
 
         {/* PANEL DETAIL DAN TELAAH */}
 
@@ -1698,7 +1781,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   : "Tampilkan Kunci dan Pembahasan"}
               </button>
 
-              {can(PERMISSIONS.edit) && (
+              {can(PERMISSIONS.edit) && selectedQuestion.question_status !== "ARCHIVED" && (
                 <button
                   onClick={openEditor}
                   className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
@@ -1726,7 +1809,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   ["REQUEST_REVISION", "Minta revisi", PERMISSIONS.moderate, ["DRAFT", "PENDING_REVIEW"]],
                   ["APPROVE", "Setujui versi", PERMISSIONS.moderate, ["DRAFT", "PENDING_REVIEW"]],
                   ["PUBLISH", "Terbitkan soal", PERMISSIONS.publish, ["APPROVED"]],
-                ].filter(([, , permission, statuses]) => can(permission) && statuses.includes(selectedVersion.version_status))
+                ].filter(([, , permission, statuses]) => selectedQuestion.question_status !== "ARCHIVED" && can(permission) && statuses.includes(selectedVersion.version_status))
                   .map(([action, label]) => (
                     <button key={action} onClick={() => handleWorkflow(action)} disabled={workflowBusy}
                       className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">

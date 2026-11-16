@@ -33,8 +33,9 @@ test('aksi lama dipertahankan dan aksi baru tidak melewati backend atau permissi
   assert.match(source, /target="tka-question-detail"/);
   assert.match(source, /encodeURIComponent\(question.id\)/);
   assert.match(source, /can\(PERMISSIONS.import\) \? \(\s+<Link\s+href="\/admin\/import"/);
-  assert.match(source, /<button\s+disabled\s+aria-label=\{`Hapus/);
-  assert.match(source, /id="question-delete-help"/);
+  assert.match(source, /onClick=\{\(\) => openArchive\(question\)\}/);
+  assert.match(source, /disabled=\{!can\(PERMISSIONS.archive\)/);
+  assert.match(source, /id="question-archive-help"/);
   assert.doesNotMatch(source, /\.delete\(/);
 });
 

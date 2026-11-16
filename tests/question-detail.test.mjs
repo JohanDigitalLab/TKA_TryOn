@@ -50,5 +50,5 @@ test('detail fokus mempertahankan metadata, editor revisi dan seluruh workflow l
   assert.match(ui, /target="tka-question-list"/);
   assert.match(ui, /Kembali ke Bank Soal/);
   for (const marker of ['save_question_revision', 'review_question_version', 'p_version_id: version.id', 'selectedStimulus', 'selectedOptions', 'selectedCategoryItems', 'showAnswerKey', 'Simpan Revisi']) assert.ok(ui.includes(marker), marker);
-  assert.equal((ui.match(/await loadQuestions\(\)/g) || []).length, 2);
+  assert.equal((ui.match(/await loadQuestions\(\)/g) || []).length, 3);
 });
