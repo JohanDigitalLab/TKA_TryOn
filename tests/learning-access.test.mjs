@@ -13,32 +13,28 @@ test("kegiatan mengirim paket mapel dan mode ke pemeriksaan server", async () =>
   assert.match(source, /"resume_exam_attempt"/);
   assert.match(source, /router.push\("\/subscription"\)/);
   assert.match(source, /router.push\("\/student\/results"\)/);
+  assert.doesNotMatch(source, /LEARNING_SUBSCRIPTION_REQUIRED/);
 });
 
-test("status percobaan dan aktivasi manual tersedia tanpa payment gateway", async () => {
-  const [status, subscription, admin] = await Promise.all([
-    read("src/components/learning-access.js"), read("src/app/subscription/page.js"), read("src/app/admin/subscriptions/page.js"),
+test("akses belajar tidak lagi bergantung pada kuota trial", async () => {
+  const [status, subscription, migration] = await Promise.all([
+    read("src/components/learning-access.js"),
+    read("src/app/subscription/page.js"),
+    read("docs/database/migration-stage-9-unrestricted-learning.sql"),
   ]);
-  assert.match(status, /learning_access_context/);
-  assert.match(status, /data.trials\?\.simulation/);
-  assert.match(status, /data.trials\?\.mission/);
-  assert.match(subscription, /wa.me\/6282138171938/);
-  assert.match(subscription, /showPlanLink=\{false\}/);
-  assert.match(admin, /learning_subscription_workspace/);
-  assert.match(admin, /learning_subscription_set/);
-  assert.match(admin, /p_expected_revision: revision/);
-  assert.match(admin, /p_reason: reason.trim\(\)/);
-  assert.match(admin, /window.confirm/);
+  assert.match(status, /tanpa batas percobaan/);
+  assert.doesNotMatch(status, /learning_access_context|data\.trials|showPlanLink/);
+  assert.match(subscription, /wa\.me\/6282138171938/);
+  assert.match(migration, /'unrestricted',true/);
+  assert.doesNotMatch(migration, /LEARNING_SUBSCRIPTION_REQUIRED|A02_TRIAL_EXHAUSTED/);
 });
 
-test("migrasi mengunci trial atomik, mapel tetap dan akses legacy privat", async () => {
-  const sql = await read("docs/database/migration-stage-6-learning-access.sql");
-  assert.match(sql, /PRIMARY KEY\(user_id,mode\)/);
+test("migrasi akses tetap mempertahankan keamanan fungsi dan aturan paket", async () => {
+  const sql = await read("docs/database/migration-stage-9-unrestricted-learning.sql");
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /Package settings are fixed/);
-  assert.match(sql, /LEARNING_SUBSCRIPTION_REQUIRED/);
-  assert.match(sql, /ALTER FUNCTION public.start_exam_attempt.*SET SCHEMA private/);
   assert.match(sql, /REVOKE ALL ON FUNCTION/);
-  assert.match(sql, /private.is_super_admin\(\)/);
-  assert.match(sql, /learning_subscription_audit/);
+  assert.match(sql, /GRANT EXECUTE/);
+  assert.match(sql, /private\.learning_legacy_start/);
+  assert.match(sql, /private\.learning_legacy_assignment/);
 });

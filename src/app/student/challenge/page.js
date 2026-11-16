@@ -227,7 +227,7 @@ function ChallengeContent() {
       }
     } catch (err) {
       startedRef.current = false;
-      setError(err?.message?.includes("LEARNING_SUBSCRIPTION_REQUIRED") ? "Kesempatan mencoba kegiatan ini sudah digunakan. Aktifkan langganan melalui halaman Paket untuk memulai paket baru. Sesi berjalan dan riwayat hasil tetap dapat diakses." : err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu paket sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
+      setError(err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu paket sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
     } finally {
       setLoading(false);
     }

@@ -53,13 +53,13 @@ export default function SubscriptionPage() {
         <section className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">PILIH CARA BELAJAR</p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Investasi belajar yang sederhana dan transparan</h1>
-          <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">Setiap akun mendapat satu paket percobaan Simulasi TKA dan satu paket latihan soal. Untuk memulai paket berikutnya, aktifkan langganan melalui admin.</p>
+          <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">Kamu dapat mencoba simulasi TKA dan latihan soal tanpa batas percobaan. Langganan tersedia untuk aktivasi fitur dan dukungan belajar tambahan.</p>
         </section>
 
-        <div className="mt-8"><LearningAccess showPlanLink={false} /></div>
+        <div className="mt-8"><LearningAccess /></div>
         <section className="mt-6 rounded-lg border border-slate-300 bg-white p-6" aria-label="Aktivasi langganan">
           <h2 className="text-lg font-bold text-slate-900">Sudah punya akun? Aktifkan langganan</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Hubungi Wahyu Yoga Pratama di +62 821-3817-1938. Sertakan ID akun dari informasi akses belajar di atas, atau ID sekolah untuk paket sekolah. Admin akan mengonfirmasi paket dan masa aktif sebelum mengaktifkan akses.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Hubungi Wahyu Yoga Pratama di +62 821-3817-1938 untuk informasi paket, aktivasi fitur, dan dukungan belajar. Akses kegiatan belajar tetap tersedia tanpa harus menunggu aktivasi langganan.</p>
           <a href="https://wa.me/6282138171938?text=Halo%20Admin%20TKA%20TryOn%2C%20saya%20ingin%20mengaktifkan%20langganan." target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800">Hubungi admin melalui WhatsApp →</a>
         </section>
 
