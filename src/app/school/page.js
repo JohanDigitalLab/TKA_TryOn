@@ -15,11 +15,19 @@ export default function SchoolPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const greeting = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  const [school, setSchool] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [activeSubject, setActiveSubject] = useState("");
+  const [studentPage, setStudentPage] = useState(1);
+  const [selected, setSelected] = useState(null);
+  const pageSize = 10;
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadAccount() {
+    async function loadDashboard() {
       try {
         const { data: userData, error: userError } =
           await supabase.auth.getUser();
@@ -35,19 +43,69 @@ export default function SchoolPage() {
           .eq("id", userData.user.id)
           .maybeSingle();
         if (profileError) throw profileError;
+        if (profileData?.account_type !== "SCHOOL" || !profileData?.school_id) {
+          router.replace("/home");
+          return;
+        }
         if (!mounted) return;
 
         setUser(userData.user);
         setProfile(profileData);
+
+        const { data, error: requestError } = await supabase.rpc(
+          "get_school_students",
+        );
+        if (requestError) {
+          if (requestError.code === "PGRST202")
+            throw new Error(
+              "RPC dashboard sekolah belum tersedia. Jalankan migrasi migration-school-dashboard.sql di Supabase SQL Editor.",
+            );
+          throw requestError;
+        }
+        if (!data?.school || !Array.isArray(data.students))
+          throw new Error("Respons dashboard sekolah tidak valid.");
+
+        const { data: topicData, error: topicError } = await supabase.rpc(
+          "get_school_subject_topics",
+        );
+        if (topicError) {
+          if (topicError.code === "PGRST202")
+            throw new Error(
+              "RPC kompetensi sekolah belum tersedia. Jalankan migration-school-subject-topics.sql di Supabase SQL Editor.",
+            );
+          throw topicError;
+        }
+        if (!Array.isArray(topicData))
+          throw new Error("Respons kompetensi sekolah tidak valid.");
+
+        const subjectIds = [
+          ...new Set(
+            topicData.map((item) => item.subject_code).filter(Boolean),
+          ),
+        ];
+        const filteredTopics = topicData.filter((item) =>
+          subjectIds.includes(item.subject_code),
+        );
+        if (mounted) {
+          setSchool(data.school);
+          setStudents(data.students);
+          setTopics(
+            filteredTopics.map((item) => ({
+              ...item,
+              subjectLabel: item.subject_label || item.subject_code,
+            })),
+          );
+          setActiveSubject((current) => current || subjectIds[0] || "");
+        }
       } catch (err) {
         if (mounted)
-          setError(err.message || "Akun sekolah belum berhasil dimuat.");
+          setError(err.message || "Dashboard sekolah belum berhasil dimuat.");
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    void loadAccount();
+    void loadDashboard();
     return () => {
       mounted = false;
     };
@@ -74,8 +132,31 @@ export default function SchoolPage() {
     );
   }
 
+  if (!profile || profile.account_type !== "SCHOOL" || !profile.school_id) {
+    return null;
+  }
+
   const displayName =
-    profile?.full_name || user?.email?.split("@")[0] || "Sekolah";
+    profile.full_name || user?.email?.split("@")[0] || "Sekolah";
+
+  const totalStudentPages = Math.max(1, Math.ceil(students.length / pageSize));
+  const visibleStudents = students.slice(
+    (studentPage - 1) * pageSize,
+    studentPage * pageSize,
+  );
+  const subjectGroups = topics.reduce((groups, item) => {
+    const group = groups[item.subject_code] || {
+      label: item.subjectLabel,
+      themes: {},
+    };
+    group.themes[item.theme] = [
+      ...(group.themes[item.theme] || []),
+      item.topic,
+    ];
+    groups[item.subject_code] = group;
+    return groups;
+  }, {});
+  const subjectIds = Object.keys(subjectGroups);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
@@ -95,126 +176,7 @@ export default function SchoolPage() {
             {error}
           </div>
         )}
-        {user && <SchoolDashboard userId={user.id} profile={profile} />}
-      </div>
-    </main>
-  );
-}
 
-function subscribe(onChange) {
-  const timer = window.setInterval(onChange, 30000);
-  window.addEventListener("focus", onChange);
-  return () => {
-    window.clearInterval(timer);
-    window.removeEventListener("focus", onChange);
-  };
-}
-const snapshot = () => getTimeGreeting();
-const serverSnapshot = () => "Selamat Datang";
-
-function SchoolDashboard({ userId, profile }) {
-  const greeting = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
-  const [school, setSchool] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [topics, setTopics] = useState([]);
-  const [activeSubject, setActiveSubject] = useState("");
-  const [studentPage, setStudentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selected, setSelected] = useState(null);
-  const pageSize = 10;
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const { data, error: requestError } = await supabase.rpc(
-          "get_school_students",
-        );
-        if (requestError) {
-          if (requestError.code === "PGRST202")
-            throw new Error(
-              "RPC dashboard sekolah belum tersedia. Jalankan migrasi migration-school-dashboard.sql di Supabase SQL Editor.",
-            );
-          throw requestError;
-        }
-        if (!data?.school || !Array.isArray(data.students))
-          throw new Error("Respons dashboard sekolah tidak valid.");
-        const { data: topicData, error: topicError } = await supabase.rpc(
-          "get_school_subject_topics",
-        );
-        if (topicError) {
-          if (topicError.code === "PGRST202")
-            throw new Error(
-              "RPC kompetensi sekolah belum tersedia. Jalankan migration-school-subject-topics.sql di Supabase SQL Editor.",
-            );
-          throw topicError;
-        }
-        if (!Array.isArray(topicData))
-          throw new Error("Respons kompetensi sekolah tidak valid.");
-        const subjectIds = [
-          ...new Set(
-            topicData.map((item) => item.subject_code).filter(Boolean),
-          ),
-        ];
-        const filteredTopics = topicData.filter((item) =>
-          subjectIds.includes(item.subject_code),
-        );
-        if (active) {
-          setSchool(data.school);
-          setStudents(data.students);
-          setTopics(
-            filteredTopics.map((item) => ({
-              ...item,
-              subjectLabel: item.subject_label || item.subject_code,
-            })),
-          );
-          setActiveSubject((current) => current || subjectIds[0] || "");
-        }
-      } catch (err) {
-        if (active)
-          setError(err.message || "Dashboard sekolah belum berhasil dimuat.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [userId]);
-
-  if (loading) return <p role="status">Memuat dashboard sekolah…</p>;
-  const totalStudentPages = Math.max(1, Math.ceil(students.length / pageSize));
-  const visibleStudents = students.slice(
-    (studentPage - 1) * pageSize,
-    studentPage * pageSize,
-  );
-  const subjectGroups = topics.reduce((groups, item) => {
-    const group = groups[item.subject_code] || {
-      label: item.subjectLabel,
-      themes: {},
-    };
-    group.themes[item.theme] = [
-      ...(group.themes[item.theme] || []),
-      item.topic,
-    ];
-    groups[item.subject_code] = group;
-    return groups;
-  }, {});
-  const subjectIds = Object.keys(subjectGroups);
-  return (
-    <div className="space-y-6">
-      {error && (
-        <p
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800"
-        >
-          {error}
-        </p>
-      )}
-      {school && (
-        <>
           <section id="greeting" className="mb-10 scroll-mt-28">
             <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
               {greeting}, {profile?.full_name || "Sekolah"} 👋
@@ -223,18 +185,20 @@ function SchoolDashboard({ userId, profile }) {
               id="quote"
               className="mt-2 text-sm leading-6 text-slate-600 sm:text-base"
             >
-              {school.name} - {school.city || "-"} - {school.province || "-"}
+              {school?.name || "Sekolah"} - {school?.city || "-"} - {school?.province || "-"}
             </p>
           </section>
 
           <section id="action" className="mb-10 scroll-mt-28">
             <div className="flex flex-wrap gap-3 mt-4">
-              <Link
-                className={buttonClass}
-                href={`/school/manage?school=${encodeURIComponent(school.id)}`}
-              >
-                Lengkapi Profil Sekolah
-              </Link>
+              {school?.id && (
+                <Link
+                  className={buttonClass}
+                  href={`/school/manage?school=${encodeURIComponent(school.id)}`}
+                >
+                  Lengkapi Profil Sekolah
+                </Link>
+              )}
               <Link className={buttonClass} href="/teacher">
                 Buat Tugas Sekolah
               </Link>
@@ -381,56 +345,20 @@ function SchoolDashboard({ userId, profile }) {
               </p>
             )}
           </section>
-        </>
-      )}
-      {selected && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-5">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="school-dialog-title"
-            className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6"
-          >
-            <h2 id="school-dialog-title" className="text-xl font-bold">
-              {selected.action === "schedule"
-                ? "Jadwalkan Try Out"
-                : `${selected.action} — ${selected.student.full_name || "Siswa"}`}
-            </h2>
-            {selected.action === "Profil" ? (
-              <dl className="space-y-2">
-                <div>
-                  <dt className="font-bold">NISN</dt>
-                  <dd>{selected.student.nisn || "-"}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold">Nama Siswa</dt>
-                  <dd>{selected.student.full_name || "-"}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold">Sekolah</dt>
-                  <dd>{school.name}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-slate-600">
-                {selected.action === "schedule"
-                  ? "Form penjadwalan try out belum tersedia."
-                  : selected.action === "Review"
-                    ? "Review hasil siswa oleh sekolah belum tersedia pada halaman ini."
-                    : "Reset password siswa memerlukan layanan admin yang terotorisasi. Fitur ini belum tersedia; password siswa tidak diubah."}
-              </p>
-            )}
-            <button
-              autoFocus
-              type="button"
-              className={buttonClass}
-              onClick={() => setSelected(null)}
-            >
-              Tutup
-            </button>
-          </section>
-        </div>
-      )}
-    </div>
+
+       </div>
+    </main>
   );
 }
+
+function subscribe(onChange) {
+  const timer = window.setInterval(onChange, 30000);
+  window.addEventListener("focus", onChange);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener("focus", onChange);
+  };
+}
+const snapshot = () => getTimeGreeting();
+const serverSnapshot = () => "Selamat Datang";
+
