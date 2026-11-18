@@ -193,8 +193,8 @@ function packageLabel(item) {
 // KOMPONEN REVIEW
 // =====================================================
 
-function ReviewSession({ session }) {
-  const [expanded, setExpanded] = useState(false);
+export function ReviewSession({ session, initiallyExpanded = false }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const reviewId = useId();
 
   const questions = session.review?.questions || [];
