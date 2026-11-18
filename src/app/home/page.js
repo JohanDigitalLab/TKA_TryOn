@@ -25,7 +25,7 @@ export default function HomeRedirectPage() {
       if (!active) return;
 
       if (!userData.user) {
-        router.replace("/");
+        router.push("/");
         return;
       }
 
@@ -37,11 +37,11 @@ export default function HomeRedirectPage() {
 
       if (!active) return;
       if (error) {
-        router.replace("/");
+        router.push("/");
         return;
       }
 
-      router.replace(getDashboardPath(profile));
+      router.push(getDashboardPath(profile));
     }
 
     void redirectUser();
