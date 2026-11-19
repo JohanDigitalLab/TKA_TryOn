@@ -39,7 +39,7 @@ DO $$ DECLARE c learning_fixture%ROWTYPE; r jsonb; aid uuid; sub jsonb; blocked 
  IF NOT blocked THEN RAISE EXCEPTION 'Cross-user package leak'; END IF;
  PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
  PERFORM public.submit_exam_attempt(aid);
- PERFORM public.get_student_exam_history(20);
+ PERFORM public.get_student_tryout_history(20);
  blocked:=false;
  BEGIN PERFORM public.start_learning_attempt(gen_random_uuid(),'simulation',c.grade,ARRAY[c.subject_name],c.subject_name,1,1); EXCEPTION WHEN insufficient_privilege THEN
  IF SQLERRM<>'LEARNING_SUBSCRIPTION_REQUIRED' THEN RAISE; END IF; blocked:=true; END;

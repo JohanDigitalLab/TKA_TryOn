@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.tka_configurations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tka_code varchar(50) NOT NULL,
   education_level varchar(10) NOT NULL,
-  subject_name varchar(20) NOT NULL,
+  subject_code varchar(20) NOT NULL,
   total_questions integer NOT NULL,
   duration_minutes integer NOT NULL,
   type varchar(10) NOT NULL DEFAULT 'RANDOM',

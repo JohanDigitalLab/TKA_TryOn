@@ -65,7 +65,7 @@ DO $$ DECLARE c learning_extended%ROWTYPE; r jsonb; denied boolean; BEGIN
  denied:=false;
  BEGIN PERFORM public.start_school_assignment(c.assignment_two); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'Expired school subscription bypass'; END IF;
- PERFORM public.get_student_exam_history(20);
+ PERFORM public.get_student_tryout_history(20);
 END $$;
 RESET ROLE;
 DO $$ DECLARE c learning_extended%ROWTYPE; BEGIN

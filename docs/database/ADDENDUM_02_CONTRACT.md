@@ -175,7 +175,11 @@ Input p_attempt_id, hanya owner dan status SUBMITTED. Output attempt_id, status,
 
 classification adalah snapshot attempt, bukan registry sekarang. Sesi lama tanpa snapshot mendapat provenance legacy_unclassified dan historical_classification_available false. mode fallback legacy, config_snapshot null. Tidak ada backfill klasifikasi palsu. Bug review legacy yang merujuk kolom kategori tidak ada diperbaiki dengan derivasi opsi dari label slash-separated, tanpa menambah sumber kategori mutable baru.
 
-### [get_student_exam_history](migration-stage-5-addendum-foundation.sql:494)
+### [get_student_tryout_history](migration-rename-student-exam-history-to-tryout.sql:10)
+
+Deployment rename: terapkan [migrasi rename](migration-rename-student-exam-history-to-tryout.sql) setelah seluruh migrasi historis yang mendefinisikan RPC, lalu deploy frontend secara terkoordinasi. Signature aktual adalah dua parameter: integer dan timestamp berzona waktu. Rename mempertahankan implementasi, default, owner, dan ACL; nama baru tidak menambah filter jenis attempt. Migrasi meminta reload schema PostgREST, aman diterapkan ulang bila hanya nama baru tersedia, dan menolak kondisi kedua nama tersedia atau kedua fungsi tidak ada. Pemanggil nama lama harus diperbarui bersamaan; tidak ada alias kompatibilitas.
+
+Migrasi tahap 2 dan 5 sengaja tetap memakai nama lama sebagai riwayat deployment. Jangan jalankan ulang migrasi pembuat lama setelah rename karena dapat menciptakan kembali RPC lama. Verifier fondasi dan akses belajar memuat rename sebelum suite SQL yang kini memakai nama baru; verifier tersebut tidak dijalankan pada database live dalam pekerjaan rename ini. Nama baru pada [tabel audit](ADDENDUM_02_AUDIT.md:851) adalah pemetaan nama pascarename, bukan hasil audit live baru.
 
 Input p_limit default 50 (dibatasi 1–100), p_before timestamp nullable. Output array owner-only berurutan created_at desc, id desc. Field: attempt_id, subject, grade, education_level, status, total_questions, correct_answers, incorrect_or_unanswered, score, started_at, submitted_at, created_at, mode, config_snapshot. incorrect_or_unanswered null sebelum submit; jangan tampilkan skor null sebagai nol. Paginasi before menggunakan created_at eksklusif; belum ada cursor gabungan ID untuk timestamp identik.
 

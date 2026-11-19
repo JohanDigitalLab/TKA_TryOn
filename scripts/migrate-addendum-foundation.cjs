@@ -56,6 +56,7 @@ const fixtures = p => read(p).replace(/'registration_method','independent'/g, "'
    }
    phase += ':foundation-tests';
    await client.query('SAVEPOINT tests');
+   await client.query(read('docs/database/migration-rename-student-exam-history-to-tryout.sql'));
    await client.query(read('tests/database/addendum-foundation.sql'));
    await client.query('SET CONSTRAINTS ALL IMMEDIATE');
    await client.query('ROLLBACK TO SAVEPOINT tests');

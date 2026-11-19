@@ -78,7 +78,7 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
         const [{ data: profileData, error: profileError }, { data: attemptsData, error: attemptsError }, { data: historyData, error: historyError }] = await Promise.all([
           supabase.from("profiles").select(subscriptionMode ? "full_name, education_level, profile_completed, has_tried_tryout, has_tried_exercise" : "full_name, education_level, profile_completed").eq("id", userData.user.id).maybeSingle(),
           supabase.rpc("get_student_active_attempts"),
-          supabase.rpc("get_student_dashboard_history", { limit: 5 }),
+          supabase.rpc("get_student_history", { limit: 5 }),
         ]);
         if (profileError) throw profileError;
         if (attemptsError) throw attemptsError;
@@ -109,7 +109,7 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
     setHistoryLoading(true);
     setHistoryError("");
     try {
-      const { data, error: requestError } = await supabase.rpc("get_student_dashboard_history", {
+      const { data, error: requestError } = await supabase.rpc("get_student_history", {
         limit: nextShowAll ? 0 : 5,
       });
       if (requestError) throw requestError;

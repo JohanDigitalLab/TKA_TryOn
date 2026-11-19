@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { authLink, schoolError, statusLabels } from "@/lib/school/onboarding.mjs";
 
 export const inputClass = "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 min-h-11";
-export const buttonClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-blue-700 bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50";
+export const buttonClass = "group inline-flex min-h-14 items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-600 px-7 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-indigo-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200";
 export function Status({ value }) { return <span className="inline-block rounded bg-slate-100 px-2 py-1 text-sm font-semibold">{statusLabels[value] || value}</span>; }
 export function DateText({ value }) { return <time dateTime={value}>{value ? new Date(value).toLocaleString("id-ID") : "—"}</time>; }
 export function Panel({ title, children }) { return <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="text-xl font-extrabold">{title}</h2>{children}</section>; }

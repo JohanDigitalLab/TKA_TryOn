@@ -848,7 +848,7 @@ EXECUTE adalah privilege efektif katalog, bukan bukti caller lolos otorisasi int
 | [public.get_school_assignment_ranking(p_assignment_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_student_active_attempts()](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_student_assignments()](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.get_student_exam_history(p_limit integer DEFAULT 50, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
+| [public.get_student_tryout_history(p_limit integer DEFAULT 50, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_teacher_workspace(p_school_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.protect_profile_education_level()](ADDENDUM_02_AUDIT.md:1) | [trigger](ADDENDUM_02_AUDIT.md:1) | false | true / true |
 | [public.reject_education_level_change(p_request_id uuid, p_admin_note text)](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |

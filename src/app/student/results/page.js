@@ -494,7 +494,7 @@ export default function StudentResultsPage() {
         return;
       }
 
-      const { data, error: rpcError } = await supabase.rpc("get_student_exam_history", {
+      const { data, error: rpcError } = await supabase.rpc("get_student_tryout_history", {
         p_limit: 50,
         p_before: null,
       });

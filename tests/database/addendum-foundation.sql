@@ -80,7 +80,7 @@ BEGIN
  PERFORM public.submit_exam_attempt(aid);
  res:=public.get_exam_attempt_review(aid);
  IF res->'questions'->0->'classification'->>'provenance'<>'version_snapshot' OR res->>'mode'<>'simulation' THEN RAISE EXCEPTION 'Historical classification missing'; END IF;
- IF public.get_student_exam_history()->0->>'mode'<>'simulation' THEN RAISE EXCEPTION 'History mode missing'; END IF;
+ IF public.get_student_tryout_history()->0->>'mode'<>'simulation' THEN RAISE EXCEPTION 'History mode missing'; END IF;
  denied:=false; BEGIN PERFORM public.a02_start(b); EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'A02_TRIAL_EXHAUSTED' THEN RAISE; END IF; denied:=true; END;
  IF NOT denied THEN RAISE EXCEPTION 'Trial reused'; END IF;
  PERFORM set_config('request.jwt.claim.sub',c.admin_id::text,true);
