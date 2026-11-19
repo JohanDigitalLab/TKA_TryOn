@@ -933,7 +933,7 @@ export default function StudentResultsPage() {
                     <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Memuat review jawaban…</p>
                   )}
                   {reviewAttemptId === session.attemptId && session.review && (
-                    <ReviewSession session={{ ...session, review: session.review }} />
+                    <ReviewSession session={{ ...session, review: session.review }} initiallyExpanded />
                   )}
                 </div>
               ))}

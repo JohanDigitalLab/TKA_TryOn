@@ -2,6 +2,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteFooter from "@/components/site-footer";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,7 +69,7 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
       >
         {children}
-        <SiteFooter />
+        <Suspense fallback={null}><SiteFooter /></Suspense>
       </body>
     </html>
   );
