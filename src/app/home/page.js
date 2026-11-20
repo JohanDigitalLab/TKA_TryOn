@@ -3,16 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-function getDashboardPath(profile) {
-  if (profile?.is_subscribed === false) return "/subscription";
-  if (profile?.account_type === "STUDENT") {
-    return profile.is_managed === true ? "/mstudent" : "/student";
-  }
-  if (profile?.account_type === "SCHOOL") return "/school";
-  if (profile?.account_type === "ADMIN") return "/admin";
-  return "/";
-}
+import { getHomeHref, HOME_HREF_PROFILE_COLUMNS } from "@/lib/dashboard/home-href.mjs";
 
 export default function HomeRedirectPage() {
   const router = useRouter();
@@ -31,7 +22,7 @@ export default function HomeRedirectPage() {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("is_subscribed, account_type, is_managed")
+        .select(HOME_HREF_PROFILE_COLUMNS)
         .eq("id", userData.user.id)
         .maybeSingle();
 
@@ -41,7 +32,8 @@ export default function HomeRedirectPage() {
         return;
       }
 
-      router.push(getDashboardPath(profile));
+      // Fallback "/" mencegah redirect berputar di rute /home ini.
+      router.push(getHomeHref(profile, "/"));
     }
 
     void redirectUser();

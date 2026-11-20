@@ -405,10 +405,11 @@ export default function SchoolPage() {
           .eq("id", userData.user.id)
           .maybeSingle();
         if (profileError) throw profileError;
-        if (profileData?.account_type !== "SCHOOL" || !profileData?.school_id) {
+        const accountType = String(profileData?.account_type || "").toUpperCase();
+        if (accountType !== "SCHOOL" || !profileData?.school_id) {
           denied = true;
           setRedirecting(true);
-          router.replace("/home");
+          router.replace("/register");
           return;
         }
         if (!mounted) return;
@@ -669,7 +670,11 @@ export default function SchoolPage() {
     );
   }
 
-  if (!profile || profile.account_type !== "SCHOOL" || !profile.school_id) {
+  if (
+    !profile ||
+    String(profile.account_type || "").toUpperCase() !== "SCHOOL" ||
+    !profile.school_id
+  ) {
     return null;
   }
 

@@ -2,10 +2,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
 import { supabase } from "@/lib/supabase";
 
 export default function AdminLayout({ children }) {
+  const router = useRouter();
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
 
@@ -14,6 +16,11 @@ export default function AdminLayout({ children }) {
 
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+
+  // Guard area admin: hanya account_type = ADMIN yang boleh masuk.
+  const [adminAccess, setAdminAccess] = useState("checking"); // checking | allowed | denied
+  const [checkedUserId, setCheckedUserId] = useState(null);
+  const userId = session?.user?.id || null;
 
   // ====================================================
   // MEMERIKSA SESI AUTENTIKASI
@@ -51,6 +58,44 @@ export default function AdminLayout({ children }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let active = true;
+
+    async function checkAdminAccess() {
+      try {
+        // await lebih dulu agar tidak ada setState sinkron di body effect.
+        await Promise.resolve();
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("account_type")
+          .eq("id", userId)
+          .maybeSingle();
+        if (!active) return;
+        const accountType = String(error ? "" : data?.account_type || "").toUpperCase();
+        if (accountType === "ADMIN") {
+          setCheckedUserId(userId);
+          setAdminAccess("allowed");
+        } else {
+          setCheckedUserId(userId);
+          setAdminAccess("denied");
+          router.replace("/home");
+        }
+      } catch {
+        if (!active) return;
+        setCheckedUserId(userId);
+        setAdminAccess("denied");
+        router.replace("/home");
+      }
+    }
+
+    void checkAdminAccess();
+    return () => {
+      active = false;
+    };
+  }, [userId, router]);
 
   // ====================================================
   // LOGIN TERPUSAT
@@ -190,6 +235,27 @@ export default function AdminLayout({ children }) {
   // ====================================================
   // SELURUH HALAMAN ADMIN
   // ====================================================
+
+  // Belum ada hasil pemeriksaan untuk user ini: jangan render konten admin.
+  if (adminAccess === "checking" || checkedUserId !== userId) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50">
+        <p role="status" className="font-semibold text-slate-600">
+          Memeriksa akses admin…
+        </p>
+      </main>
+    );
+  }
+
+  if (adminAccess === "denied") {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-5 text-center">
+        <p className="font-semibold text-slate-600">
+          Mengalihkan ke beranda…
+        </p>
+      </main>
+    );
+  }
 
   return children;
 }
