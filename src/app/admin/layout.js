@@ -68,14 +68,26 @@ export default function AdminLayout({ children }) {
       try {
         // await lebih dulu agar tidak ada setState sinkron di body effect.
         await Promise.resolve();
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("account_type")
-          .eq("id", userId)
-          .maybeSingle();
+        const [{ data: profile, error: profileError }, { data: roles, error: roleError }] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("account_type")
+              .eq("id", userId)
+              .maybeSingle(),
+            supabase
+              .from("user_global_roles")
+              .select("role")
+              .eq("user_id", userId),
+          ]);
         if (!active) return;
-        const accountType = String(error ? "" : data?.account_type || "").toUpperCase();
-        if (accountType === "ADMIN") {
+        const accountType = String(
+          profileError ? "" : profile?.account_type || ""
+        ).toUpperCase();
+        const isSuperAdmin = !roleError && (roles || []).some(
+          (item) => item.role === "super_admin"
+        );
+        if (accountType === "ADMIN" || isSuperAdmin) {
           setCheckedUserId(userId);
           setAdminAccess("allowed");
         } else {
