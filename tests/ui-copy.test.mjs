@@ -27,13 +27,18 @@ test("teks aplikasi memakai sapaan kamu/-mu tanpa mengubah kata seperti beranda"
   assert.deepEqual(violations, [], "Sapaan formal masih ditemukan pada teks aplikasi");
 });
 
-test("review Matematika memakai elemen TKA sebagai tema, bukan konteks soal", async () => {
+test("halaman hasil memakai header portal dan kompetensi dari server", async () => {
   const source = await read("src/app/student/results/page.js");
-  assert.match(source, /question\.element/);
-  assert.match(source, /source\.element/);
-  assert.match(source, /officialMathTheme\(/);
-  assert.match(source, /source\.material/);
-  assert.match(source, /theme:\s*isMathematics\s*\n\s*\?\s*mathTheme/);
+  assert.match(source, /import PortalHeader from "@\/components\/portal-header"/);
+  assert.match(source, /<PortalHeader/);
+  assert.match(source, /supabase\.rpc\("get_student_results"/);
+  assert.match(source, /kompetensi/i);
+  assert.match(source, /KUAT: \{ label: "Kuat"/);
+  assert.match(source, /CUKUP: \{ label: "Cukup"/);
+  assert.match(source, /KURANG: \{ label: "Perlu Pendalaman"/);
+  assert.match(source, /Skor Tryout/);
+  assert.match(source, /Skor Latihan & Tugas/);
+  assert.match(source, /slice\(-5\)/);
 });
 
 test("pemulihan ujian tidak menjanjikan pengaturan ulang waktu", async () => {
@@ -42,24 +47,11 @@ test("pemulihan ujian tidak menjanjikan pengaturan ulang waktu", async () => {
   assert.ok(source.includes("Setelah diakhiri, jawaban tidak dapat diubah."));
 });
 
-test("pendaftaran dan pesan menjelaskan langkah berikutnya tanpa jargon teknis", async () => {
+test("pendaftaran satu alur dengan konfirmasi password", async () => {
   const register = await read("src/app/register/page.js");
-  assert.ok(register.includes("Keanggotaanmu baru aktif setelah disetujui admin sekolah."));
-  const messages = await read("src/components/school/communications.js");
-  assert.ok(messages.includes("Pesanmu mungkin sudah terkirim; mengirim ulang dapat membuat pesan ganda."));
-  assert.ok(messages.includes("Sudah kamu tandai dibaca"));
-  assert.ok(!messages.includes("kunci idempotensi"));
-});
-
-test("penerimaan koordinator menjelaskan perpindahan akses dan tanggung jawab", async () => {
-  const source = await read("src/components/school/transfers.js");
-  assert.ok(source.includes("keanggotaan koordinator utama sebelumnya akan dinonaktifkan"));
-  assert.ok(source.includes("tanggung jawab administrasi sekolah akan beralih kepadamu"));
-});
-
-test("pendaftar sekolah diarahkan ke admin melalui nomor WhatsApp yang dikonfigurasi", async () => {
-  const source = await read("src/app/school/register/page.js");
-  assert.ok(source.includes("Wahyu Yoga Pratama"));
-  assert.ok(source.includes("https://wa.me/6282138171938"));
-  assert.ok(source.includes("Nomor admin: +62 821-3817-1938"));
+  assert.ok(register.includes("Daftar Akun"));
+  assert.ok(register.includes('name="confirm_password"'));
+  assert.ok(register.includes("values.password !== values.confirm_password"));
+  assert.ok(!register.includes("Siswa undangan sekolah"));
+  assert.ok(!register.includes("Siswa mandiri"));
 });

@@ -142,10 +142,7 @@ BEGIN
  -- Existing in-progress subscriber session resumes even after contact/entitlement changes.
  aid:=(public.a02_start(c.blueprint_id)->>'attempt_id')::uuid;
  PERFORM public.a02_profile('{"whatsapp_consent":false}');
- IF public.start_exam_attempt(6,'Matematika',1,30)->>'attempt_id' IS DISTINCT FROM aid::text THEN RAISE EXCEPTION 'Rollout blocked resume'; END IF;
- PERFORM set_config('request.jwt.claim.sub',c.other_id::text,true);
- denied:=false; BEGIN PERFORM public.start_exam_attempt(6,'Matematika',1,30); EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'A02_CONFIGURED_START_REQUIRED' THEN RAISE; END IF; denied:=true; END;
- IF NOT denied THEN RAISE EXCEPTION 'Rollout legacy bypass'; END IF;
+ IF public.resume_exam_attempt(aid)->>'attempt_id' IS DISTINCT FROM aid::text THEN RAISE EXCEPTION 'Rollout blocked resume'; END IF;
  PERFORM public.a02_profile('{"whatsapp_consent":true}');
  PERFORM set_config('request.jwt.claim.sub',c.admin_id::text,true);
  res:=public.a02_registry_mutate('blueprint',jsonb_build_object('code','A02-TEST-MISSION','version',1,'taxonomy_id',c.taxonomy_id,'mode','mission','total_questions',1,'duration_minutes',10,'topic_counts',jsonb_build_array(jsonb_build_object('topic_id',c.topic_id,'count',1)),'status','active','policy_kind','product'));
@@ -174,7 +171,7 @@ DO $$ DECLARE c a02_test_ctx%ROWTYPE; s a02_school_ctx%ROWTYPE; assignment uuid;
 BEGIN
  SELECT * INTO c FROM a02_test_ctx; SELECT * INTO s FROM a02_school_ctx; SELECT id INTO assignment FROM a02_assignment_ctx;
  PERFORM set_config('request.jwt.claim.sub',c.student_id::text,true);
- aid:=(public.start_exam_attempt(6,'Matematika',1,30)->>'attempt_id')::uuid;
+ aid:=(public.a02_start(c.blueprint_id)->>'attempt_id')::uuid;
  PERFORM public.submit_exam_attempt(aid);
  PERFORM public.a02_profile('{"whatsapp_consent":true}');
  BEGIN PERFORM public.start_school_assignment(assignment); EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'A02_SCHOOL_SUBSCRIPTION_REQUIRED' THEN RAISE; END IF; denied:=true; END;

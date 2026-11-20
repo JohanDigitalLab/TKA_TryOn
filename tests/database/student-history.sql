@@ -52,7 +52,7 @@ BEGIN
     SELECT id AS attempt_id, started_at, attempt_type, subject_name, score
     FROM public.exam_attempts WHERE user_id = u ORDER BY started_at DESC, id DESC LIMIT 1
   ) h;
-  IF public.get_student_history("limit" => 1) IS DISTINCT FROM expected THEN
+  IF public.get_student_history("p_limit" => 1) IS DISTINCT FROM expected THEN
     RAISE EXCEPTION 'Legacy limit-only caller/sort mismatch';
   END IF;
   IF public.get_student_history() IS DISTINCT FROM public.get_student_history(10, NULL) THEN

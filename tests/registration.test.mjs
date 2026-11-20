@@ -33,11 +33,11 @@ test("paket dan jenjang dapat diteruskan bersamaan tanpa memilih ulang", () => {
   assert.equal(studentRegistrationPath({ method: "admin", level: "invalid" }), "/register");
 });
 
-test("tautan undangan tetap mengunci jalur siswa sekolah dan mempertahankan kode", () => {
+test("tautan undangan lama menjaga konteks sekolah tanpa menuju halaman dihapus", () => {
   const next = `/school/join?code=${"a".repeat(64)}`;
   const selected = context(new URLSearchParams({ method: "independent", next }).toString());
   assert.equal(selected.method, "school");
-  assert.equal(selected.next, next);
+  assert.equal(selected.next, "/student");
   assert.equal(context("next=/school/join-other").method, null);
 });
 
@@ -50,18 +50,18 @@ test("jenjang hanya diminta bila belum dipilih dan tetap divalidasi", () => {
 test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async () => {
   const read = path => readFile(new URL(path, import.meta.url), "utf8");
   const subscription = await read("../src/app/subscription/page.js");
-  assert.ok(subscription.includes('href: "/register?method=independent"'));
-  assert.ok(subscription.includes('href: "/school/register"'));
-  assert.ok(subscription.includes('href="/register?method=school"'));
+  assert.ok(subscription.includes('href: "/register"'));
+  assert.ok(!subscription.includes('href: "/school/register"'));
+  assert.ok(!subscription.includes("method=independent"));
+  assert.ok(!subscription.includes("method=school"));
   assert.ok(subscription.includes("href={plan.href}"));
   assert.ok(!subscription.includes("Catatan aktivasi"));
   assert.ok(!subscription.includes("Belum ada pembayaran atau transaksi yang dianggap berhasil."));
   const register = await read("../src/app/register/page.js");
-  assert.ok(register.includes('school && <section aria-label="Pilihan pendaftaran"'));
-  assert.ok(register.includes("{context.method ? ("));
+  assert.ok(register.includes("<h1 className=\"text-3xl font-black\">Daftar Akun</h1>"));
   assert.ok(register.includes("{level ? ("));
   assert.ok(register.includes("registrationEducationLevel(context, values.education_level)"));
-  assert.ok(register.includes("registration_method: method"));
+  assert.ok(register.includes('registration_method: "independent"'));
   const home = await read("../src/app/page.js");
   assert.ok(home.includes("studentRegistrationPath({ level: level.value })"));
 });

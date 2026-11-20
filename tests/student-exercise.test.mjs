@@ -10,7 +10,8 @@ test('exercise selection validates actor, education, count and snapshots atomica
  assert.doesNotMatch(sql,/\b(?:AS|DO) \$(?!\$|function\$)/);
 });
 test('active loader excludes keys and explanations while retaining nested structures',()=>{
- const loader=sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION public.start_student_exercise'));
+ // Marker longgar agar tetap valid walau nama fungsi diberi prefix percobaan (mis. xxstart_...).
+ const loader=sql.slice(0,sql.indexOf('start_student_exercise'));
  assert.doesNotMatch(loader,/is_correct|correct_category|explanation|scoring_rule/);
  for(const key of ["'options'","'category_items'","'answers'","'remaining_seconds',NULL","user_id=u","attempt_type='EXERCISE'"]) assert.ok(loader.includes(key),key);
 });
@@ -28,6 +29,38 @@ test('first start, subsequent subjects, double click guards and untimed CBT are 
  assert.ok(form.includes('if (startingRef.current) return'));
  assert.ok(cbt.includes('delete currentConfig.exerciseAttemptId'));
  assert.ok(cbt.includes('if (advancingRef.current) return'));
- assert.ok(cbt.includes('currentConfig.adaptiveExercise ? "start_student_exercise"'));
+ assert.ok(cbt.includes('"start_student_exercise"'));
+ assert.ok(cbt.includes('currentConfig.adaptiveExercise'));
  assert.ok(cbt.includes('!attemptId || untimed'));
+});
+test('subjects.is_mandatory migration adds non-null boolean default true',()=>{
+ const sql=read('docs/database/migration-subjects-is-mandatory.sql');
+ assert.match(sql,/ADD COLUMN IF NOT EXISTS is_mandatory boolean NOT NULL DEFAULT true/);
+ assert.match(sql,/COMMENT ON COLUMN public\.subjects\.is_mandatory/);
+ assert.match(sql,/NOTIFY pgrst, 'reload schema'/);
+ assert.match(sql,/BEGIN;[\s\S]*COMMIT;/);
+});
+test('start_student_exercise gains p_theme and p_topic with latest published selection',()=>{
+ const sql=read('docs/database/migration-start-student-exercise-theme-topic.sql');
+ assert.match(sql,/public\.start_student_exercise\(\s*p_subject_code text,\s*p_question_count integer DEFAULT 20,\s*p_theme text DEFAULT NULL,\s*p_topic text DEFAULT NULL/);
+ assert.match(sql,/DROP FUNCTION IF EXISTS public\.start_student_exercise\(text, integer\)/);
+ assert.match(sql,/v_topic IS NOT NULL AND v_theme IS NULL/);
+ assert.match(sql,/q\.theme=v_theme/);
+ assert.match(sql,/\(v_topic IS NULL OR q\.topic=v_topic\)/);
+ assert.match(sql,/ORDER BY random\(\) LIMIT p_question_count/);
+ assert.match(sql,/v\.version_status='PUBLISHED'/);
+ assert.match(sql,/ORDER BY version_number DESC,id DESC LIMIT 1/);
+ // perilaku adaptif lama tetap dipertahankan saat theme tidak diisi
+ assert.match(sql,/IN\('NA','KURANG','CUKUP'\)/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.start_student_exercise\(text, integer, text, text\) FROM PUBLIC, anon/);
+ assert.match(sql,/GRANT EXECUTE ON FUNCTION public\.start_student_exercise\(text, integer, text, text\) TO authenticated/);
+ assert.match(sql,/NOTIFY pgrst, 'reload schema'/);
+ assert.match(sql,/BEGIN;[\s\S]*COMMIT;/);
+ assert.doesNotMatch(sql,/\b(?:AS|DO) \$(?!\$|function\$)/);
+});
+test('staging contract checks new signature, old signature removal, and is_mandatory',()=>{
+ const sql=read('tests/database/student-exercise.sql');
+ assert.match(sql,/start_student_exercise\(text,integer,text,text\)/);
+ assert.match(sql,/Ambiguous old start_student_exercise signature still present/);
+ assert.match(sql,/subjects\.is_mandatory column missing/);
 });

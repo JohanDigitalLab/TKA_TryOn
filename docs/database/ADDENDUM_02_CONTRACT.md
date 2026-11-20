@@ -159,9 +159,7 @@ Output dasar engine: attempt_id, education_level (SD/SMP), grade, subject_name, 
 
 Sesi aktif blueprint sama dikembalikan tanpa debit; sesi lain pada grade/mapel sama menghasilkan A02_OTHER_ACTIVE_SESSION. Pencarian ini masih memerlukan blueprint aktif dan jenjang profil sesuai. Bila konfigurasi sudah dinonaktifkan atau profil berubah, gunakan RPC resume existing berdasarkan attempt_id; jangan memaksa start ulang untuk melanjutkan.
 
-### [start_exam_attempt](migration-stage-5-addendum-foundation.sql:432)
-
-Signature existing dipertahankan: p_grade, p_subject_name, p_question_count default 20, p_duration_minutes default 60. Resume sesi aktif didahulukan. Enforcement false: start baru mendelegasikan perilaku lama, **belum** menerapkan eligibility/contact/trial Addendum. Enforcement true: start mandiri baru ditolak A02_CONFIGURED_START_REQUIRED, arahkan UI ke blueprint. Output tetap payload engine; jangan mengasumsikan mode/config selalu ada pada jalur ini.
+Jalur start mandiri lama (pembungkus legacy grade/mapel) dipensiunkan dari repositori; sesi mandiri memakai jalur latihan adaptif atau tryout TKA. Fungsi lama di database dihapus manual oleh pemilik proyek.
 
 ### [start_school_assignment](migration-stage-5-addendum-foundation.sql:447)
 

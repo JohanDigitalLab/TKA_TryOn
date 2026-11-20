@@ -132,21 +132,19 @@ function ChallengeContent() {
         resumed: Boolean(resumeAttemptId),
       });
 
+      if (!assignmentId && !resumeAttemptId && !currentConfig.exerciseAttemptId && !currentConfig.adaptiveExercise) {
+        throw new Error(
+          "Mode sesi latihan lama tidak lagi didukung. Mulai ulang sesi dari halaman Latihan Soal atau Tryout."
+        );
+      }
+
       const { data, error: rpcError } = await supabase.rpc(
-        assignmentId ? "start_school_assignment" : (resumeAttemptId || currentConfig.exerciseAttemptId) ? "resume_exam_attempt" : currentConfig.adaptiveExercise ? "start_student_exercise" : "start_learning_attempt",
+        assignmentId ? "start_school_assignment" : (resumeAttemptId || currentConfig.exerciseAttemptId) ? "resume_exam_attempt" : "start_student_exercise",
         assignmentId ? { p_assignment_id: assignmentId } : (resumeAttemptId || currentConfig.exerciseAttemptId)
           ? { p_attempt_id: resumeAttemptId || currentConfig.exerciseAttemptId }
-          : currentConfig.adaptiveExercise ? {
+          : {
               p_subject_code: currentConfig.subject_codes?.[index],
               p_question_count: questionCount,
-            } : {
-              p_package_id: simulationId,
-              p_mode: currentConfig.activityType === "latihan" ? "mission" : "simulation",
-              p_subjects: subjectList.length ? subjectList : [subject],
-              p_grade: grade,
-              p_subject_name: subject,
-              p_question_count: questionCount,
-              p_duration_minutes: duration,
             }
       );
 

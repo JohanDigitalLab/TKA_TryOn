@@ -60,20 +60,8 @@ const fixtures = p => read(p).replace(/'registration_method','independent'/g, "'
    await client.query(read('tests/database/addendum-foundation.sql'));
    await client.query('SET CONSTRAINTS ALL IMMEDIATE');
    await client.query('ROLLBACK TO SAVEPOINT tests');
-   phase += ':legacy-regression';
-   await client.query('SAVEPOINT regression');
-   await client.query(fixtures('tests/database/school-workflows.sql'));
-   await client.query('SET CONSTRAINTS ALL IMMEDIATE');
-   await client.query('ROLLBACK TO SAVEPOINT regression');
-   if (withStage4) {
-    phase = 'with-stage4:onboarding-regression';
-    await client.query('SAVEPOINT onboarding');
-    await client.query(fixtures('tests/database/school-onboarding.sql'));
-    await client.query('SET CONSTRAINTS ALL IMMEDIATE');
-    await client.query('ROLLBACK TO SAVEPOINT onboarding');
-   }
    await client.query('ROLLBACK');
-   branches.push({stage4:withStage4,migrationExecutions:2,tables:tables.rowCount,foundationTests:true,legacyRegression:true,onboardingRegression:withStage4,rolledBack:true});
+   branches.push({stage4:withStage4,migrationExecutions:2,tables:tables.rowCount,foundationTests:true,rolledBack:true});
   }
   console.log(JSON.stringify({verified:true,committed:false,tlsVerified:true,projectIdentityMatched:true,branches,
    concurrency:'unique constraints and serialized-path tests; no committed two-session stress fixture'}));

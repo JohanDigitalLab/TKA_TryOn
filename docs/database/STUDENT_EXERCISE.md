@@ -1,6 +1,6 @@
 # Latihan adaptif — pending deployment
 
-Migration: [migration-start-student-exercise.sql](migration-start-student-exercise.sql). Belum diaplikasikan ke database.
+Migration: [migration-start-student-exercise.sql](migration-start-student-exercise.sql), lalu perluasan tema/topik [migration-start-student-exercise-theme-topic.sql](migration-start-student-exercise-theme-topic.sql), dan kolom [migration-subjects-is-mandatory.sql](migration-subjects-is-mandatory.sql) (`subjects.is_mandatory boolean NOT NULL DEFAULT true`). Belum diaplikasikan ke database.
 
 ## Prasyarat wajib
 
@@ -12,7 +12,9 @@ Fungsi private dan dispatcher menggunakan search_path pg_catalog dan pemeriksaan
 
 ## Perilaku
 
-Jumlah soal integer 1–100. Jenjang dari profil, subject_code harus cocok dengan jenjang. Per subject: NA (termasuk kompetensi belum tersedia), KURANG, CUKUP; topik diacak dalam prioritas tersebut. Maksimal satu soal per pasangan tema/topik pada tahap adaptif, kemudian fallback acak subject yang sama tanpa duplikat sampai batas permintaan. Fallback boleh memakai topik yang sudah terpilih. Hanya soal published dan versi published terbaru; tidak memakai element/material, difficulty atau filter tema/topik dari client. Snapshot versi disimpan, jumlah aktual dilaporkan. Nol soal membatalkan transaksi.
+Jumlah soal integer 1–100. Jenjang dari profil, subject_code harus cocok dengan jenjang. Per subject: NA (termasuk kompetensi belum tersedia), KURANG, CUKUP; topik diacak dalam prioritas tersebut. Maksimal satu soal per pasangan tema/topik pada tahap adaptif, kemudian fallback acak subject yang sama tanpa duplikat sampai batas permintaan. Fallback boleh memakai topik yang sudah terpilih. Hanya soal published dan versi published terbaru; tidak memakai element/material, difficulty. Snapshot versi disimpan, jumlah aktual dilaporkan. Nol soal membatalkan transaksi.
+
+Parameter opsional `p_theme` dan `p_topic` pada `start_student_exercise`: bila keduanya diisi, soal diambil acak sebanyak `p_question_count` dari pasangan tema/topik tersebut; bila hanya `p_theme` yang diisi, topic diacak dalam tema tersebut; `p_topic` tanpa `p_theme` ditolak sebagai konfigurasi tidak valid. Tanpa keduanya, perilaku adaptif lama dipakai. Signature lama `(text,integer)` di-drop pada migrasi perluasan agar PostgREST tidak ambigu; panggilan tanpa tema/topik tetap cocok karena parameter baru ber-DEFAULT NULL.
 
 Klik ganda diserialkan client dan lock database. Attempt exercise aktif pada subject yang sama dilanjutkan. Attempt aktif jenis lain tidak diganti. Resume memulihkan options/category_items/jawaban tanpa kunci benar atau penjelasan. Multi-subject tetap memakai cache konfigurasi sesi; histori permanen tetap engine database.
 

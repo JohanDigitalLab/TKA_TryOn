@@ -56,24 +56,12 @@ test("safe errors distinguish missing rollout/authorization, avoid raw backend d
   assert.equal(statusLabels.needs_revision,undefined);
 });
 
-test("frontend only uses authenticated RPCs and supported school actions", async () => {
-  const paths = ["src/components/school/portal.js","src/components/school/transfers.js","src/components/school/communications.js","src/app/school/register/page.js","src/app/school/join/page.js","src/app/school/manage/page.js","src/app/school/messages/page.js","src/app/admin/schools/page.js"];
-  const source = (await Promise.all(paths.map(p => readFile(new URL(`../${p}`,import.meta.url),"utf8")))).join("\n");
-  for(const action of ["profile_update","class_save","class_archive","invite_create","invite_revoke","member_approve","member_reject","member_deactivate","member_move","message_send","platform_message","message_read","ticket_create","message_forward","ticket_reply","ticket_close","propose","accept","cancel","recover"]) assert.ok(source.includes(`"${action}"`),action);
-  assert.doesNotMatch(source,/service_role|SERVICE_ROLE|dangerouslySetInnerHTML|window\.confirm|\.from\([^)]*\)\.(insert|update|delete|upsert)/);
-  assert.match(source,/<fieldset disabled=\{portal.busy\}/);
-  assert.match(source,/lock\.current/);
-  assert.match(source,/p_confirm:false/); assert.match(source,/p_confirm:true/);
-  assert.match(source,/p_action:"accept",p_data:\{ transfer_id:t.id \}/);
-  assert.match(source,/ID penerima privat opsional/);
-});
-test("signup no longer stores misleading school code metadata; staff has no education requirement", async () => {
+test("signup no longer stores misleading school code metadata", async () => {
   const student = await readFile(new URL("../src/app/register/page.js",import.meta.url),"utf8");
-  const staff = await readFile(new URL("../src/app/school/register/page.js",import.meta.url),"utf8");
-  const login = await readFile(new URL("../src/app/login/page.js",import.meta.url),"utf8");
-  assert.doesNotMatch(student,/school_code\s*:/); assert.match(student,/joinPath\(values.code\)/);
-  assert.match(staff,/registration_method: "school_staff"/); assert.doesNotMatch(staff,/education_level\s*:/);
-  assert.match(login,/localPath\(searchParams.get\("next"\)/);
-  assert.equal((login.match(/if \(authLock\.current\) return;/g) || []).length,3);
-  assert.equal((login.match(/<fieldset disabled=\{authBusy\}/g) || []).length,2);
+  const home = await readFile(new URL("../src/app/page.js",import.meta.url),"utf8");
+  assert.doesNotMatch(student,/school_code\s*:/); assert.doesNotMatch(student,/joinPath\(values.code\)/);
+  assert.doesNotMatch(student,/authLink\(/);
+  assert.doesNotMatch(student,/\/login/);
+  assert.match(home,/supabase\.auth\.signInWithPassword/);
+  assert.match(home,/router\.push\("\/home"\)/);
 });

@@ -54,92 +54,7 @@ END;
 $$;
 REVOKE ALL ON FUNCTION private.require_school_staff(uuid) FROM PUBLIC, anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.get_teacher_workspace(p_school_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE result jsonb;
-BEGIN
-  PERFORM private.require_school_staff(p_school_id);
-  SELECT jsonb_build_object(
-    'classes', (SELECT COALESCE(jsonb_agg(to_jsonb(c) ORDER BY c.grade,c.name),'[]'::jsonb) FROM public.classes c WHERE c.school_id=p_school_id),
-    'assignments', (SELECT COALESCE(jsonb_agg(x.row ORDER BY x.created_at DESC),'[]'::jsonb) FROM (
-      SELECT a.created_at,jsonb_build_object('id',a.id,'title',a.title,'class_id',a.class_id,'subject_name',a.subject_name,'grade',a.grade,
-        'status',a.status,'opens_at',a.opens_at,'due_at',a.due_at,'duration_minutes',a.duration_minutes,'question_count',a.question_count,
-        'created_by',a.created_by,'updated_at',a.updated_at,
-        'recipients',(SELECT count(*) FROM public.school_assignment_recipients r WHERE r.assignment_id=a.id),
-        'submitted',(SELECT count(*) FROM public.school_assignment_recipients r JOIN public.exam_attempts e ON e.id=r.attempt_id WHERE r.assignment_id=a.id AND e.attempt_status='SUBMITTED')) AS row
-      FROM public.school_assignments a WHERE a.school_id=p_school_id ORDER BY a.created_at DESC LIMIT 100
-    ) x)
-  ) INTO result;
-  RETURN result;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.save_school_assignment(
-  p_school_id uuid, p_class_id uuid, p_title text, p_subject_name text,
-  p_question_count integer, p_duration_minutes integer, p_opens_at timestamptz, p_due_at timestamptz,
-  p_assignment_id uuid DEFAULT NULL, p_expected_updated_at timestamptz DEFAULT NULL
-)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE c public.classes%ROWTYPE; a public.school_assignments%ROWTYPE; result uuid;
-BEGIN
-  PERFORM private.require_school_staff(p_school_id);
-  SELECT * INTO c FROM public.classes WHERE id=p_class_id AND school_id=p_school_id FOR SHARE;
-  IF NOT FOUND OR c.grade NOT IN (6,9) THEN RAISE EXCEPTION 'Pilih kelas 6 atau 9 dari sekolah ini.'; END IF;
-  IF p_title IS NULL OR p_subject_name IS NULL OR p_question_count IS NULL OR p_duration_minutes IS NULL OR p_opens_at IS NULL OR p_due_at IS NULL THEN
-    RAISE EXCEPTION 'Semua konfigurasi tugas wajib diisi.';
-  END IF;
-  IF p_due_at <= clock_timestamp() THEN RAISE EXCEPTION 'Batas waktu harus di masa depan.'; END IF;
-  IF p_assignment_id IS NULL THEN
-    INSERT INTO public.school_assignments(school_id,class_id,created_by,title,subject_name,grade,question_count,duration_minutes,opens_at,due_at)
-    VALUES(p_school_id,c.id,auth.uid(),btrim(p_title),btrim(p_subject_name),c.grade,p_question_count,p_duration_minutes,p_opens_at,p_due_at) RETURNING id INTO result;
-  ELSE
-    SELECT * INTO a FROM public.school_assignments WHERE id=p_assignment_id AND school_id=p_school_id FOR UPDATE;
-    IF NOT FOUND THEN RAISE EXCEPTION 'Tugas tidak ditemukan.'; END IF;
-    IF a.created_by<>auth.uid() AND NOT private.has_school_role(p_school_id,ARRAY['school_admin']) THEN RAISE EXCEPTION 'Hanya pembuat atau admin dapat mengubah tugas.' USING ERRCODE='42501'; END IF;
-    IF a.status<>'draft' THEN RAISE EXCEPTION 'Hanya draft yang dapat diubah.'; END IF;
-    IF p_expected_updated_at IS NULL OR a.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'Draft berubah; muat ulang sebelum menyimpan.'; END IF;
-    UPDATE public.school_assignments SET class_id=c.id,title=btrim(p_title),subject_name=btrim(p_subject_name),grade=c.grade,
-      question_count=p_question_count,duration_minutes=p_duration_minutes,opens_at=p_opens_at,due_at=p_due_at,updated_at=clock_timestamp() WHERE id=a.id;
-    result:=a.id;
-  END IF;
-  RETURN result;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.set_school_assignment_status(p_assignment_id uuid,p_status text)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE a public.school_assignments%ROWTYPE; n integer;
-BEGIN
-  SELECT * INTO a FROM public.school_assignments WHERE id=p_assignment_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Tugas tidak ditemukan.'; END IF;
-  PERFORM private.require_school_staff(a.school_id);
-  IF a.created_by<>auth.uid() AND NOT private.has_school_role(a.school_id,ARRAY['school_admin']) THEN RAISE EXCEPTION 'Hanya pembuat atau admin dapat mengubah tugas.' USING ERRCODE='42501'; END IF;
-  IF p_status IS NULL OR p_status NOT IN ('published','cancelled') THEN RAISE EXCEPTION 'Status tidak valid.'; END IF;
-  IF a.status=p_status THEN RETURN; END IF;
-  IF a.status='cancelled' OR (p_status='published' AND a.status<>'draft') THEN RAISE EXCEPTION 'Transisi status tidak valid.'; END IF;
-  IF p_status='published' THEN
-    IF a.due_at < clock_timestamp()+a.duration_minutes*interval '1 minute' THEN RAISE EXCEPTION 'Waktu pengerjaan tersisa tidak cukup.'; END IF;
-    IF NOT EXISTS (SELECT 1 FROM public.classes WHERE id=a.class_id AND school_id=a.school_id AND grade=a.grade) THEN RAISE EXCEPTION 'Kelas tugas telah berubah.'; END IF;
-    -- Paket soal identik untuk semua penerima. Snapshot versi tidak berubah setelah publish.
-    INSERT INTO public.school_assignment_questions(assignment_id,question_id,question_version_id,question_order)
-    SELECT a.id,q.id,v.id,row_number() OVER (ORDER BY q.id)::integer
-    FROM public.questions q JOIN public.question_versions v ON v.question_id=q.id AND v.is_current=true
-    WHERE q.grade=a.grade AND q.subject_name=a.subject_name AND q.question_status='PUBLISHED'
-      AND q.question_type IN ('PG_TUNGGAL','PGK_MA','PGK_KATEGORI') ORDER BY q.id LIMIT a.question_count;
-    GET DIAGNOSTICS n=ROW_COUNT;
-    IF n<>a.question_count THEN RAISE EXCEPTION 'Soal terbit tidak cukup: tersedia %, diperlukan %.',n,a.question_count; END IF;
-    INSERT INTO public.school_assignment_recipients(assignment_id,user_id)
-    SELECT a.id,p.user_id FROM public.student_academic_profiles p
-    JOIN public.school_memberships m ON m.user_id=p.user_id AND m.school_id=a.school_id AND m.role='student' AND m.status='active'
-    JOIN public.profiles pr ON pr.id=p.user_id AND pr.account_status='active'
-    WHERE p.class_id=a.class_id AND p.school_id=a.school_id AND p.grade=a.grade;
-    GET DIAGNOSTICS n=ROW_COUNT;
-    IF n=0 THEN RAISE EXCEPTION 'Kelas belum memiliki siswa aktif yang sesuai.'; END IF;
-  END IF;
-  UPDATE public.school_assignments SET status=p_status,updated_at=clock_timestamp() WHERE id=a.id;
-END;
-$$;
-
+-- Fungsi workspace guru (pembuatan/penerbitan tugas dan ranking) dipensiunkan dari repositori.
 CREATE OR REPLACE FUNCTION public.get_student_assignments()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE result jsonb;
@@ -178,7 +93,7 @@ BEGIN
   END IF;
   IF clock_timestamp()<a.opens_at OR clock_timestamp()+a.duration_minutes*interval '1 minute'>a.due_at THEN
     RAISE EXCEPTION 'Tugas belum dibuka atau waktu tersisa tidak cukup untuk memulai.'; END IF;
-  -- Lock identik dengan start_exam_attempt untuk menghindari race dengan sesi mandiri.
+  -- Lock identik dengan sesi mandiri untuk menghindari race antar jalur start.
   PERFORM pg_advisory_xact_lock(hashtextextended(auth.uid()::text||':'||a.grade::text||':'||a.subject_name,0));
   IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=auth.uid() AND grade=a.grade AND subject_name=a.subject_name
     AND attempt_status='IN_PROGRESS' AND started_at+duration_minutes*interval '1 minute'>clock_timestamp()) THEN
@@ -195,29 +110,12 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_school_assignment_ranking(p_assignment_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-DECLARE a public.school_assignments%ROWTYPE; result jsonb;
-BEGIN
-  SELECT * INTO a FROM public.school_assignments WHERE id=p_assignment_id;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Tugas tidak ditemukan.'; END IF;
-  PERFORM private.require_school_staff(a.school_id);
-  SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x.position),'[]'::jsonb) INTO result FROM (
-    SELECT row_number() OVER (ORDER BY e.score DESC,e.submitted_at,e.id) AS position,
-      COALESCE(NULLIF(p.full_name,''),'Siswa') AS student_name,e.score,e.correct_answers,e.total_questions,e.submitted_at
-    FROM public.school_assignment_recipients r JOIN public.exam_attempts e ON e.id=r.attempt_id AND e.user_id=r.user_id
-    LEFT JOIN public.profiles p ON p.id=r.user_id
-    WHERE r.assignment_id=a.id AND e.attempt_status='SUBMITTED' AND e.score IS NOT NULL
-    ORDER BY e.score DESC,e.submitted_at,e.id LIMIT 5
-  ) x;
-  RETURN result;
-END;
-$$;
+-- Ranking privat tugas dipensiunkan bersama fungsi workspace guru di atas.
 
 -- Tutup privilege default PUBLIC untuk SEMUA RPC baru, termasuk overload.
 DO $$ DECLARE f regprocedure; BEGIN
   FOR f IN SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND p.proname IN ('get_teacher_workspace','save_school_assignment','set_school_assignment_status','get_student_assignments','start_school_assignment','get_school_assignment_ranking')
+    WHERE n.nspname='public' AND p.proname IN ('get_student_assignments','start_school_assignment')
   LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated',f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',f);

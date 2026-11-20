@@ -56,9 +56,10 @@ function formatAttemptDate(value) {
   });
 }
 
-export default function StudentPage({
+export function StudentDashboard({
   actionContent,
   subscriptionMode = false,
+  requireIndependentStudent = false,
 } = {}) {
   const router = useRouter();
   const greeting = useSyncExternalStore(
@@ -75,38 +76,60 @@ export default function StudentPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadDashboard() {
+      let denied = false;
+
       try {
         const { data: userData, error: userError } =
           await supabase.auth.getUser();
         if (userError) throw userError;
         if (!userData.user) {
+          denied = true;
+          setRedirecting(true);
           router.replace("/");
           return;
         }
 
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select(
+            subscriptionMode
+              ? "account_type, is_managed, is_subscribed, full_name, education_level, profile_completed, has_tried_tryout, has_tried_exercise"
+              : "account_type, is_managed, is_subscribed, full_name, education_level, profile_completed",
+          )
+          .eq("id", userData.user.id)
+          .maybeSingle();
+        if (profileError) throw profileError;
+        if (!mounted) return;
+        if (
+          requireIndependentStudent &&
+          (String(profileData?.account_type || "").toUpperCase() !== "STUDENT" ||
+            profileData?.is_managed !== false)
+        ) {
+          denied = true;
+          setRedirecting(true);
+          router.replace("/home");
+          return;
+        }
+        if (profileData?.is_subscribed !== true) {
+          denied = true;
+          setRedirecting(true);
+          router.replace("/subscription");
+          return;
+        }
+
         const [
-          { data: profileData, error: profileError },
           { data: attemptsData, error: attemptsError },
           { data: historyData, error: historyError },
         ] = await Promise.all([
-          supabase
-            .from("profiles")
-            .select(
-              subscriptionMode
-                ? "full_name, education_level, profile_completed, has_tried_tryout, has_tried_exercise"
-                : "full_name, education_level, profile_completed",
-            )
-            .eq("id", userData.user.id)
-            .maybeSingle(),
           supabase.rpc("get_student_active_attempts"),
-          supabase.rpc("get_student_history", { limit: 5 }),
+          supabase.rpc("get_student_history", { p_limit: 5 }),
         ]);
-        if (profileError) throw profileError;
         if (attemptsError) throw attemptsError;
         if (historyError) throw historyError;
         if (!mounted) return;
@@ -121,7 +144,7 @@ export default function StudentPage({
         if (mounted)
           setError(err.message || "Dashboard belum berhasil dimuat.");
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && !denied) setLoading(false);
       }
     }
 
@@ -129,7 +152,7 @@ export default function StudentPage({
     return () => {
       mounted = false;
     };
-  }, [router, subscriptionMode]);
+  }, [router, subscriptionMode, requireIndependentStudent]);
 
   const initials = useMemo(() => {
     const name = profile?.full_name || "Siswa";
@@ -153,7 +176,7 @@ export default function StudentPage({
       const { data, error: requestError } = await supabase.rpc(
         "get_student_history",
         {
-          limit: nextShowAll ? 0 : 5,
+          p_limit: nextShowAll ? 0 : 5,
         },
       );
       if (requestError) throw requestError;
@@ -172,6 +195,15 @@ export default function StudentPage({
     setSigningOut(true);
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  if (redirecting) {
+    // Jangan pernah merender isi dashboard saat akun tidak berhak mengaksesnya.
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50">
+        <p role="status" className="font-semibold text-slate-600">Mengalihkan…</p>
+      </main>
+    );
   }
 
   if (loading) {
@@ -379,4 +411,8 @@ export default function StudentPage({
       </div>
     </main>
   );
+}
+
+export default function StudentRoutePage() {
+  return <StudentDashboard requireIndependentStudent />;
 }

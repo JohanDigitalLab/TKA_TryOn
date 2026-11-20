@@ -3,8 +3,15 @@ BEGIN;
 DO $$
 DECLARE n text; body text;
 BEGIN
-  IF to_regprocedure('public.start_student_exercise(text,integer)') IS NULL THEN
+  IF to_regprocedure('public.start_student_exercise(text,integer,text,text)') IS NULL THEN
     RAISE EXCEPTION 'Deploy exercise migration on staging first';
+  END IF;
+  IF to_regprocedure('public.start_student_exercise(text,integer)') IS NOT NULL THEN
+    RAISE EXCEPTION 'Ambiguous old start_student_exercise signature still present';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.subjects'::regclass
+    AND attname='is_mandatory' AND attnum>0 AND NOT attisdropped) THEN
+    RAISE EXCEPTION 'subjects.is_mandatory column missing';
   END IF;
   FOREACH n IN ARRAY ARRAY['resume_exam_attempt','save_exam_answer','submit_exam_attempt'] LOOP
     IF NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace s ON s.oid=p.pronamespace
@@ -16,7 +23,7 @@ BEGIN
   IF body ~ '(is_correct|correct_category|explanation|scoring_rule)' THEN
     RAISE EXCEPTION 'Active loader leaks answer metadata';
   END IF;
-  IF has_function_privilege('anon','public.start_student_exercise(text,integer)','EXECUTE')
+  IF has_function_privilege('anon','public.start_student_exercise(text,integer,text,text)','EXECUTE')
     OR has_function_privilege('authenticated','private.load_student_exercise(uuid)','EXECUTE') THEN
     RAISE EXCEPTION 'Unsafe function grants';
   END IF;

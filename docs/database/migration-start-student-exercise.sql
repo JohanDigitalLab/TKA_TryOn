@@ -31,7 +31,7 @@ BEGIN
     'remaining_seconds',NULL);
 END $$;
 
-CREATE OR REPLACE FUNCTION public.start_student_exercise(p_subject_code text, p_question_count integer DEFAULT 20)
+CREATE OR REPLACE FUNCTION public.xxstart_student_exercise(p_subject_code text, p_question_count integer DEFAULT 20)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE
   u uuid:=auth.uid(); lvl text; g integer; subj text; aid uuid;
@@ -94,8 +94,8 @@ BEGIN
   UPDATE public.exam_attempts SET total_questions=actual WHERE id=aid;
   RETURN private.load_student_exercise(aid)||jsonb_build_object('resumed',false);
 END $$;
-REVOKE ALL ON FUNCTION public.start_student_exercise(text,integer) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.start_student_exercise(text,integer) TO authenticated;
+REVOKE ALL ON FUNCTION public.xxstart_student_exercise(text,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.xxstart_student_exercise(text,integer) TO authenticated;
 CREATE OR REPLACE FUNCTION private.exercise_save_answer(
   p_attempt_id uuid,
   p_question_id uuid,

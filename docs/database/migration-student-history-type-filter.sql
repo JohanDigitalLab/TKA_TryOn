@@ -48,7 +48,7 @@ BEGIN
       WHERE a.user_id = v_user_id
         AND (v_types IS NULL OR upper(a.attempt_type::text) = ANY(v_types))
       ORDER BY a.started_at DESC, a.id DESC
-      limit NULLIF("p_limit", 0)
+      LIMIT NULLIF("p_limit", 0)
     ) AS h
   );
 END;

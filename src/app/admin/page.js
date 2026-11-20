@@ -1,29 +1,11 @@
 
 "use client";
 
-import BrandLogo from "@/components/brand-logo";
+import AdminSidebar from "@/components/admin/admin-sidebar";
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-// ======================================================
-// MENU ADMIN
-// ======================================================
-
-const menu = [
-  { icon: "◫", label: "Dashboard" },
-  { icon: "▤", label: "Bank Soal", section: "KONTEN AKADEMIK" },
-  { icon: "⇧", label: "Import Center" },
-  { icon: "✦", label: "AI Question Factory" },
-  { icon: "✓", label: "Moderasi Guru" },
-  { icon: "▥", label: "Paket Simulasi", section: "UJIAN & EVALUASI" },
-  { icon: "▣", label: "Hasil Ujian" },
-  { icon: "♙", label: "Pengguna & Sekolah", section: "MANAJEMEN" },
-  { icon: "♙", label: "Manajemen Admin" },
-  { icon: "▤", label: "Langganan" },
-  { icon: "⚙", label: "Pengaturan" },
-];
 
 const stats = [
   {
@@ -153,8 +135,6 @@ export default function AdminDashboard() {
   }, []);
 
   function selectMenu(label) {
-    if (label === "Langganan") { router.push("/admin/subscriptions"); return; }
-    if (label === "Pengguna & Sekolah") { router.push("/admin/schools"); return; }
     setActiveMenu(label);
     if (label === "Manajemen Admin") {
       void loadCandidates();
@@ -811,94 +791,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 text-slate-800 lg:flex">
       {/* SIDEBAR */}
 
-      <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:block lg:min-h-screen">
-        <div className="border-b border-white/10 px-6 py-6">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="h-12 w-14" />
-
-            <div>
-              <h1 className="text-lg font-bold tracking-wide">
-                TKA TryOn
-              </h1>
-
-              <p className="text-xs text-slate-400">
-                SKILL ON • CONFIDENCE ON
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-4 py-5">
-          <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-xs text-slate-400">
-              AREA KERJA
-            </p>
-
-            <p className="mt-1 font-semibold">
-              Super Admin
-            </p>
-
-            <p className="text-xs text-slate-400">
-              TKA TryOn Platform
-            </p>
-          </div>
-
-          <nav className="space-y-1">
-            {menu.map((item) => (
-              <div key={item.label}>
-                {item.section && (
-                  <p className="mb-2 mt-5 px-3 text-[10px] font-bold tracking-widest text-slate-500">
-                    {item.section}
-                  </p>
-                )}
-
-                <button
-                  onClick={() => {
-                    if (item.label === "Bank Soal") {
-                      router.push("/admin/questions");
-                      return;
-                    }
-
-                    if (item.label === "Import Center") {
-                      router.push("/admin/import");
-                      return;
-                    }
-
-                    selectMenu(item.label);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
-                    activeMenu === item.label
-                      ? "bg-blue-600 font-semibold text-white"
-                      : "text-slate-300 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className="w-5 text-center text-lg">
-                    {item.icon}
-                  </span>
-
-                  {item.label}
-
-                  {item.label === "Moderasi Guru" && (
-                    <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">
-                      Review
-                    </span>
-                  )}
-                </button>
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        <div className="border-t border-white/10 px-6 py-5">
-          <p className="text-xs text-slate-500">
-            TKA TryOn Administration
-          </p>
-
-          <p className="mt-1 text-xs text-slate-400">
-            Platform v1.0
-          </p>
-        </div>
-      </aside>
+      <AdminSidebar active={activeMenu} onSelect={selectMenu} />
 
       {/* MAIN CONTENT */}
 
@@ -928,6 +821,9 @@ export default function AdminDashboard() {
         </header>
 
         <nav aria-label="Navigasi admin layar kecil" className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+          <button type="button" onClick={() => router.push("/admin/master/users")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
+            Master Data
+          </button>
           <button
             type="button"
             onClick={() => selectMenu("Dashboard")}
@@ -936,7 +832,6 @@ export default function AdminDashboard() {
           >
             Dashboard
           </button>
-          <button type="button" onClick={() => router.push("/admin/schools")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Review sekolah</button>
           <button type="button" onClick={() => router.push("/school")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Portal sekolah</button>
           <button type="button" onClick={() => router.push("/admin/questions")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
             Bank Soal

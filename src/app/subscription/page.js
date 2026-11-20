@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import StudentPage from "../student/page";
+import { StudentDashboard } from "../student/page";
 
 const plans = [
   {
@@ -55,5 +55,5 @@ export function SubscriptionPlans() {
 }
 
 export default function SubscriptionPage() {
-  return <StudentPage subscriptionMode actionContent={<SubscriptionPlans />} />;
+  return <StudentDashboard subscriptionMode actionContent={<SubscriptionPlans />} />;
 }

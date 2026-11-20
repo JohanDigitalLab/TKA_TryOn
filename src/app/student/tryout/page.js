@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PortalHeader from "@/components/portal-header";
+import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
@@ -150,6 +151,7 @@ function MissionsForm({ params }) {
       </header>
 
       <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
+        <DashboardBreadcrumb current="Simulasi TKA" />
         {/* PAGE TITLE */}
         <section className="mb-8">
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">

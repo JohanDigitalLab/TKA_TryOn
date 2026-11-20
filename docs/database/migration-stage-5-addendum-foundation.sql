@@ -419,31 +419,13 @@ BEGIN
  RETURN result||jsonb_build_object('mode',b.mode,'config_snapshot',(SELECT config_snapshot FROM public.a02_attempt_context WHERE attempt_id=a.id));
 END $$;
 
--- Move old starts to private once; retain exact definitions and signatures. No exposed bypass.
+-- Move old school assignment start to private once; retain exact definition and signature. No exposed bypass.
+-- Legacy mandiri start dan pembungkus publiknya dihapus dari repositori.
 DO $$ BEGIN
- IF to_regprocedure('private.a02_legacy_start(integer,text,integer,integer)') IS NULL THEN
- ALTER FUNCTION public.start_exam_attempt(integer,text,integer,integer) SET SCHEMA private;
- ALTER FUNCTION private.start_exam_attempt(integer,text,integer,integer) RENAME TO a02_legacy_start;
- END IF;
  IF to_regprocedure('private.a02_legacy_school_start(uuid)') IS NULL THEN
  ALTER FUNCTION public.start_school_assignment(uuid) SET SCHEMA private;
  ALTER FUNCTION private.start_school_assignment(uuid) RENAME TO a02_legacy_school_start;
  END IF;
-END $$;
-CREATE OR REPLACE FUNCTION public.start_exam_attempt(p_grade integer,p_subject_name text,p_question_count integer DEFAULT 20,p_duration_minutes integer DEFAULT 60) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE uid uuid:=private.a02_actor(); result jsonb; aid uuid; enabled boolean;
-BEGIN
- IF p_grade IS NULL OR p_grade NOT IN(6,9) OR p_subject_name IS NULL OR length(btrim(p_subject_name))=0 OR p_question_count IS NULL OR p_question_count NOT BETWEEN 1 AND 100 OR p_duration_minutes IS NULL OR p_duration_minutes NOT BETWEEN 1 AND 240 THEN RAISE EXCEPTION 'A02_INVALID_START' USING ERRCODE='22023'; END IF;
- PERFORM pg_advisory_xact_lock(hashtextextended(uid::text||':'||p_grade::text||':'||p_subject_name,0));
- SELECT id INTO aid FROM public.exam_attempts WHERE user_id=uid AND grade=p_grade AND subject_name=p_subject_name AND attempt_status='IN_PROGRESS' AND started_at+duration_minutes*interval '1 minute'>clock_timestamp() ORDER BY started_at DESC LIMIT 1;
- IF aid IS NOT NULL THEN RETURN public.resume_exam_attempt(aid); END IF;
- SELECT legacy_start_enforcement INTO enabled FROM public.a02_business_settings;
- IF enabled THEN
- -- UI must migrate to configured starts. Never create an unreviewed session under enforcement.
- RAISE EXCEPTION 'A02_CONFIGURED_START_REQUIRED';
- END IF;
- result:=private.a02_legacy_start(p_grade,p_subject_name,p_question_count,p_duration_minutes);
- RETURN result;
 END $$;
 CREATE OR REPLACE FUNCTION public.start_school_assignment(p_assignment_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE uid uuid:=private.a02_actor(); a public.school_assignments%ROWTYPE; aid uuid; result jsonb; enabled boolean;
@@ -708,7 +690,7 @@ DO $$ DECLARE r record; BEGIN
  EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',r.relname);
  EXECUTE format('REVOKE ALL ON public.%I FROM PUBLIC,anon,authenticated',r.relname);
  END LOOP;
- FOR r IN SELECT p.oid::regprocedure signature,n.nspname,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE (n.nspname IN('public','private') AND p.proname LIKE 'a02\_%' ESCAPE '\') OR (n.nspname='private' AND p.proname='handle_new_user') OR (n.nspname='public' AND p.proname IN('start_exam_attempt','start_school_assignment','get_exam_attempt_review','get_student_exam_history')) LOOP
+ FOR r IN SELECT p.oid::regprocedure signature,n.nspname,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE (n.nspname IN('public','private') AND p.proname LIKE 'a02\_%' ESCAPE '\') OR (n.nspname='private' AND p.proname='handle_new_user') OR (n.nspname='public' AND p.proname IN('start_school_assignment','get_exam_attempt_review','get_student_exam_history')) LOOP
  EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC,anon,authenticated',r.signature);
  IF r.nspname='public' THEN EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated',r.signature); END IF;
  END LOOP;

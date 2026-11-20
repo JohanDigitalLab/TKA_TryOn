@@ -36,11 +36,12 @@ test('start and resume use ownership, account/level/access checks and transactio
   }
 });
 test('safe loader only reads persisted snapshots and explicitly allowlists exam fields', () => {
-  const loader = sql.split('CREATE OR REPLACE FUNCTION private.load_tka_tryout')[1].split('END $$;')[0];
+  const loader = sql.split('CREATE OR REPLACE FUNCTION private.resume_tka_tryout')[1].split('END $$;')[0];
   assert.doesNotMatch(loader, /INSERT |UPDATE public\.|random\(|is_correct|correct_category|explanation/);
   for (const key of ['questions', 'options', 'category_items', 'answers', 'remaining_seconds']) assert.ok(loader.includes(`'${key}'`));
   assert.match(loader, /v\.id=aq\.question_version_id AND v\.question_id=q\.id/);
-  assert.match(sql, /RETURN private\.tka_legacy_resume\(p_attempt_id\)/);
+  assert.match(sql, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(loader, /'attempt_type',a\.attempt_type/);
 });
 test('frontend starts server attempt with synchronous duplicate guard and recoverable errors', () => {
   assert.match(frontend, /async function saveConfiguration/);

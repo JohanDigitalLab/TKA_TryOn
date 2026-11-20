@@ -59,7 +59,10 @@ test("loading, finished and absent attempt still block TRYOUT timer", () => {
 test("start/resume share server classification; multi-subject resets before next RPC", () => {
   assert.match(page, /\[untimed, setUntimed\] = useState\(true\)/);
   const start = page.slice(page.indexOf("  const startExam ="), page.indexOf("  // SIMPAN JAWABAN"));
-  for (const rpc of ["start_school_assignment", "resume_exam_attempt", "start_student_exercise", "start_learning_attempt"]) assert.ok(start.includes(`"${rpc}"`));
+  for (const rpc of ["start_school_assignment", "resume_exam_attempt", "start_student_exercise"]) assert.ok(start.includes(`"${rpc}"`));
+  assert.match(start, /Mode sesi latihan lama tidak lagi didukung/);
+  assert.doesNotMatch(start, new RegExp(["start", "learning", "attempt"].join("_")));
+  assert.doesNotMatch(start, new RegExp(["start", "exam", "attempt"].join("_")));
   assert.match(start, /setLoading\(true\);\s+setUntimed\(true\)/);
   assert.equal((start.match(/setUntimed\(data\.attempt_type !== "TRYOUT"\)/g) || []).length, 1);
   const next = page.slice(page.indexOf("  const nextSubject ="), page.indexOf("  // PENGAMAN NAVIGASI"));
@@ -73,9 +76,9 @@ test("countdown UI and warning states require explicit timed classification", ()
 
 test("TKA start/resume loader returns persisted attempt_type; exercise remains explicit", () => {
   const sql = read("docs/database/migration-start-tka-tryout.sql");
-  const loader = sql.split("CREATE OR REPLACE FUNCTION private.load_tka_tryout")[1].split("END $$;")[0];
+  const loader = sql.split("CREATE OR REPLACE FUNCTION private.resume_tka_tryout")[1].split("END $$;")[0];
   assert.match(loader, /'attempt_type',a\.attempt_type/);
-  assert.match(sql, /RETURN private\.load_tka_tryout\(p_attempt_id\)/);
-  assert.match(sql, /RETURN private\.load_tka_tryout\(aid\)/);
+  assert.match(sql, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(sql, /private\.resume_tka_tryout\(aid\)/);
   assert.match(read("docs/database/migration-start-student-exercise.sql"), /'attempt_type','EXERCISE'/);
 });
