@@ -1,7 +1,12 @@
 
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
 import { studentRegistrationPath } from "@/lib/student/registration.mjs";
+import { supabase } from "@/lib/supabase";
 
 const levels = [
   {
@@ -27,25 +32,89 @@ const levels = [
   },
 ];
 
-const services = [
+const plans = [
   {
-    number: "01",
-    title: "Simulasi TKA",
-    description: "Latihan ujian berbasis komputer dengan pengaturan waktu dan navigasi soal.",
+    name: "Siswa Mandiri",
+    href: "/register",
+    action: "Daftar Sekarang",
+    price: "Rp49.000",
+    suffix: "sekali bayar sampai lulus",
+    tone: "blue",
+    features: [
+      "Simulasi TKA berbasis CBT",
+      "Latihan soal sesuai jenjang",
+      "Riwayat hasil dan review jawaban",
+      "Rekomendasi belajar dari hasil pengerjaan",
+    ],
   },
   {
-    number: "02",
-    title: "Latihan Akademik",
-    description: "Latihan soal berdasarkan jenjang, mata pelajaran, dan kompetensi.",
-  },
-  {
-    number: "03",
-    title: "Hasil dan Evaluasi",
-    description: "Lihat hasil pengerjaan dan identifikasi kompetensi yang perlu ditingkatkan.",
+    name: "Sekolah",
+    href: "/register",
+    action: "Daftar Sekarang",
+    price: "Rp25.000",
+    suffix: "per siswa",
+    tone: "blue",
+    features: [
+      "Dashboard sekolah dan pengelolaan siswa",
+      "Jadwal try-out bersama",
+      "Penugasan latihan dengan batas waktu",
+      "Monitoring hasil belajar dan peringkat",
+    ],
   },
 ];
 
+function getDashboardPath(profile) {
+  if (profile?.is_subscribed === false) return "/subscription";
+  if (profile?.account_type === "STUDENT") {
+    return profile.is_managed === true ? "/mstudent" : "/student";
+  }
+  if (profile?.account_type === "SCHOOL") return "/school";
+  if (profile?.account_type === "ADMIN") return "/admin";
+  return null;
+}
+
 export default function Home() {
+  const router = useRouter();
+  const [showLogin, setShowLogin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  async function handleOpenLogin() {
+    setLoginError("");
+
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      router.push("/home");
+      return;
+    }
+
+    setShowLogin(true);
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
+      if (!data.session) throw new Error("Sesi login belum berhasil dibuat.");
+
+      router.push("/home");
+    } catch (error) {
+      setLoginError(error.message?.toLowerCase().includes("invalid login credentials")
+        ? "Email atau password tidak sesuai."
+        : error.message || "Login gagal. Silakan coba kembali.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f5f6f3] text-slate-800">
 
@@ -66,40 +135,15 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* NAVIGASI TENGAH */}
-          <nav className="col-span-2 row-start-2 flex items-center justify-center gap-6 border-t border-slate-100 pt-3 text-sm font-semibold text-slate-700 sm:gap-8 md:col-span-1 md:col-start-2 md:row-start-1 md:border-0 md:pt-0 md:text-base">
-            <a href="#jenjang" className="py-1 hover:text-blue-700">
-              Jenjang Pendidikan
-            </a>
-            <a href="#layanan" className="py-1 hover:text-blue-700">
-              Layanan
-            </a>
-            <Link href="/school" className="py-1 hover:text-blue-700">Sekolah</Link>
-            <a href="#tentang" className="py-1 hover:text-blue-700">
-              Tentang
-            </a>
-          </nav>
-
           {/* AKUN KANAN */}
           <div className="flex items-center justify-self-end gap-2 md:col-start-3 md:row-start-1">
-            <Link
-              href="/subscription"
-              className="hidden rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex sm:px-4"
-            >
-              Paket
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:px-4"
-            >
-              Masuk
-            </Link>
-            <Link
-              href="/register"
+            <button
+              type="button"
+              onClick={handleOpenLogin}
               className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
             >
-              Daftar
-            </Link>
+              Masuk
+            </button>
           </div>
 
         </div>
@@ -126,11 +170,11 @@ export default function Home() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register" className="rounded-lg bg-blue-700 px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-800">
-                Mulai Persiapan
+                Daftar Sekarang
               </Link>
-              <Link href="/subscription" className="rounded-lg border border-slate-300 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              <a href="#layanan" className="rounded-lg border border-slate-300 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
                 Lihat Paket
-              </Link>
+              </a>
               <a href="#jenjang" className="rounded-lg border border-slate-300 px-6 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
                 Lihat Jenjang
               </a>
@@ -145,16 +189,16 @@ export default function Home() {
             <div className="flex items-center justify-between border-b border-slate-200 pb-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">TKA TRYON</p>
-                <h3 className="mt-1 text-xl font-extrabold text-slate-900">Pusat Persiapan TKA</h3>
+                <h3 className="mt-1 text-xl font-extrabold text-slate-900">Persiapan, Simulasi, dan Evaluasi</h3>
               </div>
               <span className="rounded-lg bg-blue-100 px-3 py-2 text-xs font-bold text-blue-800">CBT</span>
             </div>
 
             <div className="mt-6 space-y-4">
               {[
-                ["A", "Simulasi ujian", "Pengalaman pengerjaan berbasis komputer"],
-                ["B", "Latihan soal", "Persiapan berdasarkan mata pelajaran"],
-                ["C", "Evaluasi hasil", "Analisis kemampuan dan perkembangan"],
+                ["A", "Simulasi ujian", "Latihan ujian berbasis komputer dengan pengaturan waktu dan navigasi soal."],
+                ["B", "Latihan soal", "Latihan soal berdasarkan jenjang, mata pelajaran, dan kompetensi."],
+                ["C", "Evaluasi hasil", "Lihat hasil pengerjaan dan identifikasi kompetensi yang perlu ditingkatkan."],
               ].map(([code, title, description]) => (
                 <div key={code} className="flex items-start gap-4 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 font-bold text-blue-700">{code}</div>
@@ -209,14 +253,21 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
           <div className="mb-8">
             <p className="text-xs font-bold uppercase tracking-widest text-blue-700">FASILITAS PLATFORM</p>
-            <h3 className="mt-2 text-2xl font-extrabold text-slate-950">Persiapan, Simulasi, dan Evaluasi</h3>
+            <h3 className="mt-2 text-2xl font-extrabold text-slate-950">Daftar Satu Sekolah, Lebih Murah dan Lebih Banyak Fitur</h3>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {services.map((service) => (
-              <article key={service.number} className="border-l-2 border-blue-600 py-2 pl-5">
-                <p className="text-sm font-bold text-blue-700">{service.number}</p>
-                <h4 className="mt-3 text-lg font-bold text-slate-900">{service.title}</h4>
-                <p className="mt-2 text-sm leading-6 text-slate-500">{service.description}</p>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {plans.map((plan) => (
+              <article key={plan.name} className={`border p-6 sm:p-8 ${plan.tone === "blue" ? "rounded-xl border-slate-300 bg-white" : "rounded-xl border-slate-300 bg-slate-900 text-white"}`}>
+                <p className={`text-sm font-bold ${plan.tone === "blue" ? "text-blue-700" : "text-blue-200"}`}>{plan.name}</p>
+                <div className="mt-4 flex flex-wrap items-baseline gap-2">
+                  <span className="text-4xl font-black">{plan.price}</span>
+                  <span className={`text-sm ${plan.tone === "blue" ? "text-slate-500" : "text-slate-300"}`}>{plan.suffix}</span>
+                </div>
+                <ul className={`mt-7 space-y-3 text-sm ${plan.tone === "blue" ? "text-slate-600" : "text-slate-200"}`}>
+                  {plan.features.map((feature) => <li key={feature} className="flex gap-3"><span className="font-bold text-blue-400" aria-hidden="true">✓</span><span>{feature}</span></li>)}
+                </ul>
+                <Link href={plan.href} className={`mt-8 block rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}>{plan.action}</Link>
               </article>
             ))}
           </div>
@@ -235,13 +286,39 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-2 px-5 py-6 text-xs text-slate-400 md:flex-row lg:px-8">
-          <p>© 2026 TKA TryOn. All rights reserved.</p>
-          <p>SKILL ON • CONFIDENCE ON</p>
+      {showLogin && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 px-5 py-8 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="login-overlay-title"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setShowLogin(false); }}
+        >
+          <section className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
+            <button type="button" onClick={() => setShowLogin(false)} aria-label="Tutup login" className="absolute right-5 top-5 text-2xl leading-none text-slate-400 hover:text-slate-700">×</button>
+            <div className="flex items-center gap-3">
+              <BrandLogo className="h-14 w-14" />
+              <div>
+                <p className="text-xl font-black tracking-tight text-blue-700">TKA <span className="text-slate-900">TryOn</span></p>
+                <p className="text-[10px] font-bold tracking-widest text-slate-400">SKILL ON • CONFIDENCE ON</p>
+              </div>
+            </div>
+            <h2 id="login-overlay-title" className="mt-7 text-2xl font-extrabold text-slate-900">Selamat Datang!</h2>
+            <p className="mt-2 text-sm text-slate-500">Masuk untuk melanjutkan perjalanan belajar.</p>
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+              <label className="block text-sm font-semibold text-slate-700">Email
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@email.com" autoComplete="email" required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">Password
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              </label>
+              {loginError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loginError}</div>}
+              <button type="submit" disabled={loginLoading} className="w-full rounded-xl bg-blue-700 py-3.5 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-60">{loginLoading ? "Memproses…" : "Masuk"}</button>
+              <div className="text-center text-sm text-slate-500">Belum punya akun? <Link href="/register" onClick={() => setShowLogin(false)} className="font-bold text-blue-700 hover:underline">Daftar sekarang</Link></div>
+            </form>
+          </section>
         </div>
-      </footer>
+      )}
 
     </main>
   );

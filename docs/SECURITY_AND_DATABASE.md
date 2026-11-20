@@ -30,7 +30,7 @@ Repository saat ini belum berisi migration SQL. Sebelum membuat migration baru, 
 Objek yang dirujuk aplikasi:
 
 - Tabel: `profiles`, `user_global_roles`, `questions`, `question_versions`, `question_stimuli`, `question_options`, `question_category_items`.
-- RPC ujian: `start_exam_attempt`, `save_exam_answer`, `get_exam_attempt_review`, `submit_exam_attempt`.
+- RPC ujian: `start_student_exercise`, `start_tka_tryout`, `save_exam_answer`, `get_exam_attempt_review`, `submit_exam_attempt`.
 - RPC admin: `admin_has_permission`, `admin_operator_list_candidates`, `admin_operator_set_access`.
 - RPC import: `save_ai_question_draft_batch`.
 - RPC editor: `save_question_revision`.

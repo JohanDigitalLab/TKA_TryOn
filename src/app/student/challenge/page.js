@@ -34,6 +34,9 @@ function ChallengeContent() {
   const [marked, setMarked] = useState([]);
 
   const [remaining, setRemaining] = useState(3600);
+  // Hanya metadata TRYOUT eksplisit dari server yang mengaktifkan timer.
+  const [untimed, setUntimed] = useState(true);
+  const advancingRef = useRef(false);
   const [finished, setFinished] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [navigationWarning, setNavigationWarning] = useState(false);
@@ -90,6 +93,7 @@ function ChallengeContent() {
 
     startedRef.current = true;
     setLoading(true);
+    setUntimed(true);
     setError("");
 
     try {
@@ -128,18 +132,19 @@ function ChallengeContent() {
         resumed: Boolean(resumeAttemptId),
       });
 
+      if (!assignmentId && !resumeAttemptId && !currentConfig.exerciseAttemptId && !currentConfig.adaptiveExercise) {
+        throw new Error(
+          "Mode sesi latihan lama tidak lagi didukung. Mulai ulang sesi dari halaman Latihan Soal atau Tryout."
+        );
+      }
+
       const { data, error: rpcError } = await supabase.rpc(
-        assignmentId ? "start_school_assignment" : resumeAttemptId ? "resume_exam_attempt" : "start_learning_attempt",
-        assignmentId ? { p_assignment_id: assignmentId } : resumeAttemptId
-          ? { p_attempt_id: resumeAttemptId }
+        assignmentId ? "start_school_assignment" : (resumeAttemptId || currentConfig.exerciseAttemptId) ? "resume_exam_attempt" : "start_student_exercise",
+        assignmentId ? { p_assignment_id: assignmentId } : (resumeAttemptId || currentConfig.exerciseAttemptId)
+          ? { p_attempt_id: resumeAttemptId || currentConfig.exerciseAttemptId }
           : {
-              p_package_id: simulationId,
-              p_mode: currentConfig.activityType === "latihan" ? "mission" : "simulation",
-              p_subjects: subjectList.length ? subjectList : [subject],
-              p_grade: grade,
-              p_subject_name: subject,
+              p_subject_code: currentConfig.subject_codes?.[index],
               p_question_count: questionCount,
-              p_duration_minutes: duration,
             }
       );
 
@@ -189,6 +194,11 @@ function ChallengeContent() {
         })),
       }));
 
+      setUntimed(data.attempt_type !== "TRYOUT");
+      if (currentConfig.adaptiveExercise && !assignmentId && !resumeAttemptId) {
+        currentConfig.exerciseAttemptId = data.attempt_id;
+        sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
+      }
       setAttemptId(data.attempt_id);
       setQuestions(mapped);
 
@@ -229,6 +239,7 @@ function ChallengeContent() {
       startedRef.current = false;
       setError(err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu paket sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
     } finally {
+      advancingRef.current = false;
       setLoading(false);
     }
   }, [resumeAttemptId, assignmentId]);
@@ -498,7 +509,10 @@ function ChallengeContent() {
   // =====================================================
 
   const nextSubject = () => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     const currentConfig = getExamConfig();
+    delete currentConfig.exerciseAttemptId;
     const subjectList = normalizeSubjects(currentConfig);
 
     const nextIndex =
@@ -533,6 +547,7 @@ function ChallengeContent() {
     setAnswers({});
     setMarked([]);
     setRemaining(3600);
+    setUntimed(true);
     setFinished(false);
     setShowConfirm(false);
     setNavigationWarning(false);
@@ -593,12 +608,12 @@ function ChallengeContent() {
   // TIMER
   // =====================================================
 
-  const isTimeExpired = remaining <= 0;
-  const timerWarning = remaining > 0 && remaining <= 300;
-  const timerCritical = remaining > 0 && remaining <= 60;
+  const isTimeExpired = !untimed && remaining <= 0;
+  const timerWarning = !untimed && remaining > 0 && remaining <= 300;
+  const timerCritical = !untimed && remaining > 0 && remaining <= 60;
 
   useEffect(() => {
-    if (loading || finished || !attemptId) return;
+    if (loading || finished || !attemptId || untimed) return;
 
     if (isTimeExpired) {
       const timer = setTimeout(() => finishExam(), 0);
@@ -617,7 +632,7 @@ function ChallengeContent() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [loading, finished, attemptId, isTimeExpired, finishExam]);
+  }, [loading, finished, attemptId, isTimeExpired, finishExam, untimed]);
 
   // =====================================================
   // TANDA RAGU-RAGU
@@ -1005,7 +1020,7 @@ function ChallengeContent() {
             </p>
           </div>
 
-          <div
+          {!untimed && (<div
             className={`rounded-lg border px-4 py-2 text-center ${
               timerCritical
                 ? "border-red-300 bg-red-50"
@@ -1049,7 +1064,7 @@ function ChallengeContent() {
                 Sisa waktu kurang dari 5 menit.
               </p>
             )}
-          </div>
+          </div>)}
 
           <button
             onClick={() => setShowConfirm(true)}

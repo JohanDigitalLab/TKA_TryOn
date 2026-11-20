@@ -1,0 +1,439 @@
+table_name,ordinal_position,column_name,data_type,udt_name,is_nullable,column_default
+school_ticket_replies,6,created_at,timestamp with time zone,timestamptz,NO,now()
+question_versions,1,id,uuid,uuid,NO,gen_random_uuid()
+question_versions,2,question_id,uuid,uuid,NO,null
+question_versions,3,version_number,integer,int4,NO,null
+question_versions,4,stimulus_id,uuid,uuid,YES,null
+question_versions,8,scoring_rule,jsonb,jsonb,NO,'{}'::jsonb
+question_versions,11,is_current,boolean,bool,NO,true
+question_versions,12,created_by,uuid,uuid,YES,null
+question_versions,13,created_at,timestamp with time zone,timestamptz,NO,now()
+question_reviews,1,id,uuid,uuid,NO,gen_random_uuid()
+question_reviews,2,question_id,uuid,uuid,NO,null
+question_reviews,3,question_version_id,uuid,uuid,NO,null
+question_reviews,4,reviewer_id,uuid,uuid,NO,null
+question_reviews,7,reviewed_at,timestamp with time zone,timestamptz,NO,now()
+question_import_batches,1,id,uuid,uuid,NO,gen_random_uuid()
+question_import_batches,5,total_rows,integer,int4,NO,0
+question_import_batches,6,valid_rows,integer,int4,NO,0
+question_import_batches,7,error_rows,integer,int4,NO,0
+question_import_batches,8,imported_rows,integer,int4,NO,0
+question_import_batches,11,created_by,uuid,uuid,YES,null
+question_import_batches,12,created_at,timestamp with time zone,timestamptz,NO,now()
+question_import_batches,13,completed_at,timestamp with time zone,timestamptz,YES,null
+question_import_batches,16,started_at,timestamp with time zone,timestamptz,YES,null
+question_import_batches,17,updated_at,timestamp with time zone,timestamptz,NO,now()
+questions,1,id,uuid,uuid,NO,gen_random_uuid()
+questions,4,grade,smallint,int2,NO,null
+questions,18,group_order,integer,int4,YES,null
+questions,21,import_batch_id,uuid,uuid,YES,null
+questions,25,created_by,uuid,uuid,YES,null
+questions,26,created_at,timestamp with time zone,timestamptz,NO,now()
+questions,27,updated_at,timestamp with time zone,timestamptz,NO,now()
+exam_attempt_questions,1,id,uuid,uuid,NO,gen_random_uuid()
+exam_attempt_questions,2,attempt_id,uuid,uuid,NO,null
+exam_attempt_questions,3,question_id,uuid,uuid,NO,null
+exam_attempt_questions,4,question_version_id,uuid,uuid,NO,null
+exam_attempt_questions,5,question_order,integer,int4,NO,null
+exam_attempt_questions,6,created_at,timestamp with time zone,timestamptz,NO,now()
+admin_operator_permissions,1,id,uuid,uuid,NO,gen_random_uuid()
+admin_operator_permissions,2,user_id,uuid,uuid,NO,null
+admin_operator_permissions,4,granted_by,uuid,uuid,YES,null
+admin_operator_permissions,5,created_at,timestamp with time zone,timestamptz,NO,now()
+exam_attempt_answers,1,id,uuid,uuid,NO,gen_random_uuid()
+exam_attempt_answers,2,attempt_id,uuid,uuid,NO,null
+exam_attempt_answers,3,question_id,uuid,uuid,NO,null
+exam_attempt_answers,4,answer_payload,jsonb,jsonb,NO,'{}'::jsonb
+exam_attempt_answers,5,answered_at,timestamp with time zone,timestamptz,NO,now()
+learning_subscriptions,1,id,uuid,uuid,NO,gen_random_uuid()
+learning_subscriptions,2,user_id,uuid,uuid,YES,null
+learning_subscriptions,3,school_id,uuid,uuid,YES,null
+learning_subscriptions,4,active,boolean,bool,NO,false
+learning_subscriptions,5,expires_at,timestamp with time zone,timestamptz,YES,null
+learning_subscriptions,6,revision,integer,int4,NO,1
+learning_subscriptions,7,updated_at,timestamp with time zone,timestamptz,NO,clock_timestamp()
+learning_subscriptions,8,updated_by,uuid,uuid,NO,null
+admin_access_audit,1,id,uuid,uuid,NO,gen_random_uuid()
+admin_access_audit,2,actor_user_id,uuid,uuid,YES,null
+admin_access_audit,3,target_user_id,uuid,uuid,YES,null
+admin_access_audit,5,old_data,jsonb,jsonb,YES,null
+admin_access_audit,6,new_data,jsonb,jsonb,YES,null
+admin_access_audit,7,created_at,timestamp with time zone,timestamptz,NO,now()
+learning_subscription_audit,1,id,uuid,uuid,NO,gen_random_uuid()
+learning_subscription_audit,2,subscription_id,uuid,uuid,NO,null
+learning_subscription_audit,3,actor_id,uuid,uuid,NO,null
+learning_subscription_audit,5,old_data,jsonb,jsonb,YES,null
+learning_subscription_audit,6,new_data,jsonb,jsonb,NO,null
+learning_subscription_audit,7,created_at,timestamp with time zone,timestamptz,NO,clock_timestamp()
+question_stimuli,1,id,uuid,uuid,NO,gen_random_uuid()
+question_stimuli,11,created_by,uuid,uuid,YES,null
+question_stimuli,12,created_at,timestamp with time zone,timestamptz,NO,now()
+question_stimuli,13,updated_at,timestamp with time zone,timestamptz,NO,now()
+question_options,1,id,uuid,uuid,NO,gen_random_uuid()
+question_options,2,question_version_id,uuid,uuid,NO,null
+question_options,5,option_order,integer,int4,NO,1
+question_options,6,is_correct,boolean,bool,NO,false
+question_options,8,created_at,timestamp with time zone,timestamptz,NO,now()
+question_category_items,1,id,uuid,uuid,NO,gen_random_uuid()
+question_category_items,2,question_version_id,uuid,uuid,NO,null
+question_category_items,3,item_number,integer,int4,NO,null
+question_category_items,8,created_at,timestamp with time zone,timestamptz,NO,now()
+school_memberships,1,id,uuid,uuid,NO,gen_random_uuid()
+school_memberships,2,school_id,uuid,uuid,NO,null
+school_memberships,3,user_id,uuid,uuid,NO,null
+school_memberships,6,joined_at,timestamp with time zone,timestamptz,NO,now()
+question_import_rows,1,id,uuid,uuid,NO,gen_random_uuid()
+question_import_rows,2,batch_id,uuid,uuid,NO,null
+question_import_rows,4,source_row_number,integer,int4,NO,null
+question_import_rows,6,raw_data,jsonb,jsonb,NO,'{}'::jsonb
+question_import_rows,7,normalized_data,jsonb,jsonb,NO,'{}'::jsonb
+question_import_rows,9,validation_errors,jsonb,jsonb,NO,'[]'::jsonb
+question_import_rows,10,validation_warnings,jsonb,jsonb,NO,'[]'::jsonb
+question_import_rows,11,imported_record_id,uuid,uuid,YES,null
+question_import_rows,12,created_at,timestamp with time zone,timestamptz,NO,now()
+question_import_rows,13,updated_at,timestamp with time zone,timestamptz,NO,now()
+school_invites,1,id,uuid,uuid,NO,gen_random_uuid()
+school_invites,2,school_id,uuid,uuid,NO,null
+school_invites,5,expires_at,timestamp with time zone,timestamptz,YES,null
+school_invites,6,max_uses,integer,int4,YES,null
+school_invites,7,used_count,integer,int4,NO,0
+school_invites,9,created_by,uuid,uuid,NO,null
+school_invites,10,created_at,timestamp with time zone,timestamptz,NO,now()
+school_invites,11,onboarding_class_id,uuid,uuid,YES,null
+classes,1,id,uuid,uuid,NO,gen_random_uuid()
+classes,2,school_id,uuid,uuid,NO,null
+classes,5,grade,integer,int4,NO,null
+classes,7,homeroom_teacher_id,uuid,uuid,YES,null
+classes,8,created_at,timestamp with time zone,timestamptz,NO,now()
+classes,9,updated_at,timestamp with time zone,timestamptz,NO,now()
+classes,10,onboarding_archived,boolean,bool,NO,false
+user_global_roles,1,id,uuid,uuid,NO,gen_random_uuid()
+user_global_roles,2,user_id,uuid,uuid,NO,null
+user_global_roles,4,created_at,timestamp with time zone,timestamptz,NO,now()
+student_academic_profiles,1,user_id,uuid,uuid,NO,null
+student_academic_profiles,4,grade,smallint,int2,NO,null
+student_academic_profiles,5,school_id,uuid,uuid,YES,null
+student_academic_profiles,6,class_id,uuid,uuid,YES,null
+student_academic_profiles,9,created_at,timestamp with time zone,timestamptz,NO,now()
+student_academic_profiles,10,updated_at,timestamp with time zone,timestamptz,NO,now()
+profiles,1,id,uuid,uuid,NO,null
+profiles,5,created_at,timestamp with time zone,timestamptz,NO,now()
+profiles,6,updated_at,timestamp with time zone,timestamptz,NO,now()
+profiles,8,education_level_locked_at,timestamp with time zone,timestamptz,YES,null
+profiles,9,profile_completed_at,timestamp with time zone,timestamptz,YES,null
+profiles,11,is_subscribed,boolean,bool,NO,false
+profiles,12,is_verified,boolean,bool,NO,false
+profiles,15,school_id,uuid,uuid,YES,null
+profiles,16,is_managed,boolean,bool,NO,false
+profiles,19,profile_completed,boolean,bool,NO,false
+profiles,20,has_tried_tryout,boolean,bool,NO,false
+profiles,21,has_tried_exercise,boolean,bool,NO,false
+admin_operator_accounts,1,user_id,uuid,uuid,NO,null
+admin_operator_accounts,2,is_active,boolean,bool,NO,false
+admin_operator_accounts,3,created_by,uuid,uuid,YES,null
+admin_operator_accounts,4,updated_by,uuid,uuid,YES,null
+admin_operator_accounts,5,created_at,timestamp with time zone,timestamptz,NO,now()
+admin_operator_accounts,6,updated_at,timestamp with time zone,timestamptz,NO,now()
+education_level_change_requests,1,id,uuid,uuid,NO,gen_random_uuid()
+education_level_change_requests,2,user_id,uuid,uuid,NO,null
+education_level_change_requests,7,reviewed_by,uuid,uuid,YES,null
+education_level_change_requests,8,reviewed_at,timestamp with time zone,timestamptz,YES,null
+education_level_change_requests,10,created_at,timestamp with time zone,timestamptz,NO,now()
+education_level_change_requests,11,updated_at,timestamp with time zone,timestamptz,NO,now()
+education_level_history,1,id,uuid,uuid,NO,gen_random_uuid()
+education_level_history,2,user_id,uuid,uuid,NO,null
+education_level_history,5,actor_user_id,uuid,uuid,YES,null
+education_level_history,6,request_id,uuid,uuid,YES,null
+education_level_history,8,created_at,timestamp with time zone,timestamptz,NO,now()
+subjects,4,is_active,boolean,bool,NO,true
+subjects,5,created_at,timestamp with time zone,timestamptz,NO,now()
+subjects,6,id,uuid,uuid,NO,gen_random_uuid()
+learning_packages,1,id,uuid,uuid,NO,null
+learning_packages,2,user_id,uuid,uuid,NO,null
+learning_packages,4,grade,integer,int4,NO,null
+learning_packages,6,question_count,integer,int4,NO,null
+learning_packages,7,duration_minutes,integer,int4,NO,null
+learning_packages,8,created_at,timestamp with time zone,timestamptz,NO,clock_timestamp()
+learning_packages,9,expires_at,timestamp with time zone,timestamptz,NO,(clock_timestamp() + '24:00:00'::interval)
+learning_package_attempts,1,package_id,uuid,uuid,NO,null
+learning_package_attempts,3,attempt_id,uuid,uuid,NO,null
+learning_trial_uses,1,user_id,uuid,uuid,NO,null
+learning_trial_uses,3,package_id,uuid,uuid,YES,null
+learning_trial_uses,4,assignment_id,uuid,uuid,YES,null
+learning_trial_uses,5,created_at,timestamp with time zone,timestamptz,NO,clock_timestamp()
+question_archive_audit,1,id,uuid,uuid,NO,gen_random_uuid()
+question_archive_audit,2,question_id,uuid,uuid,NO,null
+question_archive_audit,3,actor_id,uuid,uuid,NO,null
+question_archive_audit,6,latest_version_id,uuid,uuid,YES,null
+question_archive_audit,7,created_at,timestamp with time zone,timestamptz,NO,clock_timestamp()
+tka_question_set,1,id,uuid,uuid,NO,gen_random_uuid()
+tka_question_config,1,id,uuid,uuid,NO,gen_random_uuid()
+tka_question_config,5,no_of_questions,integer,int4,NO,1
+scheduled_tryout_users,1,id,uuid,uuid,NO,gen_random_uuid()
+scheduled_tryout_users,2,scheduled_tryouts,uuid,uuid,NO,null
+scheduled_tryout_users,3,user_id,uuid,uuid,NO,null
+question_workflow_audit,1,id,uuid,uuid,NO,gen_random_uuid()
+question_workflow_audit,2,question_id,uuid,uuid,NO,null
+question_workflow_audit,3,question_version_id,uuid,uuid,NO,null
+question_workflow_audit,4,actor_id,uuid,uuid,NO,null
+question_workflow_audit,7,created_at,timestamp with time zone,timestamptz,NO,now()
+school_applications,1,id,uuid,uuid,NO,gen_random_uuid()
+school_applications,2,applicant_id,uuid,uuid,NO,null
+school_applications,12,authorization_confirmed,boolean,bool,NO,null
+school_applications,14,school_id,uuid,uuid,YES,null
+school_applications,15,reviewed_by,uuid,uuid,YES,null
+school_applications,17,created_at,timestamp with time zone,timestamptz,NO,now()
+school_applications,18,reviewed_at,timestamp with time zone,timestamptz,YES,null
+school_onboarding_settings,1,school_id,uuid,uuid,NO,null
+school_onboarding_settings,2,primary_user_id,uuid,uuid,YES,null
+school_onboarding_settings,3,application_id,uuid,uuid,YES,null
+school_invite_requests,1,id,uuid,uuid,NO,gen_random_uuid()
+school_invite_requests,2,invite_id,uuid,uuid,NO,null
+school_invite_requests,3,school_id,uuid,uuid,NO,null
+school_invite_requests,4,class_id,uuid,uuid,NO,null
+school_invite_requests,5,user_id,uuid,uuid,NO,null
+school_invite_requests,7,created_at,timestamp with time zone,timestamptz,NO,now()
+school_invite_requests,8,reviewed_at,timestamp with time zone,timestamptz,YES,null
+school_assignments,1,id,uuid,uuid,NO,gen_random_uuid()
+school_assignments,2,school_id,uuid,uuid,NO,null
+school_assignments,3,class_id,uuid,uuid,NO,null
+school_assignments,4,created_by,uuid,uuid,NO,null
+school_assignments,7,grade,integer,int4,NO,null
+school_assignments,8,question_count,integer,int4,NO,null
+school_assignments,9,duration_minutes,integer,int4,NO,null
+school_assignments,10,opens_at,timestamp with time zone,timestamptz,NO,null
+school_assignments,11,due_at,timestamp with time zone,timestamptz,NO,null
+school_assignments,13,created_at,timestamp with time zone,timestamptz,NO,now()
+school_assignments,14,updated_at,timestamp with time zone,timestamptz,NO,now()
+school_assignment_questions,1,assignment_id,uuid,uuid,NO,null
+school_assignment_questions,2,question_id,uuid,uuid,NO,null
+school_assignment_questions,3,question_version_id,uuid,uuid,NO,null
+school_assignment_questions,4,question_order,integer,int4,NO,null
+school_assignment_recipients,1,assignment_id,uuid,uuid,NO,null
+school_assignment_recipients,2,user_id,uuid,uuid,NO,null
+school_assignment_recipients,3,attempt_id,uuid,uuid,YES,null
+school_coordinator_transfers,1,id,uuid,uuid,NO,gen_random_uuid()
+school_coordinator_transfers,2,school_id,uuid,uuid,NO,null
+school_coordinator_transfers,3,from_user_id,uuid,uuid,YES,null
+school_coordinator_transfers,5,proposed_by,uuid,uuid,NO,null
+school_coordinator_transfers,6,recovery,boolean,bool,NO,false
+school_coordinator_transfers,9,expires_at,timestamp with time zone,timestamptz,NO,(now() + '7 days'::interval)
+school_coordinator_transfers,10,accepted_by,uuid,uuid,YES,null
+school_coordinator_transfers,11,created_at,timestamp with time zone,timestamptz,NO,now()
+school_coordinator_transfers,12,resolved_at,timestamp with time zone,timestamptz,YES,null
+school_messages,1,id,uuid,uuid,NO,gen_random_uuid()
+school_messages,2,school_id,uuid,uuid,NO,null
+school_messages,3,sender_id,uuid,uuid,NO,null
+school_messages,4,recipient_id,uuid,uuid,YES,null
+school_messages,6,platform_origin,boolean,bool,NO,false
+school_messages,7,created_at,timestamp with time zone,timestamptz,NO,now()
+school_message_reads,1,message_id,uuid,uuid,NO,null
+school_message_reads,2,user_id,uuid,uuid,NO,null
+school_message_reads,3,read_at,timestamp with time zone,timestamptz,NO,now()
+school_support_tickets,1,id,uuid,uuid,NO,gen_random_uuid()
+school_support_tickets,2,school_id,uuid,uuid,NO,null
+school_support_tickets,3,created_by,uuid,uuid,NO,null
+school_support_tickets,6,forwarded_message_id,uuid,uuid,YES,null
+school_support_tickets,8,created_at,timestamp with time zone,timestamptz,NO,now()
+school_ticket_replies,1,id,uuid,uuid,NO,gen_random_uuid()
+school_ticket_replies,2,ticket_id,uuid,uuid,NO,null
+school_ticket_replies,3,sender_id,uuid,uuid,NO,null
+school_ticket_replies,5,platform_origin,boolean,bool,NO,false
+motivational_quotes,1,id,uuid,uuid,NO,gen_random_uuid()
+school_onboarding_audit,1,id,bigint,int8,NO,null
+school_onboarding_audit,2,actor_id,uuid,uuid,YES,null
+school_onboarding_audit,6,old_data,jsonb,jsonb,YES,null
+school_onboarding_audit,7,new_data,jsonb,jsonb,YES,null
+school_onboarding_audit,8,created_at,timestamp with time zone,timestamptz,NO,now()
+scheduled_tryouts,1,id,uuid,uuid,NO,gen_random_uuid()
+scheduled_tryouts,5,start_at,timestamp with time zone,timestamptz,NO,null
+scheduled_tryouts,6,deadline_at,timestamp with time zone,timestamptz,NO,null
+scheduled_tryouts,7,school_uid,uuid,uuid,NO,null
+exam_attempts,1,id,uuid,uuid,NO,gen_random_uuid()
+exam_attempts,2,user_id,uuid,uuid,NO,null
+exam_attempts,4,grade,integer,int4,NO,null
+exam_attempts,7,duration_minutes,integer,int4,NO,60
+exam_attempts,8,total_questions,integer,int4,NO,0
+exam_attempts,9,correct_answers,integer,int4,YES,null
+exam_attempts,10,score,numeric,numeric,YES,null
+exam_attempts,11,started_at,timestamp with time zone,timestamptz,NO,now()
+exam_attempts,12,submitted_at,timestamp with time zone,timestamptz,YES,null
+exam_attempts,13,created_at,timestamp with time zone,timestamptz,NO,now()
+exam_attempts,16,deadline_at,timestamp with time zone,timestamptz,YES,null
+education_levels,3,grade,integer,int4,NO,null
+education_levels,4,created_at,timestamp with time zone,timestamptz,NO,now()
+schools,1,id,uuid,uuid,NO,gen_random_uuid()
+schools,8,created_by,uuid,uuid,NO,null
+schools,10,created_at,timestamp with time zone,timestamptz,NO,now()
+schools,11,updated_at,timestamp with time zone,timestamptz,NO,now()
+subject_topics,1,id,uuid,uuid,NO,gen_random_uuid()
+tka_configurations,1,id,uuid,uuid,NO,gen_random_uuid()
+tka_configurations,5,total_questions,integer,int4,NO,null
+tka_configurations,6,duration_minutes,integer,int4,NO,null
+tka_configurations,9,is_default,smallint,int2,NO,0
+motivational_quotes,2,quote,character varying,varchar,NO,null
+motivational_quotes,3,source,character varying,varchar,YES,null
+motivational_quotes,4,reference,character varying,varchar,YES,null
+subject_topics,5,syllabus,character varying,varchar,YES,null
+tka_question_set,2,tka_code,character varying,varchar,NO,null
+tka_question_set,3,question_code,character varying,varchar,NO,null
+admin_access_audit,4,action,text,text,NO,null
+tka_question_config,2,tka_code,character varying,varchar,NO,null
+tka_question_config,3,theme,character varying,varchar,NO,null
+tka_question_config,4,topic,character varying,varchar,NO,null
+tka_configurations,2,tka_code,character varying,varchar,NO,null
+tka_configurations,3,education_level,character varying,varchar,NO,null
+tka_configurations,4,subject_code,character varying,varchar,NO,null
+profiles,4,account_status,text,text,NO,'active'::text
+school_invites,3,invite_code,text,text,NO,null
+tka_configurations,7,type,character varying,varchar,NO,'RANDOM'::character varying
+tka_configurations,8,syllabus,character varying,varchar,YES,null
+school_invites,4,role,text,text,NO,null
+question_workflow_audit,5,action,text,text,NO,null
+question_workflow_audit,6,notes,text,text,NO,null
+education_level_history,7,change_note,text,text,YES,null
+learning_packages,3,mode,text,text,NO,null
+profiles,7,education_level,text,text,YES,null
+school_applications,3,school_name,text,text,NO,null
+school_applications,4,npsn,text,text,NO,null
+school_applications,5,school_type_id,text,text,NO,null
+school_applications,6,address,text,text,NO,null
+school_applications,7,city,text,text,NO,null
+school_applications,8,province,text,text,NO,null
+school_applications,9,teacher_name,text,text,NO,null
+school_applications,10,teacher_position,text,text,NO,null
+school_applications,11,contact_phone,text,text,NO,null
+learning_subscription_audit,4,reason,text,text,NO,null
+school_applications,13,status,text,text,NO,'pending'::text
+question_versions,5,instruction,text,text,YES,null
+question_versions,6,question_text,text,text,NO,null
+school_applications,16,review_note,text,text,YES,null
+question_versions,7,explanation,text,text,NO,null
+school_invites,8,status,text,text,NO,'active'::text
+question_versions,9,content_hash,text,text,YES,null
+question_versions,10,version_status,text,text,NO,'DRAFT'::text
+education_level_change_requests,3,current_level,text,text,NO,null
+school_onboarding_settings,4,contact_phone,text,text,YES,null
+education_level_change_requests,4,requested_level,text,text,NO,null
+profiles,10,nickname,character varying,varchar,YES,null
+question_stimuli,2,stimulus_code,text,text,NO,null
+question_stimuli,3,stimulus_type,text,text,NO,null
+question_stimuli,4,title,text,text,YES,null
+school_invite_requests,6,status,text,text,NO,'pending'::text
+question_stimuli,5,content_text,text,text,YES,null
+question_reviews,5,review_action,text,text,NO,null
+question_reviews,6,review_notes,text,text,YES,null
+question_stimuli,6,file_url,text,text,YES,null
+question_stimuli,7,media_description,text,text,YES,null
+question_import_batches,2,batch_code,text,text,NO,null
+school_assignments,5,title,text,text,NO,null
+school_assignments,6,subject_name,text,text,NO,null
+question_import_batches,3,file_name,text,text,YES,null
+question_import_batches,4,source_type,text,text,NO,'IMPORT'::text
+question_stimuli,8,source_reference,text,text,YES,null
+question_stimuli,9,usage_rights,text,text,YES,'ORISINAL'::text
+question_stimuli,10,stimulus_status,text,text,NO,'DRAFT'::text
+school_assignments,12,status,text,text,NO,'draft'::text
+education_level_change_requests,5,reason,text,text,NO,null
+question_import_batches,9,batch_status,text,text,NO,'UPLOADED'::text
+question_import_batches,10,notes,text,text,YES,null
+education_level_change_requests,6,status,text,text,NO,'PENDING'::text
+classes,3,name,text,text,NO,null
+classes,4,education_level_id,text,text,NO,null
+question_import_batches,14,template_version,text,text,YES,'TQBS-2.0'::text
+question_import_batches,15,file_path,text,text,YES,null
+profiles,13,account_type,character varying,varchar,YES,'STUDENT'::character varying
+question_options,3,option_code,text,text,NO,null
+question_options,4,option_text,text,text,NO,null
+questions,2,question_code,text,text,NO,null
+school_coordinator_transfers,4,target_email,text,text,NO,null
+questions,3,education_level_id,text,text,NO,null
+classes,6,academic_year,text,text,YES,null
+school_coordinator_transfers,7,reason,text,text,YES,null
+school_coordinator_transfers,8,status,text,text,NO,'pending'::text
+questions,5,school_type,text,text,YES,null
+questions,6,subject_code,text,text,YES,null
+questions,7,subject_name,text,text,NO,null
+questions,8,subject_category,text,text,NO,'WAJIB'::text
+questions,9,curriculum_reference,text,text,YES,null
+questions,10,element,text,text,YES,null
+questions,11,material,text,text,YES,null
+questions,12,sub_material,text,text,YES,null
+school_messages,5,body,text,text,NO,null
+questions,13,competency,text,text,YES,null
+questions,14,indicator,text,text,YES,null
+questions,15,cognitive_level,text,text,YES,null
+questions,16,difficulty,text,text,YES,null
+questions,17,question_structure,text,text,NO,'SOAL_TUNGGAL'::text
+profiles,14,nisn,character,bpchar,YES,null
+questions,19,question_type,text,text,NO,null
+questions,20,question_status,text,text,NO,'DRAFT'::text
+school_support_tickets,4,subject,text,text,NO,null
+school_support_tickets,5,body,text,text,NO,null
+question_options,7,explanation,text,text,YES,null
+school_support_tickets,7,status,text,text,NO,'open'::text
+questions,22,source_type,text,text,NO,'IMPORT'::text
+questions,23,source_reference,text,text,YES,null
+questions,24,usage_rights,text,text,YES,'ORISINAL'::text
+subjects,1,subject_code,text,text,NO,null
+school_ticket_replies,4,body,text,text,NO,null
+subjects,2,name,text,text,NO,null
+profiles,17,email,character varying,varchar,YES,null
+profiles,18,wa_number,character varying,varchar,YES,null
+question_category_items,4,item_text,text,text,NO,null
+school_onboarding_audit,3,table_name,text,text,NO,null
+school_onboarding_audit,4,row_id,text,text,NO,null
+school_onboarding_audit,5,operation,text,text,NO,null
+question_category_items,5,category_label,text,text,NO,null
+question_category_items,6,correct_category,text,text,NO,null
+question_category_items,7,explanation,text,text,YES,null
+education_level_change_requests,9,admin_note,text,text,YES,null
+scheduled_tryouts,2,tryout_code,character varying,varchar,NO,null
+scheduled_tryouts,3,label,character varying,varchar,NO,null
+scheduled_tryouts,4,description,text,text,YES,null
+user_global_roles,3,role,text,text,NO,null
+subjects,3,education_level_id,text,text,NO,null
+admin_operator_permissions,3,permission_code,text,text,NO,null
+scheduled_tryouts,8,tka_code1,character varying,varchar,NO,null
+scheduled_tryouts,9,tka_code2,character varying,varchar,YES,null
+scheduled_tryouts,10,tka_code3,character varying,varchar,YES,null
+scheduled_tryouts,11,tka_code4,character varying,varchar,YES,null
+scheduled_tryouts,12,tka_code5,character varying,varchar,YES,null
+question_archive_audit,5,previous_status,text,text,NO,null
+school_memberships,4,role,text,text,NO,null
+exam_attempts,3,education_level,text,text,NO,null
+school_memberships,5,status,text,text,NO,'active'::text
+exam_attempts,5,subject_name,text,text,NO,null
+exam_attempts,6,attempt_status,text,text,NO,'IN_PROGRESS'::text
+student_academic_profiles,2,education_level_id,text,text,NO,null
+student_academic_profiles,3,school_type_id,text,text,NO,null
+learning_packages,5,subjects,ARRAY,_text,NO,null
+question_import_rows,3,sheet_name,text,text,NO,null
+learning_trial_uses,2,mode,text,text,NO,null
+question_import_rows,5,source_key,text,text,YES,null
+education_level_history,3,previous_level,text,text,NO,null
+exam_attempts,14,attempt_type,character varying,varchar,NO,null
+exam_attempts,15,tka_code,character varying,varchar,YES,null
+student_academic_profiles,7,student_number,text,text,YES,null
+education_levels,1,id,text,text,NO,null
+education_levels,2,name,text,text,NO,null
+question_import_rows,8,validation_status,text,text,NO,'PENDING'::text
+student_academic_profiles,8,academic_year,text,text,NO,'2026/2027'::text
+school_types,1,id,text,text,NO,null
+school_types,2,name,text,text,NO,null
+school_types,3,education_level_id,text,text,NO,null
+education_level_history,4,new_level,text,text,NO,null
+schools,2,name,text,text,NO,null
+schools,3,npsn,text,text,YES,null
+schools,4,school_type_id,text,text,YES,null
+schools,5,address,text,text,YES,null
+schools,6,city,text,text,YES,null
+schools,7,province,text,text,YES,null
+learning_package_attempts,2,subject_name,text,text,NO,null
+schools,9,status,text,text,NO,'active'::text
+question_archive_audit,4,reason,text,text,NO,null
+profiles,2,full_name,character varying,varchar,NO,null
+profiles,3,avatar_url,text,text,YES,null
+subject_topics,2,subject_code,text,text,NO,null
+subject_topics,3,theme,character varying,varchar,NO,null
+subject_topics,4,topic,character varying,varchar,NO,null

@@ -84,7 +84,6 @@ Kesimpulan: histori per-attempt dapat dibuat tanpa migration besar. Histori mult
 
 RPC berikut menggunakan `SECURITY DEFINER`, owner `postgres`, `search_path` yang dibatasi, dan memeriksa `auth.uid()`:
 
-- `start_exam_attempt`
 - `resume_exam_attempt`
 - `save_exam_answer`
 - `submit_exam_attempt`

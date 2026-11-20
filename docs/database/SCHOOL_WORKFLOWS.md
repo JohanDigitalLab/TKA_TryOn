@@ -29,12 +29,8 @@ Guru sekolah dapat membuat tugas untuk seluruh kelas di sekolahnya. Belum ada pe
 
 ## Kontrak dan lifecycle
 
-- `get_teacher_workspace(p_school_id)`: kelas dan maksimal 100 tugas terbaru, termasuk jumlah penerima/submit.
-- `save_school_assignment(...)`: membuat atau mengedit draft; edit memakai `p_expected_updated_at` untuk mencegah lost update.
-- `set_school_assignment_status(p_assignment_id,p_status)`: draft → published/cancelled; published → cancelled. Status cancelled final. Pengulangan status sama bersifat idempotent.
 - `get_student_assignments()`: maksimal 100 tugas terbaru milik siswa dengan membership dan akun aktif.
 - `start_school_assignment(p_assignment_id)`: membuat sesi dengan konfigurasi dan snapshot server; permintaan ulang mengembalikan sesi yang sama. Tidak menerima attempt ID atau nilai dari client.
-- `get_school_assignment_ranking(p_assignment_id)`: Top 5 hasil SUBMITTED untuk staf sekolah, berdasarkan score menurun, submitted_at menaik, lalu attempt ID. Bukan ranking global dan tidak dibuka kepada siswa.
 
 Publish mengunci daftar siswa aktif dalam kelas dan versi soal terbit. Semua penerima memperoleh paket soal sama; soal yang kurang atau kelas tanpa siswa membuat publish gagal atomik. Siswa yang baru bergabung setelah publish memerlukan tugas baru. Perpindahan kelas tidak mengubah snapshot penerima; membership sekolah nonaktif menghilangkan akses tugas.
 
@@ -42,19 +38,7 @@ Tugas harus dibuka dan memiliki sisa waktu sekurangnya satu durasi penuh saat se
 
 ## Verifikasi dan penerapan
 
-Runner membaca koneksi TLS terverifikasi dari `.env.database.local` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL_CA_PATH), tanpa mencetak credential.
-
-```sh
-node scripts/migrate-school-workflows.cjs
-```
-
-Default adalah dry-run: migration dijalankan dua kali dalam transaksi untuk memeriksa idempotensi, RLS, ACL, lalu integration test sebagai role authenticated. Seluruh perubahan dan fixture di-rollback. Integration test memerlukan minimal satu soal terbit kelas 6/9 dan school type yang sesuai.
-
-Setelah meninjau target koneksi dan backup, terapkan dengan:
-
-```sh
-node scripts/migrate-school-workflows.cjs --apply
-```
+Runner otomatis telah dihapus dari repositori. Penerapan migrasi dilakukan manual melalui SQL editor ber-privilege; verifikasi idempotensi, RLS, dan ACL menjadi tanggung jawab operator saat deployment.
 
 Runner tetap menjalankan pemeriksaan. Fixture dibuat dalam SAVEPOINT terpisah dan selalu di-rollback sebelum COMMIT migration. Bila satu pemeriksaan gagal, seluruh migration di-rollback. NOTIFY me-refresh schema cache PostgREST saat commit. Jalankan hanya satu runner migration pada satu waktu.
 

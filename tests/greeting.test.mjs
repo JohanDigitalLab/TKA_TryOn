@@ -9,7 +9,9 @@ for (const [hour, minute, expected] of [
   [4, 0, "Selamat Pagi"],
   [10, 59, "Selamat Pagi"],
   [11, 0, "Selamat Siang"],
-  [17, 59, "Selamat Siang"],
+  [14, 59, "Selamat Siang"],
+  [15, 0, "Selamat Sore"],
+  [17, 59, "Selamat Sore"],
   [18, 0, "Selamat Malam"],
   [23, 59, "Selamat Malam"],
 ]) {

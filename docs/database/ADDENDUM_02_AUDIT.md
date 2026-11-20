@@ -54,15 +54,12 @@ Seluruh 40 definisi tersimpan lengkap. Pemeriksaan manual utuh difokuskan pada f
 
 | Fungsi live | Kontrak/perilaku penting | Implikasi backend berikutnya |
 |---|---|---|
-| [start_exam_attempt](ADDENDUM_02_AUDIT.md:1) | Grade 6/9; hitungan 1–100, durasi 1–240; default **20/60**; advisory lock, resume aktif, snapshot versi; memilih question PUBLISHED dan current, tetapi tidak mensyaratkan version PUBLISHED atau review; hanya error jika hasil nol | Default legacy bukan kebijakan resmi; perketat kelayakan versi+review, konfigurasi versioned, matriks dan exact-count. Saat ini kekurangan sebagian dapat menghasilkan sesi lebih pendek tanpa error |
 | [get_exam_attempt_review](ADDENDUM_02_AUDIT.md:1) | Pemilik terautentikasi, attempt SUBMITTED; penjelasan/kunci hanya pascasubmit; memakai helper correctness private | Pertahankan batas akses. Defek correctness kategori historis tidak boleh disebut masih live: helper sudah digunakan |
 | [save_question_revision](ADDENDUM_02_AUDIT.md:1) | Izin bank_soal.edit dan akun aktif; versi baru PENDING_REVIEW, noncurrent; versi lama dipertahankan; kategori dibatasi BENAR/SALAH; scoring_rule lama dipertahankan | Perlu label kategori terstruktur agar Sesuai/Tidak Sesuai didukung tanpa merusak snapshot lama |
 | [save_question_import_batch](ADDENDUM_02_AUDIT.md:1) | Superadmin aktif; payload TQBS MATA_PELAJARAN/STIMULUS/SOAL/RESPON_KUNCI; soal DRAFT, versi PENDING_REVIEW noncurrent, stimulus DRAFT; taxonomy diwarisi dari baris mapel; nilai kognitif/kesulitan tidak dikenal dinormalisasi ke default | Komentar lama tentang langsung aktif/disetujui tidak cocok dengan SQL. Perlu taxonomy per soal, validasi eksplisit, tanpa silent fallback atau autoapproval |
 | [save_ai_question_draft_batch](ADDENDUM_02_AUDIT.md:1) | Superadmin aktif; soal DRAFT/source IMPORT, versi PENDING_REVIEW noncurrent; penanda SMART_IMPORT_AI pada scoring_rule; tidak menyimpan taxonomy element/material/submaterial/competency/indicator | Izin operator import saja tidak cukup. Jangan menganggap payload taxonomy AI tersimpan atau source AI sudah tercatat konsisten |
 | [handle_new_user](ADDENDUM_02_AUDIT.md:1) | Metadata pendaftaran independent/school dan jenjang sd/smp/sma mengisi jenjang serta lock; conflict profile diabaikan | Tidak mengisi kontak atau completion marker; jangan mengandalkan metadata klien untuk status verifikasi kontak |
-| [protect_profile_education_level](ADDENDUM_02_AUDIT.md:1) | Memblokir perubahan jenjang/lock saat current_user authenticated | Pertahankan workflow perubahan jenjang; lengkapi dengan ACL, bukan mengandalkan trigger saja |
 | [valid_admin_permissions](ADDENDUM_02_AUDIT.md:1) | view/review/edit/moderate/publish/import bank soal dan education_level.review | Gunakan izin granular pada workflow baru, jangan mengira semua RPC legacy sudah menghormati izin tersebut |
-| [save_school_assignment](ADDENDUM_02_AUDIT.md:1) | Staff sekolah; kelas 6/9 milik sekolah; hanya draft dapat diedit, optimistic concurrency melalui expected_updated_at; due masa depan | Pertahankan otorisasi dan konflik edit; konfigurasi resmi baru harus di-snapshot, bukan mengubah assignment published |
 | [start_school_assignment](ADDENDUM_02_AUDIT.md:1) | Penerima dan membership siswa aktif; published; waktu cukup; lock sama dengan sesi mandiri; salin snapshot versi assignment, resume existing | Pertahankan pemisahan sesi/tugas dan snapshot; uji jalur publish assignment sebelum menambah seleksi matriks |
 
 ### 4.3 Profil dan WhatsApp
@@ -81,7 +78,6 @@ Profil akademik memiliki FK kelas/sekolah komposit dan grade 1–12, tetapi defa
 
 **Tidak ada** sembilan tabel tahap 4: [school_applications](ADDENDUM_02_AUDIT.md:1), [school_onboarding_settings](ADDENDUM_02_AUDIT.md:1), [school_invite_requests](ADDENDUM_02_AUDIT.md:1), [school_coordinator_transfers](ADDENDUM_02_AUDIT.md:1), [school_messages](ADDENDUM_02_AUDIT.md:1), [school_message_reads](ADDENDUM_02_AUDIT.md:1), [school_support_tickets](ADDENDUM_02_AUDIT.md:1), [school_ticket_replies](ADDENDUM_02_AUDIT.md:1), [school_onboarding_audit](ADDENDUM_02_AUDIT.md:1).
 
-**Tidak ada** sepuluh RPC tahap 4: [school_portal_context](ADDENDUM_02_AUDIT.md:1), [submit_school_application](ADDENDUM_02_AUDIT.md:1), [review_school_application](ADDENDUM_02_AUDIT.md:1), [school_admin_workspace](ADDENDUM_02_AUDIT.md:1), [school_admin_mutate](ADDENDUM_02_AUDIT.md:1), [school_invite_request](ADDENDUM_02_AUDIT.md:1), [school_communications](ADDENDUM_02_AUDIT.md:1), [school_communication_mutate](ADDENDUM_02_AUDIT.md:1), [school_coordinator_transfer](ADDENDUM_02_AUDIT.md:1), [platform_school_workspace](ADDENDUM_02_AUDIT.md:1).
 
 Kolom [classes.onboarding_archived](ADDENDUM_02_AUDIT.md:1) dan [school_invites.onboarding_class_id](ADDENDUM_02_AUDIT.md:1) juga tidak ada. [Migrasi tahap 4](migration-stage-4-school-onboarding.sql) adalah calon deployment terpisah, bukan tindakan yang diotorisasi audit ini.
 
@@ -842,26 +838,17 @@ EXECUTE adalah privilege efektif katalog, bukan bukti caller lolos otorisasi int
 | [public.admin_operator_list()](ADDENDUM_02_AUDIT.md:1) | [TABLE(user_id uuid, full_name text, account_status text, is_active boolean, permissions text[])](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.admin_operator_set_access(p_user_id uuid, p_is_active boolean, p_permissions text[] DEFAULT '{}'::text[])](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.approve_education_level_change(p_request_id uuid, p_admin_note text DEFAULT NULL::text)](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.can_review_education_level()](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.cancel_education_level_change(p_request_id uuid)](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |
+| [public.approve_education_level_change(p_request_id uuid, p_admin_note text DEFAULT NULL::text)](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_exam_attempt_review(p_attempt_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.get_school_assignment_ranking(p_assignment_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_student_active_attempts()](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.get_student_assignments()](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.get_student_exam_history(p_limit integer DEFAULT 50, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.get_teacher_workspace(p_school_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.protect_profile_education_level()](ADDENDUM_02_AUDIT.md:1) | [trigger](ADDENDUM_02_AUDIT.md:1) | false | true / true |
-| [public.reject_education_level_change(p_request_id uuid, p_admin_note text)](ADDENDUM_02_AUDIT.md:1) | [boolean](ADDENDUM_02_AUDIT.md:1) | true | false / true |
+| [public.get_student_tryout_history(p_limit integer DEFAULT 50, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.resume_exam_attempt(p_attempt_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.rls_auto_enable()](ADDENDUM_02_AUDIT.md:1) | [event_trigger](ADDENDUM_02_AUDIT.md:1) | true | true / true |
 | [public.save_ai_question_draft_batch(p_payload jsonb)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.save_exam_answer(p_attempt_id uuid, p_question_id uuid, p_answer_payload jsonb)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.save_question_import_batch(p_payload jsonb)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.save_question_revision(p_question_id uuid, p_payload jsonb)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.save_school_assignment(p_school_id uuid, p_class_id uuid, p_title text, p_subject_name text, p_question_count integer, p_duration_minutes integer, p_opens_at timestamp with time zone, p_due_at timestamp with time zone, p_assignment_id uuid DEFAULT NULL::uuid, p_expected_updated_at timestamp with time zone DEFAULT NULL::timestamp with time zone)](ADDENDUM_02_AUDIT.md:1) | [uuid](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.set_school_assignment_status(p_assignment_id uuid, p_status text)](ADDENDUM_02_AUDIT.md:1) | [void](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.set_updated_at()](ADDENDUM_02_AUDIT.md:1) | [trigger](ADDENDUM_02_AUDIT.md:1) | false | true / true |
-| [public.start_exam_attempt(p_grade integer, p_subject_name text, p_question_count integer DEFAULT 20, p_duration_minutes integer DEFAULT 60)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.start_school_assignment(p_assignment_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
-| [public.submit_education_level_change(p_requested_level text, p_reason text)](ADDENDUM_02_AUDIT.md:1) | [uuid](ADDENDUM_02_AUDIT.md:1) | true | false / true |
 | [public.submit_exam_attempt(p_attempt_id uuid)](ADDENDUM_02_AUDIT.md:1) | [jsonb](ADDENDUM_02_AUDIT.md:1) | true | false / true |
