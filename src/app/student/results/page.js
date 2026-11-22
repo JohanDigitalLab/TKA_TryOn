@@ -144,6 +144,23 @@ function buildSubjectSections({ subjects = [], attempts = [], competency = [] })
         tryout,
         exam,
         themes: grouped,
+        summaryScore: (() => {
+          const competencyScores = section.competency
+            .map((row) => {
+              const explicitScore = Number(row.score ?? row.average_score ?? row.percentage);
+              if (Number.isFinite(explicitScore) && explicitScore > 0) return explicitScore;
+
+              const answered = Number(row.no_of_questions || 0);
+              const correct = Number(row.correct_answers ?? row.correct_anwers ?? 0);
+              return answered > 0 && correct > 0 ? (correct / answered) * 100 : 0;
+            })
+            .filter((score) => Number.isFinite(score) && score > 0);
+          const attemptScores = section.attempts
+            .map((attempt) => Number(attempt.score))
+            .filter((score) => Number.isFinite(score) && score > 0);
+          const scores = competencyScores.length ? competencyScores : attemptScores;
+          return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : null;
+        })(),
         hasData: ordered.length > 0 || section.competency.length > 0,
       };
     });
@@ -187,9 +204,6 @@ function SubjectSection({ section, index }) {
           emptyText="Belum ada latihan atau tugas selesai pada mata pelajaran ini."
         />
       </div>
-      <p className="mt-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-        {section.title} · {TRYOUT_TONE.label} dan {EXAM_TONE.label}
-      </p>
 
       <div className="mt-6">
         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Kompetensi per tema</h3>
@@ -352,7 +366,25 @@ function ResultsContent() {
           </p>
           </div>
         </section>
-        
+
+        {!loading && !error && sections.length > 0 && (
+          <section className="mb-6 min-w-0" aria-label="Ringkasan skor per mata pelajaran">
+            <div className="mt-3 flex flex-wrap items-stretch justify-between gap-3">
+            {sections.map((section) => (
+              <article key={`summary-${section.key}`} className="min-w-0 flex-1 basis-40 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="truncate text-xs font-bold uppercase tracking-wide text-slate-500">{section.title}</p>
+                {section.summaryScore === null ? (
+                  <p className="mt-2 text-sm font-bold text-slate-500">Belum ada skor</p>
+                ) : (
+                  <p className="mt-2 text-2xl font-black text-blue-700">{section.summaryScore.toFixed(2)}</p>
+                )}
+                <p className="mt-1 text-xs text-slate-500">Nilai kompetensi rata-rata</p>
+              </article>
+            ))}
+            </div>
+          </section>
+        )}
+
         {error && (
           <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             {error}
@@ -409,9 +441,6 @@ function ResultsContent() {
           sections.map((section, index) => <SubjectSection key={`${section.key}-${index}`} section={section} index={index} />)
         )}
 
-        <p className="mt-10 text-center text-xs text-slate-400">
-          TKA TryOn · Data nilai dan kompetensi dihitung dari sesi yang telah diselesaikan.
-        </p>
 </div>
     </main>
   );

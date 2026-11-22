@@ -23,16 +23,15 @@ export default function ResultsTrendChart({
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-5">
       <h4 className="text-sm font-bold text-slate-900">{title}</h4>
       <figure className="mt-3">
-        <div className="overflow-x-auto rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+        <div className="w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-50/60 p-3">
           <svg
             viewBox={`0 0 ${width} ${height}`}
             role="img"
             aria-labelledby={`${titleId} ${descriptionId}`}
-            className="h-auto w-full"
-            style={{ minWidth: width }}
+            className="block h-auto w-full max-w-full"
           >
             <title id={titleId}>{title}</title>
             <desc id={descriptionId}>

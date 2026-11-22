@@ -1,6 +1,7 @@
 -- Tabel baru: settings (konfigurasi platform).
 -- id uuid PK default gen_random_uuid(); "group" varchar(50) NOT NULL default 'SYSTEM';
 -- name varchar(50) NOT NULL; value varchar(255) NOT NULL.
+-- type varchar(50) NOT NULL; options varchar(255) NOT NULL; description text NOT NULL.
 -- Catatan: "group" adalah kata terkadung PostgreSQL, jadi selalu ditulis dengan
 -- kutip ganda pada DDL/DML. Jalankan di Supabase SQL Editor.
 BEGIN;
@@ -10,6 +11,9 @@ CREATE TABLE IF NOT EXISTS public.settings (
   "group" varchar(50) NOT NULL DEFAULT 'SYSTEM',
   name varchar(50) NOT NULL,
   value varchar(255) NOT NULL,
+  type varchar(50) NOT NULL,
+  options varchar(255) NOT NULL,
+  description text NOT NULL,
   CONSTRAINT settings_pkey PRIMARY KEY (id)
 );
 
@@ -21,6 +25,28 @@ COMMENT ON COLUMN public.settings.name IS
   'Kunci pengaturan, misalnya maintenance_mode.';
 COMMENT ON COLUMN public.settings.value IS
   'Nilai pengaturan dalam bentuk teks (maks 255 karakter).';
+
+ALTER TABLE public.settings
+  ADD COLUMN IF NOT EXISTS type varchar(50),
+  ADD COLUMN IF NOT EXISTS options varchar(255),
+  ADD COLUMN IF NOT EXISTS description text;
+
+UPDATE public.settings
+SET type = COALESCE(type, 'TEXT'),
+    options = COALESCE(options, ''),
+    description = COALESCE(description, '');
+
+ALTER TABLE public.settings
+  ALTER COLUMN type SET NOT NULL,
+  ALTER COLUMN options SET NOT NULL,
+  ALTER COLUMN description SET NOT NULL;
+
+COMMENT ON COLUMN public.settings.type IS
+  'Tipe pengaturan: BOOL, TEXT, atau OPTIONS.';
+COMMENT ON COLUMN public.settings.options IS
+  'Daftar opsi pengaturan jika type OPTIONS.';
+COMMENT ON COLUMN public.settings.description IS
+  'Deskripsi pengaturan.';
 
 CREATE INDEX IF NOT EXISTS settings_group_idx
   ON public.settings ("group", name);

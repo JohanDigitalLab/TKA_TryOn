@@ -70,7 +70,7 @@ function MissionsForm({ params }) {
           return;
         }
         const { data: profile, error: profileError } = await supabase
-          .from("profiles").select("full_name, education_level").eq("id", data.user.id).maybeSingle();
+          .from("profiles").select("full_name, education_level, is_managed").eq("id", data.user.id).maybeSingle();
         if (profileError) throw profileError;
         const studentLevel = String(profile?.education_level || "").toLowerCase();
         if (!studentLevel) throw new Error("Jenjang pendidikan belum ditetapkan pada profilmu.");
@@ -123,6 +123,7 @@ function MissionsForm({ params }) {
       {/* HEADER */}
       <PortalHeader
         displayName={profile?.full_name || "Siswa"}
+        isManaged={profile?.is_managed}
         signingOut={signingOut}
         onSignOut={handleSignOut}
       />
