@@ -57,6 +57,49 @@ function formatAttemptDate(value) {
   });
 }
 
+function getActivityDays() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: 10 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (9 - index));
+    return date;
+  });
+}
+
+function sameCalendarDay(value, date) {
+  if (!value) return false;
+  const attemptDate = new Date(value);
+  return (
+    attemptDate.getFullYear() === date.getFullYear() &&
+    attemptDate.getMonth() === date.getMonth() &&
+    attemptDate.getDate() === date.getDate()
+  );
+}
+
+function ActivityBadge({ attempts }) {
+  const days = useMemo(() => getActivityDays(), []);
+  return (
+    <section className="mb-10" aria-label="Badge aktivitas 10 hari terakhir">
+      <div className="mx-auto grid w-full grid-cols-5 gap-x-2 gap-y-5 sm:flex sm:items-start sm:justify-between sm:gap-x-3">
+        {days.map((date) => {
+          const active = attempts.some((attempt) => sameCalendarDay(attempt.started_at || attempt.created_at || attempt.submitted_at, date));
+          const dayLabel = date.toLocaleDateString("id-ID", { weekday: "long" });
+          return (
+            <div key={date.toISOString()} className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+              <span className={`text-[10px] font-extrabold capitalize sm:text-xs ${active ? "text-black" : "text-slate-400"}`}>{dayLabel}</span>
+              <span className={`grid size-12 place-items-center rounded-full border-2 bg-white text-2xl text-black transition duration-300 sm:size-14 sm:text-3xl ${active ? "border-orange-400 shadow-lg shadow-orange-100 ring-4 ring-orange-50" : "border-slate-300 bg-transparent text-slate-400"}`} aria-label={`${dayLabel}, ${active ? "ada aktivitas" : "tidak ada aktivitas"}`}>
+                <span aria-hidden="true" className={active ? "drop-shadow-[0_2px_2px_rgba(127,29,29,0.35)]" : "grayscale opacity-70"}>🔥</span>
+              </span>
+              <span className={`text-[10px] font-bold sm:text-xs ${active ? "text-black" : "text-slate-400"}`}>{date.getDate()}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function StudentDashboard({
   actionContent,
   subscriptionMode = false,
@@ -71,6 +114,7 @@ export function StudentDashboard({
   const [profile, setProfile] = useState(null);
   const [activeAttempts, setActiveAttempts] = useState([]);
   const [history, setHistory] = useState([]);
+  const [activityAttempts, setActivityAttempts] = useState([]);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -128,12 +172,15 @@ export function StudentDashboard({
         const [
           { data: attemptsData, error: attemptsError },
           { data: historyData, error: historyError },
+          { data: activityData, error: activityError },
         ] = await Promise.all([
           supabase.rpc("get_student_active_attempts"),
           supabase.rpc("get_student_history", { p_limit: 5 }),
+          supabase.rpc("get_student_history", { p_limit: 0 }),
         ]);
         if (attemptsError) throw attemptsError;
         if (historyError) throw historyError;
+        if (activityError) throw activityError;
         if (!mounted) return;
         setProfile(
           profileData || {
@@ -142,6 +189,7 @@ export function StudentDashboard({
         );
         setActiveAttempts(Array.isArray(attemptsData) ? attemptsData : []);
         setHistory(Array.isArray(historyData) ? historyData : []);
+        setActivityAttempts(Array.isArray(activityData) ? activityData : []);
       } catch (err) {
         if (mounted)
           setError(err.message || "Dashboard belum berhasil dimuat.");
@@ -255,6 +303,8 @@ export function StudentDashboard({
             </p>
           </div>
         </section>
+
+        <ActivityBadge attempts={activityAttempts} />
 
         {(!profile?.is_managed || actionContent || managedActionsVisible !== false) && (
           <section id="action" className="mb-10 scroll-mt-28">
