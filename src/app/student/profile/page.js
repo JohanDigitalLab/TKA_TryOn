@@ -33,6 +33,43 @@ function avatarPathOf(url) {
   return decodeURIComponent(value.slice(index + marker.length));
 }
 
+function AlertPopup({ tone = "notice", message, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        role={tone === "error" ? "alert" : "status"}
+        aria-live={tone === "error" ? "assertive" : "polite"}
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+        className={`w-full max-w-md rounded-2xl border p-6 shadow-xl ${
+          tone === "error"
+            ? "border-red-200 bg-red-50 text-red-900"
+            : "border-emerald-200 bg-emerald-50 text-emerald-900"
+        }`}
+      >
+        <p className="text-sm font-extrabold">
+          {tone === "error" ? "Terjadi kesalahan" : "Informasi"}
+        </p>
+        <p className="mt-2 text-sm leading-6">{message}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`mt-5 w-full rounded-lg px-4 py-2.5 text-sm font-bold text-white ${
+            tone === "error"
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-emerald-600 hover:bg-emerald-700"
+          }`}
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, name, hint, required = false, ...props }) {
   return (
     <label className={labelClass} htmlFor={name}>
@@ -275,54 +312,40 @@ export default function StudentProfilePage() {
 
       <div className="mx-auto max-w-3xl px-5 py-8 lg:px-8">
         <DashboardBreadcrumb current="Profil Siswa" />
-        <nav aria-label="Navigasi profil" className="flex flex-wrap gap-3">
-          <Link
-            href="/student"
-            className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            ← Dashboard
-          </Link>
-        </nav>
-
-        <header className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
-            TKA TryOut · Akun Siswa
-          </p>
-          <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+       {/* PAGE TITLE */}
+        <section className="mb-8">
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
             Perbarui Data Profil
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Perbarui identitas dan kontak belajar kamu. Data lain dikelola oleh sekolah atau admin platform.
-          </p>
+          </h2>
 
-          <div
-            className={`mt-5 rounded-xl border p-4 text-sm ${
-              isComplete ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"
-            }`}
-          >
-            <p className="font-bold">{isComplete ? "Profil lengkap" : "Profil belum lengkap"}</p>
-            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-              {checklist.map((item) => (
-                <li key={item.label} className="flex items-center gap-2">
-                  <span aria-hidden="true" className="font-bold">
-                    {item.done ? "✓" : "○"}
-                  </span>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </header>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+            Perbarui identitas dan kontak belajar kamu.
+          </p>
+        </section>
+
+        {!isComplete && (
+          <section className="mb-8">
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-bold">Profil belum lengkap</p>
+              <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                {checklist.map((item) => (
+                  <li key={item.label} className="flex items-center gap-2">
+                    <span aria-hidden="true" className="font-bold">
+                      {item.done ? "✓" : "○"}
+                    </span>
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         {error && (
-          <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            {error}
-          </div>
+          <AlertPopup tone="error" message={error} onClose={() => setError("")} />
         )}
         {notice && (
-          <div role="status" className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
-            {notice}
-          </div>
+          <AlertPopup tone="notice" message={notice} onClose={() => setNotice("")} />
         )}
 
         <form onSubmit={handleSubmit} aria-busy={busy} className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -372,7 +395,7 @@ export default function StudentProfilePage() {
                 value={form.nickname}
                 onChange={update("nickname")}
                 maxLength={50}
-                placeholder="Contoh: Aisyah"
+                placeholder="Contoh: Aisha"
               />
               <label className={labelClass} htmlFor="education_level">
                 Jenjang pendidikan
@@ -407,21 +430,12 @@ export default function StudentProfilePage() {
                 placeholder="10 digit angka"
                 hint="Opsional, namun harus tepat 10 digit bila diisi."
               />
-              <label className={labelClass} htmlFor="profile-email">
-                Email login
-                <input
-                  id="profile-email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  readOnly
-                  autoComplete="email"
-                  className={`${inputClass} cursor-not-allowed bg-slate-50 text-slate-500`}
-                />
-                <span className="mt-1 block text-xs font-normal text-slate-500">
-                  Email ini adalah email akun kamu untuk masuk dan tidak dapat diubah di sini.
-                </span>
-              </label>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+                <p className="font-semibold text-slate-500">Email akun</p>
+                <p className="mt-1 break-all font-bold text-slate-900">{form.email || "-"}</p>
+                <p className="mt-1 text-xs text-slate-500">Email tidak dapat diubah dari halaman ini.</p>
+              </div>
+
             </div>
 
             <Field

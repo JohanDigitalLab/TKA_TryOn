@@ -169,6 +169,16 @@ export function StudentDashboard({
           return;
         }
         if (profileData?.is_subscribed !== true) {
+          if (subscriptionMode) {
+            // Halaman /subscription memang untuk user belum berlangganan.
+            // Jangan redirect ke dirinya sendiri; cukup tampilkan plan.
+            setProfile(
+              profileData || {
+                full_name: userData.user.email?.split("@")[0] || "Siswa",
+              },
+            );
+            return;
+          }
           denied = true;
           setRedirecting(true);
           router.replace("/subscription");

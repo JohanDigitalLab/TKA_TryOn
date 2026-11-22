@@ -157,6 +157,11 @@ function MissionsForm({ params }) {
     sessionStorage.removeItem("tryout-exam-result");
 
     router.push("/student/challenge");
+    // Reset guard setelah navigasi berhasil. Tanpa ini, saat halaman
+    // dikembalikan lewat tombol back (state komponen dipertahankan router),
+    // `starting` tetap true sehingga tombol selamanya disabled.
+    startingRef.current = false;
+    setStarting(false);
     } catch (error) {
       setMessage(error.message || "Latihan gagal dimulai.");
       startingRef.current = false;

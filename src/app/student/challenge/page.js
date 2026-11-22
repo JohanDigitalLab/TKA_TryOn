@@ -465,6 +465,45 @@ function ChallengeContent() {
   );
 
   // =====================================================
+  // HITUNG ULANG KOMPETENSI (BERDASARKAN SETTING)
+  // =====================================================
+
+  const recalcCompetency = useCallback(async (id) => {
+    // Panggil setelah submit berhasil. Kegagalan di sini tidak boleh
+    // menggagalkan hasil ujian yang sudah tersimpan.
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+      if (!userId) return;
+
+      const { data: settingValue } = await supabase.rpc("get_setting", {
+        p_name: "AUTO_CALC_COMPETENCY",
+      });
+      if (String(settingValue || "").trim().toUpperCase() !== "TRUE") return;
+
+      await supabase.rpc("recalc_student_competency", {
+        p_user_uid: userId,
+        p_exam_attempt_uid: id,
+      });
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileData?.school_id) {
+        await supabase.rpc("recalc_school_competency", {
+          p_school_uid: profileData.school_id,
+          p_exam_attempt_uid: id,
+        });
+      }
+    } catch {
+      // Abaikan: kompetensi dapat dihitung ulang manual via RPC.
+    }
+  }, []);
+
+  // =====================================================
   // MENYELESAIKAN SESI
   // =====================================================
 
@@ -497,6 +536,8 @@ function ChallengeContent() {
       const reviewData = await loadReview(attemptId);
 
       saveSessionResult(data, reviewData);
+
+      await recalcCompetency(attemptId);
     } catch (err) {
       finishingRef.current = false;
       setIsFinishing(false);
@@ -508,7 +549,7 @@ function ChallengeContent() {
     } finally {
       setSaving(false);
     }
-  }, [attemptId, finished, loadReview, saveSessionResult]);
+  }, [attemptId, finished, loadReview, recalcCompetency, saveSessionResult]);
 
   // =====================================================
   // LANJUT KE MATA PELAJARAN BERIKUTNYA

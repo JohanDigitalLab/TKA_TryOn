@@ -103,15 +103,27 @@ export function RenderAnswer({ item }) {
     <div className="mt-4 space-y-2">
       {(item.options || []).map((option) => {
         const selected = payload.option_codes.includes(option.option_code);
+        // Pada PGK_MA, kunci yang tidak dipilih siswa termasuk jawaban meleset
+        // sehingga tetap ditandai merah, bukan hijau.
+        const missedCorrect =
+          type === "PGK_MA" && option.is_correct === true && !selected;
+        const boxClass =
+          option.is_correct && !missedCorrect
+            ? "border-green-300 bg-green-50"
+            : selected || missedCorrect
+              ? "border-red-300 bg-red-50"
+              : "border-slate-200 bg-white";
         return (
-          <div key={option.option_code} className={`rounded-lg border p-3 text-sm ${option.is_correct ? "border-green-300 bg-green-50" : selected ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}>
+          <div key={option.option_code} className={`rounded-lg border p-3 text-sm ${boxClass}`}>
             <div className="flex items-start gap-2">
               <span className="font-bold">{option.option_code}.</span>
               <span className="min-w-0 flex-1">{option.option_text}</span>
               {(selected || option.is_correct) && (
                 <span className="ml-auto flex shrink-0 flex-col items-end gap-1 text-right text-xs font-bold">
                   {selected && <span className="text-slate-700">Jawaban siswa</span>}
-                  {option.is_correct && <span className="text-green-700">Kunci jawaban</span>}
+                  {option.is_correct && (
+                    <span className="text-green-700">Kunci jawaban</span>
+                  )}
                 </span>
               )}
             </div>

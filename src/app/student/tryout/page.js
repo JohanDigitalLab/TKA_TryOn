@@ -111,6 +111,10 @@ function MissionsForm({ params }) {
       if (error) throw error;
       if (!data?.attempt_id) throw new Error("Server tidak mengembalikan sesi tryout.");
       router.push(`/student/challenge?attemptId=${encodeURIComponent(data.attempt_id)}`);
+      // Reset guard setelah navigasi agar tombol tidak tetap disabled
+      // saat halaman dikembalikan lewat tombol back.
+      startingRef.current = false;
+      setStarting(false);
     } catch (error) {
       setMessage(error.message || "Gagal memulai tryout. Silakan coba kembali.");
       startingRef.current = false;
