@@ -32,26 +32,19 @@ test("hanya enam field profil yang dikirim ke RPC (email login tidak dikirim)", 
   ]) assert.ok(call.includes(field), field);
   // Email tidak lagi bagian dari profiles; tidak ada p_email dan field email read-only.
   assert.doesNotMatch(call, /p_email/);
-  assert.match(page, /Email login/);
-  assert.match(page, /readOnly/);
+  assert.match(page, /Email akun/);
+  assert.match(page, /Email tidak dapat diubah/);
   assert.doesNotMatch(call, /p_is_subscribed|p_account_type|p_is_managed|p_profile_completed|p_has_tried/);
 });
 
-test("dashboard /student hanya untuk siswa mandiri dan dialihkan ke /home", async () => {
+test("dashboard /student menyatukan siswa mandiri dan managed", async () => {
   const page = await read("src/app/student/page.js");
-  assert.match(page, /requireIndependentStudent = false/);
-  assert.match(page, /"account_type, is_managed, is_subscribed/);
-  assert.match(page, /requireIndependentStudent &&/);
-  assert.match(page, /profileData\?\.is_managed !== false/);
-  assert.match(page, /router\.replace\("\/home"\)/);
-  assert.match(page, /<StudentDashboard requireIndependentStudent \/>/);
+  assert.match(page, /StudentActionTables/);
+  assert.match(page, /profile\?\.is_managed === true/);
+  assert.doesNotMatch(page, /<StudentDashboard requireIndependentStudent \/>/);
 
   const mstudent = await read("src/app/mstudent/page.js");
-  const subscription = await read("src/app/subscription/page.js");
-  assert.match(mstudent, /import \{ StudentDashboard \} from "\.\.\/student\/page"/);
-  assert.doesNotMatch(mstudent, /requireIndependentStudent/);
-  assert.match(subscription, /import \{ StudentDashboard \} from "\.\.\/student\/page"/);
-  assert.doesNotMatch(subscription, /requireIndependentStudent/);
+  assert.match(mstudent, /router\.replace\("\/student"\)/);
 });
 
 test("redirect tidak menampilkan konten terproteksi terlebih dahulu", async () => {

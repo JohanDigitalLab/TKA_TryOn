@@ -9,7 +9,7 @@ test("getHomeHref memetakan profil ke URL dashboard yang benar", () => {
   assert.equal(getHomeHref({ is_subscribed: false, account_type: "ADMIN" }), "/subscription");
   assert.equal(getHomeHref({ is_subscribed: false }), "/subscription");
   assert.equal(getHomeHref({ is_subscribed: true, account_type: "STUDENT", is_managed: false }), "/student");
-  assert.equal(getHomeHref({ is_subscribed: true, account_type: "STUDENT", is_managed: true }), "/mstudent");
+  assert.equal(getHomeHref({ is_subscribed: true, account_type: "STUDENT", is_managed: true }), "/student");
   assert.equal(getHomeHref({ is_subscribed: true, account_type: "student", is_managed: null }), "/student");
   assert.equal(
     getHomeHref({ is_subscribed: true, account_type: "SCHOOL", school_id: "school-1" }),

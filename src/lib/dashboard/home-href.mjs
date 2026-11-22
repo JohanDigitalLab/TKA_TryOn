@@ -3,9 +3,8 @@
  *
  * Aturan (berurutan):
  * 1. is_subscribed = false                  -> /subscription
- * 2. STUDENT dan is_managed = false         -> /student
- * 3. STUDENT dan is_managed = true          -> /mstudent
- * 4. SCHOOL dengan school_id                -> /school
+ * 2. STUDENT (mandiri maupun managed)       -> /student
+ * 3. SCHOOL dengan school_id                -> /school
  * 5. ADMIN                                  -> /admin
  * 6. lainnya / profil belum ada             -> /home
  *
@@ -22,9 +21,7 @@ export function getHomeHref(profile, fallback = "/home") {
 
   const accountType = String(profile.account_type || "").toUpperCase();
 
-  if (accountType === "STUDENT") {
-    return profile.is_managed === true ? "/mstudent" : "/student";
-  }
+  if (accountType === "STUDENT") return "/student";
   if (accountType === "SCHOOL") {
     return profile.school_id ? "/school" : safeFallback;
   }

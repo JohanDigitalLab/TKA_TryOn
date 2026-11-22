@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-function ActionTable({ title, kind, dateLabel }) {
+function ActionTable({ title, kind, dateLabel, onHasData }) {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ rows: [], total: 0 });
   const [loading, setLoading] = useState(true);
@@ -33,8 +33,20 @@ function ActionTable({ title, kind, dateLabel }) {
     return () => { mounted = false; };
   }, [kind, page, retry]);
 
+  useEffect(() => {
+    if (!loading) onHasData?.(result.total > 0 || Boolean(error));
+  }, [error, loading, onHasData, result.total]);
+
   const totalPages = Math.max(1, Math.ceil(result.total / 5));
   const tableId = `action-${kind.toLowerCase()}`;
+
+  // Jangan merender panel/tabel selama data belum diketahui agar tidak terjadi
+  // flash konten kosong sebelum respons RPC selesai.
+  if (loading) return null;
+
+  // Panel tidak perlu mengambil ruang jika endpoint berhasil tetapi tidak ada data.
+  if (!error && result.total === 0) return null;
+
   return (
     <article className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby={`${tableId}-title`}>
       <h2 id={`${tableId}-title`} className="px-5 py-5 text-xl font-extrabold text-slate-950">{title}</h2>
@@ -45,7 +57,7 @@ function ActionTable({ title, kind, dateLabel }) {
             <tr><th scope="col" className="px-5 py-4">#</th><th scope="col" className="px-5 py-4">Mata Pelajaran</th><th scope="col" className="px-5 py-4">{dateLabel}</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan="3" className="px-5 py-8 text-center text-slate-500">Memuat data…</td></tr> : error ? <tr><td colSpan="3" className="px-5 py-8 text-center text-slate-500">Data tidak dapat ditampilkan.</td></tr> : result.rows.length ? result.rows.map((row, index) => (
+            {error ? <tr><td colSpan="3" className="px-5 py-8 text-center text-slate-500">Data tidak dapat ditampilkan.</td></tr> : result.rows.length ? result.rows.map((row, index) => (
               <tr key={row.id}><td className="px-5 py-4">{(page - 1) * 5 + index + 1}</td><td className="px-5 py-4">{row.subject_name || "-"}</td><td className="whitespace-nowrap px-5 py-4">{row.event_at ? new Date(row.event_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-"}</td></tr>
             )) : <tr><td colSpan="3" className="px-5 py-8 text-center text-slate-500">{kind === "ASSIGNMENT" ? "Belum ada tugas dari sekolah." : "Belum ada try out bersama yang dijadwalkan."}</td></tr>}
           </tbody>
@@ -62,6 +74,22 @@ function ActionTable({ title, kind, dateLabel }) {
   );
 }
 
-export default function StudentActionTables() {
-  return <div className="grid gap-5 lg:grid-cols-2"><ActionTable title="Tugas Sekolah" kind="ASSIGNMENT" dateLabel="Batas Waktu" /><ActionTable title="Try Out Bersama" kind="SCHEDULED_TRYOUT" dateLabel="Tanggal" /></div>;
+export default function StudentActionTables({ onVisibilityChange }) {
+  const [loaded, setLoaded] = useState({ assignment: false, tryout: false });
+  const [hasVisibleData, setHasVisibleData] = useState(false);
+
+  const updateVisibility = (key, visible) => {
+    setLoaded((previous) => ({ ...previous, [key]: true }));
+    if (visible) setHasVisibleData(true);
+  };
+
+  useEffect(() => {
+    if (loaded.assignment && loaded.tryout) {
+      onVisibilityChange?.(hasVisibleData);
+    }
+  }, [hasVisibleData, loaded, onVisibilityChange]);
+
+  if (loaded.assignment && loaded.tryout && !hasVisibleData) return null;
+
+  return <div className="grid gap-5 lg:grid-cols-2"><ActionTable title="Tugas Sekolah" kind="ASSIGNMENT" dateLabel="Batas Waktu" onHasData={(visible) => updateVisibility("assignment", visible)} /><ActionTable title="Try Out Bersama" kind="SCHEDULED_TRYOUT" dateLabel="Tanggal" onHasData={(visible) => updateVisibility("tryout", visible)} /></div>;
 }

@@ -65,9 +65,7 @@ const plans = [
 
 function getDashboardPath(profile) {
   if (profile?.is_subscribed === false) return "/subscription";
-  if (profile?.account_type === "STUDENT") {
-    return profile.is_managed === true ? "/mstudent" : "/student";
-  }
+  if (profile?.account_type === "STUDENT") return "/student";
   if (profile?.account_type === "SCHOOL") return "/school";
   if (profile?.account_type === "ADMIN") return "/admin";
   return null;

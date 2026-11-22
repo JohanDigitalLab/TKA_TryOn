@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
 import PortalHeader from "@/components/portal-header";
+import StudentActionTables from "@/components/student/action-tables";
 
 function subscribeToClock(onChange) {
   const timer = window.setInterval(onChange, 30_000);
@@ -77,6 +78,7 @@ export function StudentDashboard({
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [managedActionsVisible, setManagedActionsVisible] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -191,6 +193,10 @@ export function StudentDashboard({
     }
   }
 
+  const handleManagedActionsVisibility = useCallback((visible) => {
+    setManagedActionsVisible(visible);
+  }, []);
+
   async function handleSignOut() {
     setSigningOut(true);
     await supabase.auth.signOut();
@@ -250,8 +256,11 @@ export function StudentDashboard({
           </div>
         </section>
 
-        <section id="action" className="mb-10 scroll-mt-28">
-          {actionContent ?? (
+        {(!profile?.is_managed || actionContent || managedActionsVisible !== false) && (
+          <section id="action" className="mb-10 scroll-mt-28">
+            {actionContent ?? (profile?.is_managed === true ? (
+            <StudentActionTables onVisibilityChange={handleManagedActionsVisibility} />
+          ) : (
             <div className="mt-4">
               <Link
                 id="profile-link"
@@ -263,8 +272,9 @@ export function StudentDashboard({
                   : "Lengkapi Profil"}
               </Link>
             </div>
-          )}
-        </section>
+            ))}
+          </section>
+        )}
 
         <section id="layanan" className="mb-10 scroll-mt-28">
           <div className="mb-5">
@@ -417,5 +427,5 @@ export function StudentDashboard({
 }
 
 export default function StudentRoutePage() {
-  return <StudentDashboard requireIndependentStudent />;
+  return <StudentDashboard />;
 }
