@@ -30,6 +30,8 @@ const services = [
       "Kerjakan simulasi ujian dengan tampilan CBT, batas waktu, navigasi soal, dan mekanisme pengerjaan terstruktur.",
     status: "MULAI SIMULASI",
     href: "/student/tryout",
+    buttonClass:
+      "bg-sky-400 text-slate-950 hover:bg-sky-500 focus-visible:ring-sky-200",
   },
   {
     code: "exercise",
@@ -38,6 +40,8 @@ const services = [
       "Latihan berdasarkan jenjang pendidikan, mata pelajaran, dan kompetensi yang diujikan.",
     status: "MULAI LATIHAN",
     href: "/student/exercise",
+    buttonClass:
+      "bg-violet-600 text-white hover:bg-violet-700 focus-visible:ring-violet-200",
   },
   {
     code: "review",
@@ -46,6 +50,8 @@ const services = [
       "Lihat hasil pengerjaan dan identifikasi kompetensi yang perlu ditingkatkan.",
     status: "LIHAT HASIL",
     href: "/student/results",
+    buttonClass:
+      "bg-cyan-600 text-white hover:bg-cyan-700 focus-visible:ring-cyan-200",
   },
 ];
 
@@ -306,7 +312,10 @@ export function StudentDashboard({
 
         <ActivityBadge attempts={activityAttempts} />
 
-        {(!profile?.is_managed || actionContent || managedActionsVisible !== false) && (
+        {(actionContent ||
+          (profile?.is_managed !== true &&
+            profile?.profile_completed !== true) ||
+          (profile?.is_managed === true && managedActionsVisible !== false)) && (
           <section id="action" className="mb-10 scroll-mt-28">
             {actionContent ?? (profile?.is_managed === true ? (
             <StudentActionTables onVisibilityChange={handleManagedActionsVisibility} />
@@ -315,11 +324,19 @@ export function StudentDashboard({
               <Link
                 id="profile-link"
                 href="/student/profile"
-                className="group inline-flex min-h-14 items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-600 px-7 py-4 text-base font-extrabold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-indigo-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200"
+                className="group relative inline-flex min-h-14 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-red-500 via-rose-500 to-orange-400 px-7 py-4 text-base font-extrabold text-white shadow-lg shadow-red-200/70 ring-2 ring-white/70 transition duration-300 hover:-translate-y-0.5 hover:from-red-600 hover:via-rose-600 hover:to-orange-500 hover:shadow-xl hover:shadow-red-300/70 focus:outline-none focus:ring-4 focus:ring-red-200"
               >
-                {profile?.profile_completed === true
-                  ? "Perbaharui Profil"
-                  : "Lengkapi Profil"}
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" aria-hidden="true" />
+                <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white/20 ring-1 ring-white/40 transition-transform duration-300 group-hover:scale-110" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+                    <path d="M12 2l1.9 5.7 5.6 1.9-5.6 1.9L12 17.2l-1.9-5.7-5.6-1.9 5.6-1.9L12 2z" />
+                    <path d="M19 14l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9.9-2.6z" opacity=".7" />
+                  </svg>
+                </span>
+                <span className="relative">Lengkapi Profil</span>
+                <span className="relative text-lg transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
+                  →
+                </span>
               </Link>
             </div>
             ))}
@@ -348,7 +365,7 @@ export function StudentDashboard({
               return (
                 <article
                   key={service.code}
-                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300"
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:-translate-y-2 hover:rotate-1"
                 >
                   <h4 className="text-lg font-extrabold text-slate-900">
                     {service.title}
@@ -368,7 +385,7 @@ export function StudentDashboard({
                   ) : (
                     <Link
                       href={service.href}
-                      className="mt-6 flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-4 py-3 text-sm font-bold text-white hover:bg-blue-800"
+                      className={`mt-6 flex min-h-11 items-center justify-center rounded-lg px-4 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 ${service.buttonClass}`}
                     >
                       {service.status} →
                     </Link>
