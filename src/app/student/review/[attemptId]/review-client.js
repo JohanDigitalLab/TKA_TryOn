@@ -1,70 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PortalHeader from "@/components/portal-header";
 import { supabase } from "@/lib/supabase";
 import { normalizePayload, normalizeType, getTypeLabel } from "@/lib/student/exam";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
+import { QuestionNavigation, QuestionReviewList, RenderAnswer } from "@/components/student/question-review";
 
 function typeLabel(type) {
   const value = String(type || "").toUpperCase();
   return value === "TRYOUT" ? "Simulasi TKA" : value === "ASSIGNMENT" ? "Tugas Sekolah" : "Latihan Soal";
 }
 
-function AnswerReview({ item }) {
-  const payload = normalizePayload(item.answer_payload);
-  const type = normalizeType(item.question_type);
-
-  if (type === "PGK_KATEGORI") {
-    return (
-      <div className="mt-4 space-y-3">
-        {(item.category_items || []).map((category) => {
-          const student = String(
-            payload.category_answers[String(category.item_number)] || "Belum dijawab"
-          ).toUpperCase();
-          const correct = String(category.correct_category || "-").toUpperCase();
-          const isCorrect = student === correct;
-          return (
-            <div key={category.item_number} className={`rounded-lg border p-3 text-sm ${isCorrect ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"}`}>
-            <div className="flex flex-wrap items-start gap-2">
-              <span className="font-bold">{category.item_number}.</span>
-              <span className="min-w-0 flex-1">{category.item_text}</span>
-              <div className="ml-auto flex w-full shrink-0 flex-col items-start gap-1 text-left text-xs sm:w-auto sm:items-end sm:text-right">
-                <span>Jawaban siswa: <strong>{student}</strong></span>
-                <span className="font-semibold text-green-700">Kunci jawaban: {correct}</span>
-              </div>
-            </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4 space-y-2">
-      {(item.options || []).map((option) => {
-        const selected = payload.option_codes.includes(option.option_code);
-        return (
-          <div key={option.option_code} className={`rounded-lg border p-3 text-sm ${option.is_correct ? "border-green-300 bg-green-50" : selected ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}>
-            <div className="flex items-start gap-2">
-              <span className="font-bold">{option.option_code}.</span>
-              <span className="min-w-0 flex-1">{option.option_text}</span>
-              {(selected || option.is_correct) && (
-                <span className="ml-auto flex shrink-0 flex-col items-end gap-1 text-right text-xs font-bold">
-                  {selected && <span className="text-slate-700">Jawaban siswa</span>}
-                  {option.is_correct && <span className="text-green-700">Kunci jawaban</span>}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function StudentReviewPage({ attemptId }) {
   const router = useRouter();
@@ -168,23 +116,24 @@ export default function StudentReviewPage({ attemptId }) {
           </div>
         </section>
 
-        <section id="review-question-navigation" className="mt-6 scroll-mt-24 rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="font-extrabold">Navigasi Soal</h2>
-          <nav className="mt-4 flex flex-wrap gap-2" aria-label="Navigasi soal review">
-            {questions.map((item, index) => <a key={item.question_id || index} href={`#review-question-${index + 1}`} className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-bold ${item.is_correct === true ? "border-green-300 bg-green-100 text-green-700" : item.is_correct === false ? "border-red-300 bg-red-100 text-red-700" : "border-slate-200 bg-slate-100 text-slate-600"}`}>{item.question_order || index + 1}</a>)}
-          </nav>
-        </section>
-
-        <section className="mt-6 space-y-5">
-          {questions.map((item, index) => <article id={`review-question-${index + 1}`} key={item.question_id || index} className={`scroll-mt-24 rounded-2xl border bg-white p-5 shadow-sm ${item.is_correct === true ? "border-green-200" : item.is_correct === false ? "border-red-200" : "border-slate-200"}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-bold">Soal Nomor {item.question_order || index + 1}</h2><span className={`rounded-full px-3 py-1 text-xs font-bold ${item.is_correct === true ? "bg-green-100 text-green-700" : item.is_correct === false ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>{item.is_correct === true ? "BENAR" : item.is_correct === false ? "SALAH" : "PERIKSA JAWABAN"}</span></div>
-            <p className="mt-2 text-xs font-semibold text-blue-700">{getTypeLabel(normalizeType(item.question_type))}</p>
-            {item.stimulus?.content_text && <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-6">{item.stimulus.content_text}</div>}
-            <p className="mt-4 text-sm font-medium leading-7 text-slate-900">{item.question_text}</p>
-            <AnswerReview item={item} />
-            {item.explanation && <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4"><p className="text-xs font-bold uppercase text-blue-700">Pembahasan</p><p className="mt-2 text-sm leading-6 text-slate-700">{item.explanation}</p></div>}
-          </article>)}
-        </section>
+        <div className="mt-6 rounded-2xl">
+          <QuestionNavigation
+            id="review-question-navigation"
+            questions={questions}
+            className="rounded-2xl"
+            renderItem={(item, index) => (
+              <a key={item.question_id || index} href={`#review-question-${index + 1}`} className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-bold ${item.is_correct === true ? "border-green-300 bg-green-100 text-green-700" : item.is_correct === false ? "border-red-300 bg-red-100 text-red-700" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+                {item.question_order || index + 1}
+              </a>
+            )}
+          />
+          <QuestionReviewList
+            questions={questions}
+            className="mt-6"
+            getTypeLabel={(item) => getTypeLabel(normalizeType(item.question_type))}
+            renderAnswer={(item) => <RenderAnswer item={item} />}
+          />
+        </div>
       </div>
       {questions.length > 0 && <button type="button" aria-label="Kembali ke navigasi soal" onClick={() => document.getElementById("review-question-navigation")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="fixed bottom-5 left-auto right-5 z-[100] grid h-12 w-12 place-items-center rounded-full bg-blue-700 text-xl font-bold text-white shadow-lg hover:bg-blue-800 lg:left-[calc(50%+32rem+0.75rem)] lg:right-auto">↑</button>}
     </main>

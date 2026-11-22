@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
+import { QuestionNavigation, QuestionReviewList, RenderAnswer } from "@/components/student/question-review";
 
 // =====================================================
 // HELPER
@@ -46,6 +47,7 @@ function ChallengeContent() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [showReview, setShowReview] = useState(false);
+  const [reviewNavigationPassed, setReviewNavigationPassed] = useState(false);
 
   const [isFinishing, setIsFinishing] = useState(false);
 
@@ -55,6 +57,7 @@ function ChallengeContent() {
     subjectIndex: 0,
     totalSubjects: 1,
     simulationId: null,
+    attemptType: assignmentId ? "ASSIGNMENT" : null,
     resumed: false,
   });
 
@@ -129,6 +132,7 @@ function ChallengeContent() {
         subjectIndex: assignmentId ? 0 : index,
         totalSubjects: assignmentId ? 1 : subjectList.length || 1,
         simulationId,
+        attemptType: assignmentId ? "ASSIGNMENT" : null,
         resumed: Boolean(resumeAttemptId),
       });
 
@@ -164,6 +168,8 @@ function ChallengeContent() {
         ...previous,
         grade: Number(data.grade || previous.grade),
         subject: data.subject_name || data.subject || previous.subject,
+        attemptType:
+          String(data.attempt_type || previous.attemptType || (assignmentId ? "ASSIGNMENT" : "EXERCISE")).toUpperCase(),
         resumed: Boolean(resumeAttemptId || data.resumed),
       }));
 
@@ -237,7 +243,7 @@ function ChallengeContent() {
       }
     } catch (err) {
       startedRef.current = false;
-      setError(err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu paket sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
+      setError(err?.message?.includes("LEARNING_PACKAGE_EXPIRED") ? "Batas waktu ujian sudah berakhir. Sesi yang sudah dimulai tetap dapat dilanjutkan dari riwayat." : err?.message || "Ujian gagal dimulai.");
     } finally {
       advancingRef.current = false;
       setLoading(false);
@@ -508,6 +514,10 @@ function ChallengeContent() {
   // LANJUT KE MATA PELAJARAN BERIKUTNYA
   // =====================================================
 
+  const backToDashboard = useCallback(() => {
+    router.push("/student");
+  }, [router]);
+
   const nextSubject = () => {
     if (advancingRef.current) return;
     advancingRef.current = true;
@@ -653,80 +663,28 @@ function ChallengeContent() {
   // =====================================================
 
   const reviewQuestions = review?.questions || [];
+  const reviewAttemptType = String(
+    review?.attempt_type || result?.attempt_type || examInfo.attemptType || (assignmentId ? "ASSIGNMENT" : "EXERCISE")
+  ).toUpperCase();
+  const reviewTitle =
+    reviewAttemptType === "TRYOUT"
+      ? "Review Hasil Simulasi TKA"
+      : reviewAttemptType === "ASSIGNMENT"
+        ? "Review Hasil Tugas Sekolah"
+        : "Review Hasil Latihan Soal";
 
-  const renderReviewAnswer = (item) => {
-    const type = normalizeType(item.question_type);
-    const payload = normalizePayload(item.answer_payload);
+  useEffect(() => {
+    const navigation = document.getElementById("review-question-navigation");
+    if (!showReview || !navigation) return undefined;
 
-    if (type === "PGK_KATEGORI") {
-      return (
-        <div className="mt-4 space-y-3">
-          {(item.category_items || []).map((category) => {
-            const number = String(category.item_number);
-            const studentAnswer =
-              payload.category_answers[number] || "Belum dijawab";
-
-            return (
-              <div
-                key={number}
-                className="rounded-lg border border-slate-200 p-3"
-              >
-                <p className="text-sm font-medium text-slate-800">
-                  {category.item_number}. {category.item_text}
-                </p>
-                <p className="mt-2 text-sm">
-                  Jawaban siswa: <strong>{studentAnswer}</strong>
-                </p>
-                <p className="text-sm text-green-700">
-                  Kunci: <strong>{category.correct_category}</strong>
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-
-    return (
-      <div className="mt-4 space-y-2">
-        {(item.options || []).map((option) => {
-          const selected = payload.option_codes.includes(
-            option.option_code
-          );
-
-          return (
-            <div
-              key={option.option_code}
-              className={`rounded-lg border p-3 text-sm ${
-                option.is_correct
-                  ? "border-green-300 bg-green-50"
-                  : selected
-                  ? "border-red-300 bg-red-50"
-                  : "border-slate-200 bg-white"
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                <span className="font-bold">
-                  {option.option_code}.
-                </span>
-                <span className="flex-1">{option.option_text}</span>
-                {selected && (
-                  <span className="text-xs font-bold">
-                    Jawaban siswa
-                  </span>
-                )}
-                {option.is_correct && (
-                  <span className="text-xs font-bold text-green-700">
-                    Kunci
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    const observer = new IntersectionObserver(
+      ([entry]) => setReviewNavigationPassed(!entry.isIntersecting),
+      { threshold: 0.1 }
     );
-  };
+    observer.observe(navigation);
+    return () => observer.disconnect();
+  }, [showReview, review]);
+
 
   // =====================================================
   // LOADING
@@ -762,7 +720,7 @@ function ChallengeContent() {
           </p>
 
           <p className="mt-3 text-sm text-slate-500">
-            Periksa status akses melalui halaman Paket. Untuk sesi yang sudah dimulai, buka riwayat hasil dan lanjutkan sesi yang masih berjalan.
+            Periksa status akses melalui halaman utama. Untuk sesi yang sudah dimulai, buka riwayat hasil dan lanjutkan sesi yang masih berjalan.
           </p>
 
           <button
@@ -771,10 +729,6 @@ function ChallengeContent() {
           >
             Kembali ke Dashboard
           </button>
-          <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-blue-700">
-            <button onClick={() => router.push("/subscription")} className="min-h-11 underline">Paket dan aktivasi langganan</button>
-            <button onClick={() => router.push("/student/results")} className="min-h-11 underline">Riwayat dan sesi berjalan</button>
-          </div>
         </section>
       </main>
     );
@@ -795,10 +749,6 @@ function ChallengeContent() {
               Sesi Mata Pelajaran Selesai
             </h1>
 
-            <p className="mt-2 text-sm text-slate-600">
-              Hasil penilaian telah dihitung oleh Supabase.
-            </p>
-
             <div className="mt-5 rounded-xl bg-blue-50 p-4">
               <p className="text-sm font-bold text-blue-700">
                 {examInfo.subject}
@@ -817,7 +767,7 @@ function ChallengeContent() {
                 {Number(result?.score ?? 0).toFixed(2)}
               </p>
               <p className="mt-2 text-xs text-slate-500">
-                Skala nilai 0–100 · Penilaian server
+                Skala nilai 0–100 · Penilaian system
               </p>
             </div>
 
@@ -852,7 +802,10 @@ function ChallengeContent() {
             </div>
 
             <button
-              onClick={() => setShowReview((value) => !value)}
+              onClick={() => {
+                setReviewNavigationPassed(false);
+                setShowReview((value) => !value);
+              }}
               className="mt-6 w-full rounded-lg bg-green-700 px-7 py-3 font-bold text-white hover:bg-green-800"
             >
               {showReview
@@ -882,71 +835,46 @@ function ChallengeContent() {
 
           {showReview && review && (
             <section className="mt-6 space-y-5">
-              <div className="rounded-xl bg-white p-5 shadow-sm">
-                <h2 className="text-xl font-extrabold">
-                  Review Hasil Ujian
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Periksa jawaban, kunci, dan pembahasan setiap soal.
-                </p>
-              </div>
-
-              {reviewQuestions.map((item, index) => (
-                <article
-                  key={item.question_id || index}
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-bold text-slate-900">
-                      Soal Nomor {item.question_order || index + 1}
-                    </h3>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        item.is_correct === true
-                          ? "bg-green-100 text-green-700"
-                          : item.is_correct === false
-                          ? "bg-red-100 text-red-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {item.is_correct === true
-                        ? "BENAR"
-                        : item.is_correct === false
-                        ? "SALAH"
-                        : "PERIKSA JAWABAN"}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-xs font-semibold text-blue-700">
-                    {getTypeLabel(normalizeType(item.question_type))}
-                  </p>
-
-                  {item.stimulus?.content_text && (
-                    <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-6">
-                      {item.stimulus.content_text}
-                    </div>
-                  )}
-
-                  <p className="mt-4 text-sm font-medium leading-7 text-slate-900">
-                    {item.question_text}
-                  </p>
-
-                  {renderReviewAnswer(item)}
-
-                  {item.explanation && (
-                    <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
-                      <p className="text-xs font-bold uppercase text-blue-700">
-                        Pembahasan
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
-                        {item.explanation}
-                      </p>
-                    </div>
-                  )}
-                </article>
-              ))}
+              <QuestionNavigation
+                id="review-question-navigation"
+                title={reviewTitle}
+                questions={reviewQuestions}
+                renderItem={(item, index) => (
+                  <a
+                    href={`#review-question-${index + 1}`}
+                    className={`grid h-9 w-9 place-items-center rounded-lg border text-sm font-bold transition hover:scale-105 ${
+                      item.is_correct === true ? "border-green-300 bg-green-100 text-green-700" : item.is_correct === false ? "border-red-300 bg-red-100 text-red-700" : "border-slate-200 bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {item.question_order || index + 1}
+                  </a>
+                )}
+              />
+              <QuestionReviewList
+                questions={reviewQuestions}
+                getTypeLabel={(item) => getTypeLabel(normalizeType(item.question_type))}
+              />
             </section>
+          )}
+
+          {showReview && reviewQuestions.length > 0 && (
+            <button
+              type="button"
+              aria-label="Kembali ke navigasi soal"
+              disabled={!reviewNavigationPassed}
+              onClick={() =>
+                document
+                  .getElementById("review-question-navigation")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className={`fixed bottom-5 left-auto right-5 z-[100] grid h-12 w-12 place-items-center rounded-full bg-blue-700 text-xl font-bold text-white shadow-lg hover:bg-blue-800 lg:left-[calc(50%+32rem+0.75rem)] lg:right-auto ${
+                reviewNavigationPassed
+                  ? "bg-blue-700 hover:bg-blue-800"
+                  : "cursor-not-allowed bg-slate-300 opacity-50"
+              }`}
+            >
+              ↑
+            </button>
           )}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -959,10 +887,10 @@ function ChallengeContent() {
               </button>
             ) : (
               <button
-                onClick={() => router.push("/student/results")}
-                className="flex-1 rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
+                onClick={backToDashboard}
+                className="flex-1 rounded-lg bg-slate-700 px-7 py-3 font-bold text-white hover:bg-slate-800"
               >
-                Lihat Rekap Seluruh Hasil →
+                Kembali ke Halaman Utama
               </button>
             )}
           </div>
@@ -988,7 +916,8 @@ function ChallengeContent() {
   return (
     <main className="min-h-screen bg-slate-100 text-slate-800">
       {navigationWarning && (
-        <div className="fixed left-1/2 top-4 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 shadow-lg">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4">
+          <div className="w-full max-w-lg rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 shadow-lg">
           <p className="font-bold">Ujian masih berlangsung</p>
           <p className="mt-1">
             Tombol Back tidak mengakhiri ujian. Sesi dan waktu ujian tetap
@@ -1001,13 +930,14 @@ function ChallengeContent() {
           >
             Mengerti
           </button>
+          </div>
         </div>
       )}
-
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <BrandLogo className="h-12 w-14" />
-          <div>
+ <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+   <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandLogo className="h-20 w-25 shrink-0" />
+          <div id="logo-text">
             <h1 className="text-lg font-extrabold text-slate-900">
               TKA <span className="text-blue-700">TryOn</span>
             </h1>
@@ -1019,7 +949,9 @@ function ChallengeContent() {
               {examInfo.totalSubjects}
             </p>
           </div>
+          </div>
 
+          <div className="flex justify-center" aria-live="polite">
           {!untimed && (<div
             className={`rounded-lg border px-4 py-2 text-center ${
               timerCritical
@@ -1065,7 +997,9 @@ function ChallengeContent() {
               </p>
             )}
           </div>)}
+          </div>
 
+          <div className="flex justify-end">
           <button
             onClick={() => setShowConfirm(true)}
             disabled={isFinishing || saving}
@@ -1073,6 +1007,7 @@ function ChallengeContent() {
           >
             Selesai
           </button>
+          </div>
         </div>
       </header>
 
@@ -1145,12 +1080,6 @@ function ChallengeContent() {
             </div>
           )}
 
-          {question.instruction && (
-            <p className="mt-5 text-sm italic text-slate-500">
-              {question.instruction}
-            </p>
-          )}
-
           <p className="mt-6 text-base font-semibold leading-8 text-slate-900">
             {question.question}
           </p>
@@ -1159,9 +1088,6 @@ function ChallengeContent() {
 
           {question.type === "PG_TUNGGAL" && (
             <div className="mt-6 space-y-3">
-              <p className="text-xs font-semibold text-slate-500">
-                Pilih satu jawaban yang paling tepat.
-              </p>
 
               {question.options.map((option) => {
                 const active =
@@ -1200,9 +1126,6 @@ function ChallengeContent() {
 
           {question.type === "PGK_MA" && (
             <div className="mt-6 space-y-3">
-              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-                Pilih semua jawaban yang benar. Jawaban dapat lebih dari satu.
-              </div>
 
               {question.options.map((option) => {
                 const active =
@@ -1248,10 +1171,6 @@ function ChallengeContent() {
 
           {question.type === "PGK_KATEGORI" && (
             <div className="mt-6 space-y-4">
-              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-                Tentukan kategori yang tepat untuk setiap pernyataan.
-                Pilih BENAR atau SALAH pada masing-masing pernyataan.
-              </div>
 
               {question.category_items.length === 0 && (
                 <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
@@ -1344,7 +1263,7 @@ function ChallengeContent() {
                 onClick={() => setCurrent((value) => value - 1)}
                 className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold disabled:opacity-40"
               >
-                Sebelumnya
+                ← Sebelumnya
               </button>
 
               {current < questions.length - 1 ? (
