@@ -26,7 +26,9 @@ test("akses belajar tidak lagi bergantung pada kuota trial", async () => {
     read("docs/database/migration-stage-9-unrestricted-learning.sql"),
   ]);
   assert.match(subscription, /export function SubscriptionPlans/);
-  assert.match(subscription, /href: "\/register"/);
+  // Aktivasi paket kini lewat WhatsApp (settings), bukan tautan /register.
+  assert.match(subscription, /openActivationWhatsApp/);
+  assert.doesNotMatch(subscription, /href: "\/register"/);
   assert.match(migration, /'unrestricted',true/);
   assert.doesNotMatch(migration, /LEARNING_SUBSCRIPTION_REQUIRED|A02_TRIAL_EXHAUSTED/);
 });

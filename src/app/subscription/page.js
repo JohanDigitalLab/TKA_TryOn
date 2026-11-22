@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import { StudentDashboard } from "../student/page";
 
 const plans = [
   {
     name: "Siswa Mandiri",
-    href: "/register",
     action: "Aktifkan Sekarang",
+    messageSetting: "WA_MSG_SISWA",
     price: "Rp49.000",
     suffix: "sekali bayar sampai lulus",
     tone: "blue",
@@ -20,8 +20,8 @@ const plans = [
   },
   {
     name: "Sekolah",
-    href: "/register",
     action: "Aktifkan Sekarang",
+    messageSetting: "WA_MSG_SEKOLAH",
     price: "Rp25.000",
     suffix: "per siswa",
     tone: "blue",
@@ -33,6 +33,33 @@ const plans = [
     ],
   },
 ];
+
+function normalizeWhatsAppNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  // 08xx -> 628xx agar valid untuk tautan wa.me.
+  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  return digits;
+}
+
+async function openActivationWhatsApp(plan) {
+  // Ambil nomor dan pesan dari tabel settings lewat RPC get_setting.
+  const [{ data: numberData }, { data: messageData }] = await Promise.all([
+    supabase.rpc("get_setting", { p_name: "WA_NUMBER" }),
+    supabase.rpc("get_setting", { p_name: plan.messageSetting }),
+  ]);
+
+  const number = normalizeWhatsAppNumber(numberData);
+  const message = String(messageData || "").trim();
+
+  // Setting nomor WA belum tersedia; tidak melakukan apa-apa.
+  if (!number) return;
+
+  const url = `https://wa.me/${number}${
+    message ? `?text=${encodeURIComponent(message)}` : ""
+  }`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 export function SubscriptionPlans() {
   return (
@@ -47,7 +74,13 @@ export function SubscriptionPlans() {
               <ul className={`mt-7 space-y-3 text-sm ${plan.tone === "blue" ? "text-slate-600" : "text-slate-200"}`}>
                 {plan.features.map((feature) => <li key={feature} className="flex gap-3"><span className="font-bold text-blue-400" aria-hidden="true">✓</span><span>{feature}</span></li>)}
               </ul>
-              <Link href={plan.href} className={`mt-8 block rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}>{plan.action}</Link>
+              <button
+                type="button"
+                onClick={() => openActivationWhatsApp(plan)}
+                className={`mt-8 block w-full rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}
+              >
+                {plan.action}
+              </button>
             </article>
           ))}
         </div>
