@@ -47,7 +47,7 @@ BEGIN
     RETURN private.resume_tka_tryout(p_attempt_id);
   END IF;
   IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND attempt_type='EXERCISE') THEN
-    RETURN private.resume_student_exercise(p_attempt_id);
+    RETURN private.load_student_exercise(p_attempt_id);
   END IF;
   IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND attempt_type='ASSIGNMENT') THEN
     RETURN private.resume_school_assignment(p_attempt_id);

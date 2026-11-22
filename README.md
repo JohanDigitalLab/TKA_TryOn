@@ -1,4 +1,4 @@
-# TKA TryOn
+# TKA TryOut
 
 Platform persiapan, latihan, dan simulasi Tes Kemampuan Akademik (TKA) dengan area peserta dan administrasi konten akademik.
 

@@ -135,7 +135,7 @@ export default function AdminLayout({ children }) {
           <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
 
           <p className="mt-4 text-sm font-medium text-slate-500">
-            Memeriksa sesi TKA TryOn...
+            Memeriksa sesi TKA TryOut...
           </p>
         </div>
       </main>
@@ -158,7 +158,7 @@ export default function AdminLayout({ children }) {
 
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900">
-                TKA TryOn
+                TKA TryOut
               </h1>
 
               <p className="text-sm text-slate-500">
@@ -172,7 +172,7 @@ export default function AdminLayout({ children }) {
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Gunakan akun TKA TryOn yang telah terdaftar. Hak akses setiap
+            Gunakan akun TKA TryOut yang telah terdaftar. Hak akses setiap
             modul akan ditentukan berdasarkan role dan permission akun.
           </p>
 
@@ -225,7 +225,7 @@ export default function AdminLayout({ children }) {
           </button>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            TKA TryOn · SKILL ON • CONFIDENCE ON
+            TKA TryOut · SKILL ON • CONFIDENCE ON
           </p>
         </form>
       </main>

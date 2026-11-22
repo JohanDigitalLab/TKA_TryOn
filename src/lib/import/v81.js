@@ -112,7 +112,7 @@ export function parseV81Workbook(workbook, fileName = "workbook-v8.1.xlsx") {
   if (questions.length !== 474) add("WORKBOOK", 1, "jumlah", `Diharapkan total 474 soal, ditemukan ${questions.length}.`);
   const invalid = new Set(issues.map(issue => `${issue.sheet}:${issue.row}`));
   return {
-    format: "TRYON_V8_1", fileName, questions, issues,
+    format: "TRYOUT_V8_1", fileName, questions, issues,
     totalSheets: workbook.SheetNames.length,
     recognizedSheets: workbook.SheetNames.filter(name => Object.hasOwn(V81_SOURCES, name)),
     ignoredSheets: workbook.SheetNames.filter(name => !Object.hasOwn(V81_SOURCES, name)),

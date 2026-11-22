@@ -66,7 +66,7 @@ const env = p => fs.existsSync(path.join(root, p)) ? parseEnv(read(p)) : {};
   await client.query(`INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data) VALUES($1,$2,now(),'{"full_name":"Workbook verifier","registration_method":"independent","education_level":"sd"}')`,[user,`${user}@workbook.invalid`]);
   await client.query('INSERT INTO public.admin_operator_accounts(user_id,is_active) VALUES($1,true)',[user]);
   await client.query("INSERT INTO public.admin_operator_permissions(user_id,permission_code) VALUES($1,'bank_soal.import')",[user]);
-  const payload={format:'TRYON_V8_1',fileName:parsed.fileName,questions:parsed.questions,mode:'upsert'};
+  const payload={format:'TRYOUT_V8_1',fileName:parsed.fileName,questions:parsed.questions,mode:'upsert'};
   const call=async p=>{
    await client.query('SET LOCAL ROLE authenticated');
    await client.query("SELECT set_config('request.jwt.claim.sub',$1,true)",[user]);

@@ -218,6 +218,7 @@ export function StudentDashboard({
     <main className="min-h-screen bg-slate-50 text-slate-800">
       <PortalHeader
         displayName={profile?.full_name || "Siswa"}
+        isManaged={profile?.is_managed}
         signingOut={signingOut}
         onSignOut={handleSignOut}
       />
@@ -375,7 +376,9 @@ export function StudentDashboard({
                       <td className="px-5 py-4">
                         {attempt.attempt_type === "TRYOUT"
                           ? "Simulasi TKA"
-                          : "Latihan Soal"}
+                          : attempt.attempt_type === "ASSIGNMENT"
+                            ? "Tugas Sekolah"
+                            : "Latihan Soal"}
                       </td>
                       <td className="px-5 py-4">
                         {attempt.subject_name || "-"}

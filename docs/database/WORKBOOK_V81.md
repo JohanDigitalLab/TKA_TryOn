@@ -2,7 +2,7 @@
 
 ## Hasil penerapan
 
-- File sumber: `TKA_TryOn_v8_1_Master_Konsolidasi_474_WORKING.xlsx`.
+- File sumber: `TKA_TryOut_v8_1_Master_Konsolidasi_474_WORKING.xlsx`.
 - Total workbook: 25 sheet.
 - Sheet diproses berdasarkan nama, bukan posisi: 4.
 - Sheet diabaikan: 21.

@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { isV81Workbook, parseV81Workbook } from "@/lib/import/v81";
 
 /* =========================================================
-   TKA TRYON — SMART IMPORT CENTER
+   TKA TRYOUT — SMART IMPORT CENTER
    Satu pintu masuk seluruh sumber bank soal.
    Alur: Upload → Extract → Structure → Validate → Review → DRAFT
 ========================================================= */
@@ -498,7 +498,7 @@ export default function ImportCenterPage() {
           sourceFileName: fileInfo?.name || "",
           metadata,
           instructions: {
-            outputFormat: "TKA_TRYON_NORMALIZED",
+            outputFormat: "TKA_TRYOUT_NORMALIZED",
             questionTypes: [
               "PG_TUNGGAL",
               "PGK_MA",
@@ -550,14 +550,14 @@ export default function ImportCenterPage() {
   ------------------------------------------------------- */
 
   async function handleV81Import(preview = true) {
-    if (!isAdmin || workbookResult?.format !== "TRYON_V8_1" || workbookResult.counts.ERROR || savingDraft) return;
+    if (!isAdmin || workbookResult?.format !== "TRYOUT_V8_1" || workbookResult.counts.ERROR || savingDraft) return;
     if (!preview && (!databasePreview || !window.confirm("Simpan workbook sebagai soal nonaktif untuk review? Versi terbit tidak akan ditimpa."))) return;
     setSavingDraft(true);
     setError("");
     try {
       const { data, error: importError } = await supabase.rpc("save_question_import_batch", {
         p_payload: {
-          format: "TRYON_V8_1", fileName: workbookResult.fileName,
+          format: "TRYOUT_V8_1", fileName: workbookResult.fileName,
           questions: workbookResult.questions, mode: duplicateMode, preview,
         },
       });
@@ -923,7 +923,7 @@ export default function ImportCenterPage() {
             <BrandLogo className="h-14 w-14" />
             <div>
               <h1 className="text-xl font-bold text-slate-900">
-                TKA TryOn
+                TKA TryOut
               </h1>
               <p className="text-xs text-slate-500">
                 Smart Import Center
@@ -1025,13 +1025,13 @@ export default function ImportCenterPage() {
               </Link>
             </div>
             <p className="text-xs font-bold tracking-[0.18em] text-blue-700">
-              TKA TRYON / ACADEMIC CONTENT
+              TKA TRYOUT / ACADEMIC CONTENT
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">
               Smart Import Center
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Satu pintu masuk untuk seluruh sumber Bank Soal TKA TryOn.
+              Satu pintu masuk untuk seluruh sumber Bank Soal TKA TryOut.
             </p>
           </div>
 
@@ -1091,7 +1091,7 @@ export default function ImportCenterPage() {
               1. Unggah Sumber Bank Soal
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Pilih sumber soal yang akan dimasukkan ke Bank Soal TKA TryOn.
+              Pilih sumber soal yang akan dimasukkan ke Bank Soal TKA TryOut.
             </p>
           </div>
 
@@ -1360,7 +1360,7 @@ export default function ImportCenterPage() {
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
             <div>
               <p className="text-xs font-bold tracking-widest text-blue-700">
-                {workbookResult.format === "TRYON_V8_1" ? "WORKBOOK v8.1 VALIDATION" : "TQBS VALIDATION"}
+                {workbookResult.format === "TRYOUT_V8_1" ? "WORKBOOK v8.1 VALIDATION" : "TQBS VALIDATION"}
               </p>
               <h2 className="mt-2 break-all text-lg font-bold text-slate-900">
                 {workbookResult.fileName}
@@ -1391,7 +1391,7 @@ export default function ImportCenterPage() {
               ))}
             </div>
 
-            {workbookResult.format === "TRYON_V8_1" && (
+            {workbookResult.format === "TRYOUT_V8_1" && (
               <div className="space-y-4 text-sm text-slate-700">
                 <p>{workbookResult.totalSheets} sheet total · {workbookResult.recognizedSheets.length} sumber dikenali · {workbookResult.ignoredSheets.length} diabaikan</p>
                 <details><summary>Sheet yang diabaikan</summary><p>{workbookResult.ignoredSheets.join(", ")}</p></details>
@@ -1856,7 +1856,7 @@ export default function ImportCenterPage() {
                 Status penyimpanan: siap disimpan sebagai DRAFT
               </p>
               <p className="mt-1 text-sm leading-6 text-blue-900">
-                Soal akan disimpan ke database TKA TryOn dalam status DRAFT.
+                Soal akan disimpan ke database TKA TryOut dalam status DRAFT.
                 Kunci jawaban yang masih perlu diverifikasi tetap ditandai untuk
                 telaah Guru/Moderator. Soal tidak otomatis dipublikasikan.
               </p>
@@ -1909,7 +1909,7 @@ export default function ImportCenterPage() {
         {/* FOOTER */}
 
         <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
-          © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
+          © 2026 TKA TryOut · SKILL ON • CONFIDENCE ON
         </footer>
       </div>
     </main>

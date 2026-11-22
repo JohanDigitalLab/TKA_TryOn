@@ -13,7 +13,7 @@ const validPayload = {
     hak_penggunaan: "ORISINAL",
   },
   instructions: {
-    outputFormat: "TKA_TRYON_NORMALIZED",
+    outputFormat: "TKA_TRYOUT_NORMALIZED",
     questionTypes: ["PG_TUNGGAL"],
     preserveSourceMeaning: true,
     neverInventAnswerKey: true,

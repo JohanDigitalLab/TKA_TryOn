@@ -286,7 +286,7 @@ export default function StudentProfilePage() {
 
         <header className="mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
-            TKA TryOn · Akun Siswa
+            TKA TryOut · Akun Siswa
           </p>
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
             Perbarui Data Profil
@@ -445,7 +445,7 @@ export default function StudentProfilePage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          TKA TryOn · Data profil hanya dapat diubah oleh pemilik akun.
+          TKA TryOut · Data profil hanya dapat diubah oleh pemilik akun.
         </p>
       </div>
     </main>

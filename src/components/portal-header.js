@@ -17,10 +17,10 @@ export default function PortalHeader({ displayName = "Siswa", signingOut = false
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-1 sm:px-5 sm:py-2 lg:px-8">
-        <Link href="/" aria-label="Kembali ke halaman utama TKA TryOn" className="flex items-center gap-3">
+        <Link href="/" aria-label="Kembali ke halaman utama TKA TryOut" className="flex items-center gap-3">
           <BrandLogo className="h-20 w-25" />
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">TKA <span className="text-blue-700">TryOn</span></h1>
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">TKA <span className="text-blue-700">TryOut</span></h1>
             <p className="text-[10px] font-semibold tracking-widest text-slate-500">SKILL ON • CONFIDENCE ON</p>
           </div>
         </Link>

@@ -123,7 +123,7 @@ function ChallengeContent() {
       if (!resumeAttemptId && !assignmentId) {
         currentConfig.simulationId = simulationId;
         currentConfig.currentSubjectIndex = index;
-        sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
+        sessionStorage.setItem("tryout-exam-config", JSON.stringify(currentConfig));
       }
 
       setExamInfo({
@@ -203,7 +203,7 @@ function ChallengeContent() {
       setUntimed(data.attempt_type !== "TRYOUT");
       if (currentConfig.adaptiveExercise && !assignmentId && !resumeAttemptId) {
         currentConfig.exerciseAttemptId = data.attempt_id;
-        sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
+        sessionStorage.setItem("tryout-exam-config", JSON.stringify(currentConfig));
       }
       setAttemptId(data.attempt_id);
       setQuestions(mapped);
@@ -452,12 +452,12 @@ function ChallengeContent() {
       ].sort((a, b) => a.subjectIndex - b.subjectIndex);
 
       sessionStorage.setItem(
-        "tryon-simulation-results",
+        "tryout-simulation-results",
         JSON.stringify(updatedResults)
       );
 
       sessionStorage.setItem(
-        "tryon-exam-result",
+        "tryout-exam-result",
         JSON.stringify(data)
       );
     },
@@ -536,7 +536,7 @@ function ChallengeContent() {
     currentConfig.currentSubjectIndex = nextIndex;
 
     sessionStorage.setItem(
-      "tryon-exam-config",
+      "tryout-exam-config",
       JSON.stringify(currentConfig)
     );
 
@@ -696,7 +696,7 @@ function ChallengeContent() {
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
           <p className="font-semibold">
-            Menyiapkan soal dari bank TKA TryOn…
+            Menyiapkan soal dari bank TKA TryOut…
           </p>
         </div>
       </main>
@@ -939,7 +939,7 @@ function ChallengeContent() {
             <BrandLogo className="h-20 w-25 shrink-0" />
           <div id="logo-text">
             <h1 className="text-lg font-extrabold text-slate-900">
-              TKA <span className="text-blue-700">TryOn</span>
+              TKA <span className="text-blue-700">TryOut</span>
             </h1>
             <p className="text-xs text-slate-500">
               {examInfo.subject} · Kelas {examInfo.grade}

@@ -72,9 +72,8 @@ export default function StudentReviewPage({ attemptId }) {
   const attemptType = String(review?.attempt_type || historyItem?.attempt_type || "EXERCISE").toUpperCase();
   const startedAt = review?.started_at || historyItem?.started_at || review?.created_at || historyItem?.created_at;
   const submittedAt = review?.submitted_at || historyItem?.submitted_at;
-  const createdAt = review?.created_at || historyItem?.created_at;
-  const calculatedDurationSeconds = submittedAt && createdAt
-    ? Math.max(0, Math.floor((new Date(submittedAt).getTime() - new Date(createdAt).getTime()) / 1000))
+  const calculatedDurationSeconds = submittedAt && startedAt
+    ? Math.max(0, Math.floor((new Date(submittedAt).getTime() - new Date(startedAt).getTime()) / 1000))
     : 0;
   const durationSeconds = calculatedDurationSeconds || Number(review?.duration_seconds ?? review?.duration ?? historyItem?.duration_seconds ?? 0);
   const durationLabel = durationSeconds > 0

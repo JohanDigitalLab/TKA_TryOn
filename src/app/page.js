@@ -108,12 +108,12 @@ export default function HomeNewPage() {
         <div className="absolute right-0 top-96 h-96 w-96 rounded-full bg-fuchsia-500 blur-[140px]" />
       </div>
 
-      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-2 lg:px-8 lg:py-4">
         <Link href="/" className="flex items-center gap-3">
-          <BrandLogo className="h-25 w-25" priority />
+          <BrandLogo className="h-20 w-25" priority />
           <div>
             <p className="text-lg font-black tracking-tight">
-              TKA <span className="text-cyan-300">TryOn</span>
+              TKA <span className="text-cyan-300">TryOut</span>
             </p>
             <p className="theme-subtle text-[9px] font-bold tracking-[0.2em]">
               SKILL ON • CONFIDENCE ON
@@ -186,7 +186,7 @@ export default function HomeNewPage() {
           <div className="rounded-[1.5rem] bg-[#f7f5ff] p-6 text-[#10102a]">
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-[#10102a] px-3 py-1 text-[10px] font-black text-white">
-                TKA TRYON
+                TKA TRYOUT
               </span>
               <span className="text-xl">✦</span>
             </div>
@@ -229,7 +229,7 @@ export default function HomeNewPage() {
           <p
             className={`text-xs font-black tracking-[.25em] ${theme === "light" ? "text-slate-500" : "text-white/55"}`}
           >
-            WHY TRYON?
+            WHY TRYOUT?
           </p>
           <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
             Small steps.{" "}

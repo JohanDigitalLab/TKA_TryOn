@@ -127,7 +127,7 @@ export default function Home() {
             <BrandLogo className="h-14 w-16" priority />
             <div>
               <p className="text-xl font-extrabold tracking-tight text-slate-900">
-                TKA <span className="text-blue-700">TryOn</span>
+                TKA <span className="text-blue-700">TryOut</span>
               </p>
               <p className="text-[10px] font-semibold tracking-[0.16em] text-slate-500">
                 SKILL ON • CONFIDENCE ON
@@ -163,7 +163,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-7 text-slate-600">
-              TKA TryOn menyediakan fasilitas simulasi ujian berbasis komputer,
+              TKA TryOut menyediakan fasilitas simulasi ujian berbasis komputer,
               latihan akademik, serta evaluasi kemampuan untuk membantu siswa
               mempersiapkan Tes Kemampuan Akademik.
             </p>
@@ -185,7 +185,7 @@ export default function Home() {
           <div className="border border-slate-200 bg-white p-6 md:p-8">
             <div className="flex items-center justify-between border-b border-slate-200 pb-5">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">TKA TRYON</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">TKA TRYOUT</p>
                 <h3 className="mt-1 text-xl font-extrabold text-slate-900">Persiapan, Simulasi, dan Evaluasi</h3>
               </div>
               <span className="rounded-lg bg-blue-100 px-3 py-2 text-xs font-bold text-blue-800">CBT</span>
@@ -274,7 +274,7 @@ export default function Home() {
       {/* TENTANG */}
       <section id="tentang" className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
         <div className="border-l-4 border-blue-600 bg-slate-900 px-6 py-10 text-white md:px-10">
-          <h3 className="text-2xl font-extrabold">TKA TryOn</h3>
+          <h3 className="text-2xl font-extrabold">TKA TryOut</h3>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">
             Platform independen untuk membantu siswa mengenal karakteristik Tes Kemampuan Akademik,
             berlatih mengerjakan soal, dan mengevaluasi kesiapan akademiknya.
@@ -296,7 +296,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <BrandLogo className="h-14 w-14" />
               <div>
-                <p className="text-xl font-black tracking-tight text-blue-700">TKA <span className="text-slate-900">TryOn</span></p>
+                <p className="text-xl font-black tracking-tight text-blue-700">TKA <span className="text-slate-900">TryOut</span></p>
                 <p className="text-[10px] font-bold tracking-widest text-slate-400">SKILL ON • CONFIDENCE ON</p>
               </div>
             </div>

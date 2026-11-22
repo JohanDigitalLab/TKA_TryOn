@@ -129,12 +129,12 @@ function MissionsForm({ params }) {
       />
       <header className="hidden">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
-          <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
+          <Link href="/student" aria-label="Kembali ke dashboard TKA TryOut" className="flex items-center gap-3">
             <BrandLogo className="h-12 w-14" />
 
             <div>
               <h1 className="text-xl font-extrabold text-slate-900">
-                TKA <span className="text-blue-700">TryOn</span>
+                TKA <span className="text-blue-700">TryOut</span>
               </h1>
               <p className="text-[10px] font-semibold tracking-widest text-slate-500">
                 SKILL ON • CONFIDENCE ON

@@ -23,7 +23,7 @@ export default function BrandLogo({ className = "h-[90px] w-[90px]", priority = 
   return (
     <Image
       src={logos[logoIndex]}
-      alt="Logo TKA TryOn"
+      alt="Logo TKA TryOut"
       width={90}
       height={90}
       sizes="90px"

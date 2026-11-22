@@ -113,7 +113,7 @@ function RegisterNewForm({ context }) {
           <BrandLogo className="h-25 w-25" priority />
           <div>
             <p className="text-lg font-black tracking-tight">
-              TKA <span className="text-cyan-300">TryOn</span>
+              TKA <span className="text-cyan-300">TryOut</span>
             </p>
             <p className="theme-subtle text-[9px] font-bold tracking-[0.2em]">
               SKILL ON • CONFIDENCE ON

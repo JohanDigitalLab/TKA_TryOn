@@ -5,7 +5,7 @@ export const MAX_JSON_BODY_SIZE = 256 * 1024;
 export const QUESTION_TYPES = ["PG_TUNGGAL", "PGK_MA", "PGK_KATEGORI"];
 const METADATA_KEYS = ["jenjang", "kelas", "satuan_pendidikan", "mata_pelajaran", "hak_penggunaan"];
 const INSTRUCTIONS = {
-  outputFormat: "TKA_TRYON_NORMALIZED",
+  outputFormat: "TKA_TRYOUT_NORMALIZED",
   preserveSourceMeaning: true,
   neverInventAnswerKey: true,
   uncertainAnswerKeyMustBeFlagged: true,

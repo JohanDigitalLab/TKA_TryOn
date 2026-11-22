@@ -63,5 +63,5 @@ function ActionTable({ title, kind, dateLabel }) {
 }
 
 export default function StudentActionTables() {
-  return <div className="grid gap-5 lg:grid-cols-2"><ActionTable title="Tugas Sekolah" kind="ASSIGNMENT" dateLabel="Deadline" /><ActionTable title="Try Out Bersama" kind="SCHEDULED_TRYOUT" dateLabel="Tanggal" /></div>;
+  return <div className="grid gap-5 lg:grid-cols-2"><ActionTable title="Tugas Sekolah" kind="ASSIGNMENT" dateLabel="Batas Waktu" /><ActionTable title="Try Out Bersama" kind="SCHEDULED_TRYOUT" dateLabel="Tanggal" /></div>;
 }

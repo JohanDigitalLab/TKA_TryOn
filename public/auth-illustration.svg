@@ -1,6 +1,6 @@
 <svg width="900" height="560" viewBox="0 0 900 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Persiapan TKA TryOn</title>
-  <desc id="desc">Pelajar belajar menggunakan dashboard latihan dan simulasi TKA TryOn.</desc>
+  <title id="title">Persiapan TKA TryOut</title>
+  <desc id="desc">Pelajar belajar menggunakan dashboard latihan dan simulasi TKA TryOut.</desc>
   <defs>
     <linearGradient id="background" x1="40" y1="24" x2="860" y2="536" gradientUnits="userSpaceOnUse">
       <stop stop-color="#EFF6FF"/>
@@ -28,7 +28,7 @@
     <circle cx="143" cy="111" r="6" fill="#BFDBFE"/>
     <circle cx="164" cy="111" r="6" fill="#BFDBFE" fill-opacity="0.7"/>
     <circle cx="185" cy="111" r="6" fill="#BFDBFE" fill-opacity="0.45"/>
-    <text x="218" y="118" fill="white" font-family="Arial, sans-serif" font-size="17" font-weight="700">DASHBOARD TKA TRYON</text>
+    <text x="218" y="118" fill="white" font-family="Arial, sans-serif" font-size="17" font-weight="700">DASHBOARD TKA TRYOUT</text>
 
     <rect x="143" y="169" width="312" height="20" rx="10" fill="#E2E8F0"/>
     <rect x="143" y="169" width="218" height="20" rx="10" fill="#60A5FA"/>

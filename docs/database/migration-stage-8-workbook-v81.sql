@@ -65,7 +65,7 @@ BEGIN
  END LOOP;
  bc:='IMP-V81-'||replace(b::text,'-','');
  INSERT INTO public.question_import_batches(id,batch_code,file_name,source_type,total_rows,valid_rows,error_rows,imported_rows,batch_status,notes,created_by,template_version,started_at)
- VALUES(b,bc,coalesce(nullif(p_payload->>'fileName',''),'workbook-v8.1.xlsx'),'IMPORT',474,474,0,0,'PROCESSING','v8.1; mode='||mode||'; hak penggunaan belum diverifikasi; versi impor nonaktif.',u,'TRYON_V8_1',now());
+ VALUES(b,bc,coalesce(nullif(p_payload->>'fileName',''),'workbook-v8.1.xlsx'),'IMPORT',474,474,0,0,'PROCESSING','v8.1; mode='||mode||'; hak penggunaan belum diverifikasi; versi impor nonaktif.',u,'TRYOUT_V8_1',now());
  FOR r IN SELECT value FROM jsonb_array_elements(rows) ORDER BY value->>'id' LOOP
   SELECT * INTO q FROM public.questions WHERE question_code=r->>'id' FOR UPDATE;
   fingerprint:=md5(r::text);
@@ -124,7 +124,7 @@ DECLARE original text; patched text;
 BEGIN
  SELECT pg_get_functiondef('public.save_question_import_batch(jsonb)'::regprocedure) INTO original;
  IF strpos(original,'private.save_v81_import_batch')=0 THEN
-  patched:=regexp_replace(original,'BEGIN','BEGIN' || E'\n  IF p_payload->>''format''=''TRYON_V8_1'' THEN RETURN private.save_v81_import_batch(p_payload); END IF;');
+  patched:=regexp_replace(original,'BEGIN','BEGIN' || E'\n  IF p_payload->>''format''=''TRYOUT_V8_1'' THEN RETURN private.save_v81_import_batch(p_payload); END IF;');
   IF patched=original THEN RAISE EXCEPTION 'Import dispatcher patch failed'; END IF;
   EXECUTE patched;
  END IF;

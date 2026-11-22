@@ -296,7 +296,7 @@ export default function AdminDashboard() {
               </h3>
 
               <p className="mt-1 text-sm text-slate-500">
-                Pusat kendali konten akademik dan operasional TKA TryOn.
+                Pusat kendali konten akademik dan operasional TKA TryOut.
               </p>
             </div>
 
@@ -868,7 +868,7 @@ export default function AdminDashboard() {
           )}
 
           <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
-            © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
+            © 2026 TKA TryOut · SKILL ON • CONFIDENCE ON
           </footer>
         </div>
       </main>

@@ -7,7 +7,7 @@ export function formatTime(seconds) {
 
 export function getExamConfig() {
   try {
-    return JSON.parse(sessionStorage.getItem("tryon-exam-config") || "{}");
+    return JSON.parse(sessionStorage.getItem("tryout-exam-config") || "{}");
   } catch {
     return {};
   }
@@ -99,7 +99,7 @@ export function getCategoryOptions(items = []) {
 export function getSimulationResults() {
   try {
     return JSON.parse(
-      sessionStorage.getItem("tryon-simulation-results") || "[]"
+      sessionStorage.getItem("tryout-simulation-results") || "[]"
     );
   } catch {
     return [];

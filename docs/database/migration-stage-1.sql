@@ -123,7 +123,7 @@ BEGIN
              AND EXISTS (
                SELECT 1
                FROM unnest(regexp_split_to_array(ci.category_label, '\s*/\s*')) AS allowed(category)
-               WHERE btrim(allowed.category) = btrim(v_item.category)
+               WHERE upper(btrim(allowed.category)) = upper(btrim(v_item.category))
              )
          ) THEN
         RETURN false;
@@ -222,9 +222,10 @@ BEGIN
     RAISE EXCEPTION 'Sesi ujian sudah selesai atau tidak aktif.';
   END IF;
   v_now := clock_timestamp();
-  IF v_attempt.started_at IS NULL OR v_attempt.duration_minutes IS NULL
-     OR v_attempt.duration_minutes <= 0
-     OR v_now >= v_attempt.started_at + (v_attempt.duration_minutes * interval '1 minute') THEN
+  IF v_attempt.attempt_type = 'TRYOUT'
+     AND (v_attempt.started_at IS NULL OR v_attempt.duration_minutes IS NULL
+       OR v_attempt.duration_minutes <= 0
+       OR v_now >= v_attempt.started_at + (v_attempt.duration_minutes * interval '1 minute')) THEN
     RAISE EXCEPTION 'Waktu ujian telah habis.';
   END IF;
 
@@ -291,12 +292,14 @@ BEGIN
 
   -- Submit setelah deadline adalah auto-submit: nilai dihitung hanya dari
   -- jawaban yang sudah tersimpan. save_exam_answer tetap menolak jawaban baru.
-  IF v_attempt.started_at IS NULL OR v_attempt.duration_minutes IS NULL
-     OR v_attempt.duration_minutes <= 0 THEN
+  IF v_attempt.attempt_type = 'TRYOUT'
+     AND (v_attempt.started_at IS NULL OR v_attempt.duration_minutes IS NULL
+       OR v_attempt.duration_minutes <= 0) THEN
     RAISE EXCEPTION 'Konfigurasi waktu ujian tidak valid.';
   END IF;
-  v_submitted_after_deadline := clock_timestamp() >=
-    v_attempt.started_at + (v_attempt.duration_minutes * interval '1 minute');
+  v_submitted_after_deadline := v_attempt.attempt_type = 'TRYOUT'
+    AND clock_timestamp() >= v_attempt.started_at
+      + (v_attempt.duration_minutes * interval '1 minute');
 
   SELECT COUNT(*)::integer,
          COUNT(*) FILTER (

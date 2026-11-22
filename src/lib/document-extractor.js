@@ -456,7 +456,7 @@ async function extractPdf(buffer) {
 // ==========================================
 
 /**
- * Ekstraksi dokumen untuk TKA TryOn Smart Import.
+ * Ekstraksi dokumen untuk TKA TryOut Smart Import.
  *
  * @param {Object} options
  * @param {string} options.fileName
