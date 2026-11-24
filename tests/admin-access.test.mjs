@@ -48,6 +48,13 @@ test("layout student mensyaratkan login tanpa membatasi tipe akun", async () => 
   assert.doesNotMatch(layout, /allowedTypes/);
 });
 
+test("layout home mensyaratkan login untuk seluruh halaman turunannya", async () => {
+  const layout = await read("src/app/home/layout.js");
+  assert.match(layout, /import PortalGuard from "@\/components\/portal-guard"/);
+  assert.match(layout, /<PortalGuard>\{children\}<\/PortalGuard>/);
+  assert.doesNotMatch(layout, /allowedTypes/);
+});
+
 test("halaman portal tidak lagi mengarahkan ke rute login yang tidak ada", async () => {
   const assignments = await read("src/app/student/assignments/page.js");
   assert.doesNotMatch(assignments, /router\.replace\("\/login"\)/);
