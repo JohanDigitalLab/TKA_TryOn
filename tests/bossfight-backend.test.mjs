@@ -49,6 +49,10 @@ test('migration declares critical security and atomic persistence invariants', a
   const generic = await readFile(new URL('../docs/database/migration_generic_exam_attempt.sql', import.meta.url), 'utf8');
   assert.equal((generic.match(/CREATE OR REPLACE FUNCTION public\.(submit_exam_attempt|save_exam_answer|resume_exam_attempt)/g) || []).length, 3);
   assert.equal((generic.match(/RAISE EXCEPTION 'Use BossFight endpoint'/g) || []).length, 3);
-  for (const call of ['private.submit_exercise_attempt(p_attempt_id)', 'private.save_exercise_answer(p_attempt_id,p_question_id,p_answer_payload)', 'private.resume_student_exercise(p_attempt_id)', 'private.resume_tka_tryout(p_attempt_id)']) assert.ok(generic.includes(call), call);
+  for (const call of ['public.submit_exercise_attempt(p_attempt_id)', 'public.save_exercise_answer(p_attempt_id,p_question_id,p_answer_payload)', 'public.resume_student_exercise(p_attempt_id)', 'public.resume_tka_tryout(p_attempt_id)', 'public.submit_tka_attempt(p_attempt_id)', 'public.save_tka_answer(p_attempt_id,p_question_id,p_answer_payload)']) assert.ok(generic.includes(call), call);
+  // Gate gamification inline pada fungsi asli, tanpa rename/wrapper legacy.
+  assert.equal((generic.match(/RAISE EXCEPTION 'Use VirtualPet RPC'/g) || []).length, 3);
+  assert.equal((generic.match(/RAISE EXCEPTION 'Use MapAdventure RPC'/g) || []).length, 3);
+  assert.equal((generic.match(/RAISE EXCEPTION 'Use the game-specific RPC'/g) || []).length, 3);
   assert.doesNotMatch(generic, /exercise_legacy|bossfight_legacy/);
 });

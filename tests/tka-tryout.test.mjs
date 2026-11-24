@@ -31,19 +31,27 @@ test('start and resume use ownership, account/level/access checks and transactio
   assert.match(sql, /TKA education level mismatch/);
   assert.match(sql, /user_id=u AND tka_code=cfg\.tka_code/);
   assert.match(sql, /clock_timestamp\(\)<started_at\+duration_minutes\*interval '1 minute'/);
-  assert.match(sql, /FROM PUBLIC,anon,authenticated/);
+  // Fungsi tryout kini publik: anon/PUBLIC dicabut, authenticated diberi EXECUTE.
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.resume_tka_tryout\(uuid\) FROM PUBLIC,anon;/);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.resume_tka_tryout\(uuid\) TO authenticated;/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.submit_tka_attempt\(p_attempt_id uuid\) FROM PUBLIC,anon;/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.save_tka_answer\(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb\) FROM PUBLIC,anon;/);
+  // Tidak boleh ada fungsi tryout yang tetap dapat dijalankan anon.
+  assert.doesNotMatch(sql, /GRANT EXECUTE ON FUNCTION public\.(resume_tka_tryout|submit_tka_attempt|save_tka_answer)[^;]*TO (anon|PUBLIC)/);
   for (const declaration of sql.matchAll(/SECURITY DEFINER([^]*?)AS \$\$/g)) {
     assert.match(declaration[1], /SET search_path=pg_catalog/);
   }
 });
 test('safe loader only reads persisted snapshots and explicitly allowlists exam fields', () => {
-  const loader = sql.split('CREATE OR REPLACE FUNCTION private.resume_tka_tryout')[1].split('END $$;')[0];
+  const loader = sql.split('CREATE OR REPLACE FUNCTION public.resume_tka_tryout')[1].split('END $$;')[0];
   assert.doesNotMatch(loader, /INSERT |UPDATE public\.|random\(|is_correct|correct_category|explanation/);
   for (const key of ['questions', 'options', 'category_items', 'answers', 'remaining_seconds']) assert.ok(loader.includes(`'${key}'`));
   assert.match(loader, /v\.id=aq\.question_version_id AND v\.question_id=q\.id/);
-  assert.match(generic, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(generic, /RETURN public\.resume_tka_tryout\(p_attempt_id\)/);
   assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.resume_exam_attempt/);
   assert.match(loader, /'attempt_type',a\.attempt_type/);
+  // Fungsi spesifik memfilter attempt TRYOUT milik siswa, jadi tidak bisa dipakai lintas tipe.
+  assert.equal((sql.match(/WHERE id = p_attempt_id AND user_id = u AND attempt_type = 'TRYOUT'/g) || []).length, 2);
 });
 test('frontend starts server attempt with synchronous duplicate guard and recoverable errors', () => {
   assert.match(frontend, /async function saveConfiguration/);

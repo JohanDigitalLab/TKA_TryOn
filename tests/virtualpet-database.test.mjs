@@ -29,10 +29,12 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     CREATE TABLE public.exam_attempts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,education_level text,grade integer,subject_name text,duration_minutes integer NOT NULL,total_questions integer,attempt_type varchar(10),started_at timestamptz,deadline_at timestamptz,attempt_status text DEFAULT 'IN_PROGRESS',correct_answers integer,score numeric,submitted_at timestamptz);
     CREATE TABLE public.exam_attempt_questions(attempt_id uuid,question_id uuid,question_version_id uuid,question_order integer,UNIQUE(attempt_id,question_id));
     CREATE TABLE public.exam_attempt_answers(attempt_id uuid,question_id uuid,answer_payload jsonb,answered_at timestamptz,UNIQUE(attempt_id,question_id));
-    CREATE FUNCTION private.submit_exercise_attempt(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
-    CREATE FUNCTION private.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
-    CREATE FUNCTION private.save_exercise_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
-    CREATE FUNCTION private.resume_tka_tryout(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.submit_exercise_attempt(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.save_exercise_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.resume_tka_tryout(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.submit_tka_attempt(p_attempt_id uuid) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+    CREATE FUNCTION public.save_tka_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
     INSERT INTO profiles(id,education_level,nickname,full_name) VALUES('${uid}','sd','Nina','Nina'),('${other}','sd','Raka','Raka');
     INSERT INTO auth.users(id,email_confirmed_at) VALUES('${uid}',now()),('${other}',now());
     INSERT INTO subjects VALUES('mat-sd','Matematika');

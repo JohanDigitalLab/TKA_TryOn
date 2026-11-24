@@ -5,7 +5,7 @@ ALTER TABLE public.questions
   ADD COLUMN IF NOT EXISTS topic varchar(255);
 -- Deliberately NO element/material backfill.
 
-CREATE OR REPLACE FUNCTION private.resume_tka_tryout(p_attempt_id uuid) RETURNS jsonb
+CREATE OR REPLACE FUNCTION public.resume_tka_tryout(p_attempt_id uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE u uuid:=private.school_actor(); a public.exam_attempts%ROWTYPE; qs jsonb; ans jsonb;
 BEGIN
@@ -60,7 +60,7 @@ BEGIN
     AND attempt_type='TRYOUT' AND attempt_status='IN_PROGRESS'
     AND clock_timestamp()<started_at+duration_minutes*interval '1 minute'
     ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
-  IF aid IS NOT NULL THEN RETURN private.resume_tka_tryout(aid)||jsonb_build_object('resumed',true); END IF;
+  IF aid IS NOT NULL THEN RETURN public.resume_tka_tryout(aid)||jsonb_build_object('resumed',true); END IF;
   -- Respect the installed entitlement policy; stage 9 intentionally removes subscription gates.
   access:=public.learning_access_context();
   IF NOT coalesce((access->>'unrestricted')::boolean,false)
@@ -118,7 +118,7 @@ BEGIN
   IF actual=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
   UPDATE public.exam_attempts SET total_questions=actual,
     deadline_at=started_at+duration_minutes*interval '1 minute' WHERE id=aid;
-  RETURN private.resume_tka_tryout(aid)||jsonb_build_object('resumed',false);
+  RETURN public.resume_tka_tryout(aid)||jsonb_build_object('resumed',false);
 END $$;
 
 CREATE OR REPLACE FUNCTION public.submit_tka_attempt(p_attempt_id uuid) RETURNS jsonb
@@ -190,70 +190,9 @@ BEGIN
   );
 END $$;
 
-CREATE OR REPLACE FUNCTION public.save_tka_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE
-  u uuid := auth.uid();
-  v_attempt public.exam_attempts%ROWTYPE;
-  v_question_type text;
-  v_question_version_id uuid;
-  v_now timestamptz;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+REVOKE ALL ON FUNCTION public.resume_tka_tryout(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.resume_tka_tryout(uuid) TO authenticated;
 
-  SELECT * INTO v_attempt
-  FROM public.exam_attempts
-  WHERE id = p_attempt_id AND user_id = u
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Sesi ujian tidak ditemukan.';
-  END IF;
-  IF v_attempt.attempt_status <> 'IN_PROGRESS' THEN
-    RAISE EXCEPTION 'Sesi ujian sudah selesai atau tidak aktif.';
-  END IF;
-  v_now := clock_timestamp();
-  IF v_attempt.attempt_type = 'TRYOUT'
-     AND (v_attempt.started_at IS NULL OR v_attempt.duration_minutes IS NULL
-       OR v_attempt.duration_minutes <= 0
-       OR v_now >= v_attempt.started_at + (v_attempt.duration_minutes * interval '1 minute')) THEN
-    RAISE EXCEPTION 'Waktu ujian telah habis.';
-  END IF;
-
-  SELECT q.question_type, aq.question_version_id
-  INTO v_question_type, v_question_version_id
-  FROM public.exam_attempt_questions aq
-  JOIN public.questions q ON q.id = aq.question_id
-  JOIN public.question_versions qv
-    ON qv.id = aq.question_version_id AND qv.question_id = aq.question_id
-  WHERE aq.attempt_id = p_attempt_id AND aq.question_id = p_question_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Soal tidak terdaftar dalam sesi ujian.';
-  END IF;
-
-  IF NOT private.exam_answer_payload_is_valid(
-    v_question_version_id, v_question_type, p_answer_payload
-  ) THEN
-    RAISE EXCEPTION 'Jawaban tidak sesuai dengan struktur soal.';
-  END IF;
-
-  INSERT INTO public.exam_attempt_answers (attempt_id, question_id, answer_payload, answered_at)
-  VALUES (p_attempt_id, p_question_id, p_answer_payload, v_now)
-  ON CONFLICT (attempt_id, question_id) DO UPDATE SET
-    answer_payload = EXCLUDED.answer_payload,
-    answered_at = EXCLUDED.answered_at;
-
-  RETURN jsonb_build_object(
-    'saved', true,
-    'attempt_id', p_attempt_id,
-    'question_id', p_question_id,
-    'question_type', v_question_type,
-    'answered_at', v_now
-  );
-END $$;
-
-REVOKE ALL ON FUNCTION private.resume_tka_tryout(uuid) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.start_tka_tryout(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.start_tka_tryout(text) TO authenticated;
 
@@ -396,22 +335,6 @@ REVOKE ALL ON FUNCTION public.submit_tka_attempt(p_attempt_id uuid) FROM PUBLIC,
 REVOKE ALL ON FUNCTION public.save_tka_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.submit_tka_attempt(p_attempt_id uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_tka_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) TO authenticated;
-
--- Pembungkus resume spesifik tryout: halaman Tryout/Challenge memanggil fungsi ini,
--- bukan resume_exam_attempt generik. Guard keanggotaan privat tetap menjaga attempt
--- gamification; wrapper hanya menerima attempt TRYOUT milik auth.uid().
-CREATE OR REPLACE FUNCTION public.resume_tka_tryout(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid := auth.uid(); kind text;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
-  IF kind IS DISTINCT FROM 'TRYOUT' THEN RAISE EXCEPTION 'Attempt is not a TKA tryout session' USING ERRCODE='42501'; END IF;
-  RETURN private.resume_tka_tryout(p_attempt_id);
-END $$;
-REVOKE ALL ON FUNCTION public.resume_tka_tryout(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.resume_tka_tryout(uuid) TO authenticated;
 
 -- public.resume_exam_attempt kini didefinisikan hanya di migration_generic_exam_attempt.sql.
 NOTIFY pgrst,'reload schema';

@@ -40,13 +40,24 @@ BEGIN
     WHERE s.nspname='private' AND p.proname LIKE 'exercise_legacy_%') THEN
     RAISE EXCEPTION 'Retired exercise_legacy_* function still present';
   END IF;
-  SELECT pg_get_functiondef('private.resume_student_exercise(uuid)'::regprocedure) INTO body;
+  -- Desain terkini: resume/save/submit latihan berada di skema public.
+  SELECT pg_get_functiondef('public.resume_student_exercise(uuid)'::regprocedure) INTO body;
   IF body ~ '(is_correct|correct_category|explanation|scoring_rule)' THEN
     RAISE EXCEPTION 'Active loader leaks answer metadata';
   END IF;
   IF has_function_privilege('anon','public.start_student_exercise(text,integer,text,text)','EXECUTE')
-    OR has_function_privilege('authenticated','private.resume_student_exercise(uuid)','EXECUTE') THEN
-    RAISE EXCEPTION 'Unsafe function grants';
+    OR has_function_privilege('anon','public.resume_student_exercise(uuid)','EXECUTE')
+    OR has_function_privilege('anon','public.save_exercise_answer(uuid,uuid,jsonb)','EXECUTE')
+    OR has_function_privilege('anon','public.submit_exercise_attempt(uuid)','EXECUTE')
+    OR has_function_privilege('anon','public.resume_tka_tryout(uuid)','EXECUTE')
+    OR has_function_privilege('anon','public.save_tka_answer(uuid,uuid,jsonb)','EXECUTE')
+    OR has_function_privilege('anon','public.submit_tka_attempt(uuid)','EXECUTE')
+    OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace s ON s.oid=p.pronamespace
+      WHERE s.nspname='private' AND p.proname IN('resume_student_exercise','save_exercise_answer','submit_exercise_attempt','resume_tka_tryout')) THEN
+    RAISE EXCEPTION 'Unsafe function grants or retired private helpers still present';
+  END IF;
+  IF NOT has_function_privilege('authenticated','public.resume_tka_tryout(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'Authenticated role cannot resume a tryout session';
   END IF;
 END $$;
 -- Inspect these manually; partial repository schema cannot prove compatibility.

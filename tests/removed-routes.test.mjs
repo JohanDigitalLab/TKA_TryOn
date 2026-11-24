@@ -5,7 +5,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { registrationContext } from "../src/lib/student/registration.mjs";
 
 const root = new URL("../", import.meta.url);
-const removed = ["/teacher", "/school/join", "/school/manage", "/school/messages", "/school/register", "/student/xmissions", "/student/xsubjects", "/admin/schools", "/admin/subscriptions"];
+const removed = ["/teacher", "/mstudent", "/school/join", "/school/manage", "/school/messages", "/school/register", "/student/xmissions", "/student/xsubjects", "/admin/schools", "/admin/subscriptions"];
 async function sources(directory) {
   const paths = [];
   for (const entry of await readdir(new URL(directory, root), { withFileTypes: true })) {
@@ -18,6 +18,9 @@ async function sources(directory) {
 
 test("route yang dipensiunkan dan komponen eksklusif tidak tersedia", () => {
   for (const route of removed) assert.equal(existsSync(new URL(`src/app${route}/page.js`, root)), false, route);
+  // Folder /mstudent dihapus total: tidak ada halaman, layout, atau salinan lama.
+  assert.equal(existsSync(new URL("src/app/mstudent", root)), false, "src/app/mstudent");
+  assert.equal(existsSync(new URL("src/app/(student)/mstudent", root)), false, "src/app/(student)/mstudent");
   assert.equal(existsSync(new URL("src/components/learning-access.js", root)), false);
   for (const path of ["src/app/school/page.js", "src/components/school/portal.js"]) {
     assert.ok(existsSync(new URL(path, root)), path);

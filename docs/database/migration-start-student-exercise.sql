@@ -1,6 +1,9 @@
 -- Pending deployment; see STUDENT_EXERCISE.md. Never apply automatically.
 BEGIN;
-CREATE OR REPLACE FUNCTION private.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb
+
+DROP FUNCTION IF EXISTS private.resume_student_exercise(p_attempt_id uuid);
+
+CREATE OR REPLACE FUNCTION public.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE u uuid:=auth.uid(); a public.exam_attempts%ROWTYPE; qs jsonb; ans jsonb;
 BEGIN
@@ -32,7 +35,9 @@ BEGIN
     'remaining_seconds',NULL);
 END $$;
 
-CREATE OR REPLACE FUNCTION private.save_exercise_answer(
+DROP FUNCTION IF EXISTS private.save_exercise_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb);
+
+CREATE OR REPLACE FUNCTION public.save_exercise_answer(
   p_attempt_id uuid,
   p_question_id uuid,
   p_answer_payload jsonb
@@ -101,7 +106,9 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION private.submit_exercise_attempt(p_attempt_id uuid)
+DROP FUNCTION IF EXISTS private.submit_exercise_attempt(p_attempt_id uuid);
+
+CREATE OR REPLACE FUNCTION public.submit_exercise_attempt(p_attempt_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -170,6 +177,13 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.resume_student_exercise(uuid),
+  public.save_exercise_answer(uuid,uuid,jsonb),
+  public.submit_exercise_attempt(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.resume_student_exercise(uuid),
+  public.save_exercise_answer(uuid,uuid,jsonb),
+  public.submit_exercise_attempt(uuid) TO authenticated;
+  
 NOTIFY pgrst,'reload schema';
 COMMIT;
 
@@ -178,7 +192,7 @@ COMMIT;
 -- - hanya p_theme diisi    : ambil p_question_count soal acak pada theme tsb (topic acak).
 -- - keduanya kosong        : perilaku adaptif lama (berdasarkan student_competency).
 -- Soal selalu dari versi terbaru berstatus PUBLISHED (questions -> question_versions;
--- options/category_items ikut termuat melalui private.resume_student_exercise).
+-- options/category_items ikut termuat melalui public.resume_student_exercise).
 -- Signature lama (text,integer) di-drop agar PostgREST tidak ambigu; panggilan lama
 -- tetap cocok karena parameter baru memiliki DEFAULT NULL.
 -- Jalankan SETELAH migration-start-student-exercise.sql dan migration-subjects-is-mandatory.sql.
@@ -227,7 +241,7 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('learning:user:'||u::text,0));
   SELECT id INTO aid FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj
     AND attempt_type='EXERCISE' AND attempt_status='IN_PROGRESS' ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
-  IF aid IS NOT NULL THEN RETURN private.resume_student_exercise(aid)||jsonb_build_object('resumed',true); END IF;
+  IF aid IS NOT NULL THEN RETURN public.resume_student_exercise(aid)||jsonb_build_object('resumed',true); END IF;
   IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj AND attempt_status='IN_PROGRESS') THEN
     RAISE EXCEPTION 'Finish or resume existing subject session';
   END IF;
@@ -284,7 +298,7 @@ BEGIN
   GET DIAGNOSTICS actual=ROW_COUNT;
   IF actual=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
   UPDATE public.exam_attempts SET total_questions=actual WHERE id=aid;
-  RETURN private.resume_student_exercise(aid)||jsonb_build_object('resumed',false);
+  RETURN public.resume_student_exercise(aid)||jsonb_build_object('resumed',false);
 END $$;
 
 COMMENT ON FUNCTION public.start_student_exercise(text, integer, text, text) IS
@@ -292,50 +306,6 @@ COMMENT ON FUNCTION public.start_student_exercise(text, integer, text, text) IS
 
 REVOKE ALL ON FUNCTION public.start_student_exercise(text, integer, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.start_student_exercise(text, integer, text, text) TO authenticated;
-
--- Pembungkus publik spesifik latihan (EXERCISE/ASSIGNMENT). Halaman Latihan dan
--- Challenge memakai fungsi ini, bukan submit_exam_attempt/save_exam_answer/
--- resume_exam_attempt generik. Attempt gamification (GAMIFICATION) ditolak karena
--- filter tipe di bawah hanya menerima EXERCISE/ASSIGNMENT.
-CREATE OR REPLACE FUNCTION public.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid := auth.uid(); kind text;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
-  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
-  RETURN private.resume_student_exercise(p_attempt_id);
-END $$;
-
-CREATE OR REPLACE FUNCTION public.save_exercise_answer(p_attempt_id uuid, p_question_id uuid, p_answer_payload jsonb) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid := auth.uid(); kind text;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
-  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
-  RETURN private.save_exercise_answer(p_attempt_id, p_question_id, p_answer_payload);
-END $$;
-
-CREATE OR REPLACE FUNCTION public.submit_exercise_attempt(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid := auth.uid(); kind text;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
-  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
-  RETURN private.submit_exercise_attempt(p_attempt_id);
-END $$;
-
-REVOKE ALL ON FUNCTION public.resume_student_exercise(uuid),
-  public.save_exercise_answer(uuid,uuid,jsonb),
-  public.submit_exercise_attempt(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.resume_student_exercise(uuid),
-  public.save_exercise_answer(uuid,uuid,jsonb),
-  public.submit_exercise_attempt(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 

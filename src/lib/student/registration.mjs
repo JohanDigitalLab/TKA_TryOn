@@ -8,7 +8,7 @@ export const educationLevels = [
 
 export function registrationContext(params) {
   const requestedNext = localPath(params.get("next"));
-  const removed = /^(?:\/teacher|\/school\/(?:join|manage|messages|register)|\/student\/(?:xmissions|xsubjects)|\/admin\/(?:schools|subscriptions))(?:\/|$)/.test(new URL(requestedNext, "https://local.invalid").pathname);
+  const removed = /^(?:\/teacher|\/mstudent|\/school\/(?:join|manage|messages|register)|\/student\/(?:xmissions|xsubjects)|\/admin\/(?:schools|subscriptions))(?:\/|$)/.test(new URL(requestedNext, "https://local.invalid").pathname);
   const next = removed ? "/student" : requestedNext;
   const invited = new URL(requestedNext, "https://local.invalid").pathname === "/school/join";
   const requested = params.get("method");

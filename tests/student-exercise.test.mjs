@@ -10,29 +10,34 @@ test('exercise selection validates actor, education, count and snapshots atomica
  assert.doesNotMatch(sql,/\b(?:AS|DO) \$(?!\$|function\$)/);
 });
 test('active loader excludes keys and explanations while retaining nested structures',()=>{
- // Slice hanya fungsi loader resume; helper save/submit memakai scorer privat secara sengaja.
- const loader=sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'));
+ // Slice hanya fungsi resume publik; save/submit memakai scorer privat secara sengaja.
+ const loader=sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION public.save_exercise_answer'));
  assert.doesNotMatch(loader,/is_correct|correct_category|explanation|scoring_rule/);
- // EXERCISE mandiri dan ASSIGNMENT sekolah memakai helper latihan yang sama.
+ // EXERCISE mandiri dan ASSIGNMENT sekolah memakai fungsi latihan yang sama.
  for(const key of ["'options'","'category_items'","'answers'","'remaining_seconds',NULL","user_id=u","attempt_type IN('EXERCISE','ASSIGNMENT')","'attempt_type',a.attempt_type"]) assert.ok(loader.includes(key),key);
 });
 
-test('public practice wrappers enforce ownership and reject non-practice attempts',()=>{
- const wrappers=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.resume_student_exercise'));
- for(const name of ['resume_student_exercise(p_attempt_id uuid)','save_exercise_answer(p_attempt_id uuid, p_question_id uuid, p_answer_payload jsonb)','submit_exercise_attempt(p_attempt_id uuid)']){
-  assert.ok(wrappers.includes(`CREATE OR REPLACE FUNCTION public.${name}`),name);
+test('private exercise helpers are retired in favour of public functions',()=>{
+ // Desain terkini: fungsi spesifik berada di skema public, versi privat di-drop.
+ for(const name of ['resume_student_exercise(p_attempt_id uuid)','save_exercise_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb)','submit_exercise_attempt(p_attempt_id uuid)']){
+  assert.ok(sql.includes(`DROP FUNCTION IF EXISTS private.${name}`),name);
+  assert.doesNotMatch(sql,new RegExp(`CREATE OR REPLACE FUNCTION private\\.${name.split('(')[0]}`),name);
  }
- assert.equal((wrappers.match(/kind NOT IN\('EXERCISE','ASSIGNMENT'\)/g)||[]).length,3);
- assert.equal((wrappers.match(/RETURN private\.(resume_student_exercise|save_exercise_answer|submit_exercise_attempt)\(/g)||[]).length,3);
- assert.equal((wrappers.match(/WHERE id=p_attempt_id AND user_id=u FOR UPDATE/g)||[]).length,3);
- assert.match(wrappers,/GRANT EXECUTE ON FUNCTION public\.resume_student_exercise\(uuid\),\s*public\.save_exercise_answer\(uuid,uuid,jsonb\),\s*public\.submit_exercise_attempt\(uuid\) TO authenticated/);
+ for(const name of ['public.resume_student_exercise(p_attempt_id uuid)','public.save_exercise_answer(','public.submit_exercise_attempt(p_attempt_id uuid)']){
+  assert.ok(sql.includes(`CREATE OR REPLACE FUNCTION ${name}`),name);
+ }
+ assert.match(sql,/GRANT EXECUTE ON FUNCTION public\.resume_student_exercise\(uuid\),\s*public\.save_exercise_answer\(uuid,uuid,jsonb\),\s*public\.submit_exercise_attempt\(uuid\) TO authenticated/);
 });
 test('exercise save and submit retain structure checks without deadline; generic RPCs live only in the canonical file',()=>{
- const save=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'),sql.indexOf('NOTIFY pgrst'));
+ const firstCommit=sql.indexOf('COMMIT;');
+ const save=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.save_exercise_answer'),firstCommit);
  assert.ok(save.includes('private.exam_answer_payload_is_valid'));
  assert.ok(save.includes('ON CONFLICT (attempt_id, question_id)'));
  assert.ok(save.includes('private.exam_answer_is_correct'));
  assert.doesNotMatch(save,/duration_minutes/);
+ // Attempt lain (termasuk TRYOUT/gamification) ditolak oleh filter tipe:
+ // save memiliki dua pemeriksaan (WHERE + IF status), submit satu pemeriksaan WHERE.
+ assert.equal((save.match(/attempt_type (?:IN|NOT IN)\('EXERCISE','ASSIGNMENT'\)/g)||[]).length,3);
  assert.doesNotMatch(sql,/CREATE OR REPLACE FUNCTION public\.(submit_exam_attempt|save_exam_answer|resume_exam_attempt)|exercise_legacy/);
  const generic=read('docs/database/migration_generic_exam_attempt.sql');
  for(const name of ['resume_exam_attempt','save_exam_answer','submit_exam_attempt']) assert.ok(generic.includes('public.'+name),name);

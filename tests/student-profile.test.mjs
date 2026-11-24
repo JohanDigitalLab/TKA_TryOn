@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -42,9 +43,8 @@ test("dashboard /student menyatukan siswa mandiri dan managed", async () => {
   assert.match(page, /StudentActionTables/);
   assert.match(page, /profile\?\.is_managed === true/);
   assert.doesNotMatch(page, /<StudentDashboard requireIndependentStudent \/>/);
-
-  const mstudent = await read("src/app/mstudent/page.js");
-  assert.match(mstudent, /router\.replace\("\/student"\)/);
+  // /mstudent sudah dihapus; tidak boleh ada halaman redirect tersisa.
+  assert.equal(existsSync(new URL("../src/app/mstudent", import.meta.url)), false);
 });
 
 test("redirect tidak menampilkan konten terproteksi terlebih dahulu", async () => {

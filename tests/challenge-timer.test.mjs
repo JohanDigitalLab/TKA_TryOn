@@ -79,14 +79,18 @@ test("countdown UI and warning states require explicit timed classification", ()
 test("TKA start/resume loader returns persisted attempt_type; exercise helper covers practice paths", () => {
   const sql = read("docs/database/migration-start-tka-tryout.sql");
   const generic = read("docs/database/migration_generic_exam_attempt.sql");
-  const loader = sql.split("CREATE OR REPLACE FUNCTION private.resume_tka_tryout")[1].split("END $$;")[0];
+  const loader = sql.split("CREATE OR REPLACE FUNCTION public.resume_tka_tryout")[1].split("END $$;")[0];
   assert.match(loader, /'attempt_type',a\.attempt_type/);
-  assert.match(generic, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
-  assert.match(sql, /private\.resume_tka_tryout\(aid\)/);
-  // Pembungkus publik resume/submit/save tryout spesifik, hanya untuk attempt TRYOUT.
+  // Dispatcher generik mendelegasi ke fungsi spesifik publik, tanpa rename.
+  assert.match(generic, /RETURN public\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(generic, /RETURN public\.submit_tka_attempt\(p_attempt_id\)/);
+  assert.match(generic, /RETURN public\.save_tka_answer\(p_attempt_id,p_question_id,p_answer_payload\)/);
+  assert.match(generic, /RETURN public\.resume_student_exercise\(p_attempt_id\)/);
+  assert.match(generic, /RETURN public\.submit_exercise_attempt\(p_attempt_id\)/);
+  assert.match(generic, /RETURN public\.save_exercise_answer\(p_attempt_id,p_question_id,p_answer_payload\)/);
+  assert.match(sql, /public\.resume_tka_tryout\(aid\)/);
   assert.match(sql, /CREATE OR REPLACE FUNCTION public\.resume_tka_tryout\(p_attempt_id uuid\)/);
-  assert.match(sql, /kind IS DISTINCT FROM 'TRYOUT'/);
-  assert.match(sql, /WHERE id = p_attempt_id AND user_id = u AND attempt_type = 'TRYOUT'/);
+  assert.match(sql, /tka_code IS NOT NULL AND attempt_type='TRYOUT'/);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.resume_tka_tryout\(uuid\) TO authenticated/);
   const exercise = read("docs/database/migration-start-student-exercise.sql");
   assert.match(exercise, /'attempt_type',a\.attempt_type/);
