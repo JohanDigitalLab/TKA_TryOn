@@ -76,9 +76,10 @@ test("countdown UI and warning states require explicit timed classification", ()
 
 test("TKA start/resume loader returns persisted attempt_type; exercise remains explicit", () => {
   const sql = read("docs/database/migration-start-tka-tryout.sql");
+  const generic = read("docs/database/migration_generic_exam_attempt.sql");
   const loader = sql.split("CREATE OR REPLACE FUNCTION private.resume_tka_tryout")[1].split("END $$;")[0];
   assert.match(loader, /'attempt_type',a\.attempt_type/);
-  assert.match(sql, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(generic, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
   assert.match(sql, /private\.resume_tka_tryout\(aid\)/);
   assert.match(read("docs/database/migration-start-student-exercise.sql"), /'attempt_type','EXERCISE'/);
 });

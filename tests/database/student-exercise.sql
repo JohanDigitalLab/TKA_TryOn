@@ -15,16 +15,20 @@ BEGIN
   END IF;
   FOREACH n IN ARRAY ARRAY['resume_exam_attempt','save_exam_answer','submit_exam_attempt'] LOOP
     IF NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace s ON s.oid=p.pronamespace
-      WHERE s.nspname='private' AND p.proname='exercise_legacy_'||n) THEN
-      RAISE EXCEPTION 'Missing preserved legacy function %',n;
+      WHERE s.nspname='public' AND p.proname=n) THEN
+      RAISE EXCEPTION 'Missing canonical generic function %',n;
     END IF;
   END LOOP;
-  SELECT pg_get_functiondef('private.load_student_exercise(uuid)'::regprocedure) INTO body;
+  IF EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace s ON s.oid=p.pronamespace
+    WHERE s.nspname='private' AND p.proname LIKE 'exercise_legacy_%') THEN
+    RAISE EXCEPTION 'Retired exercise_legacy_* function still present';
+  END IF;
+  SELECT pg_get_functiondef('private.resume_student_exercise(uuid)'::regprocedure) INTO body;
   IF body ~ '(is_correct|correct_category|explanation|scoring_rule)' THEN
     RAISE EXCEPTION 'Active loader leaks answer metadata';
   END IF;
   IF has_function_privilege('anon','public.start_student_exercise(text,integer,text,text)','EXECUTE')
-    OR has_function_privilege('authenticated','private.load_student_exercise(uuid)','EXECUTE') THEN
+    OR has_function_privilege('authenticated','private.resume_student_exercise(uuid)','EXECUTE') THEN
     RAISE EXCEPTION 'Unsafe function grants';
   END IF;
 END $$;

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const sql = await readFile(new URL('../docs/database/migration-start-tka-tryout.sql', import.meta.url), 'utf8');
+const generic = await readFile(new URL('../docs/database/migration_generic_exam_attempt.sql', import.meta.url), 'utf8');
 const frontend = await readFile(new URL('../src/app/student/tryout/page.js', import.meta.url), 'utf8');
 
 test('nullable classification is independent of legacy element/material', () => {
@@ -40,7 +41,8 @@ test('safe loader only reads persisted snapshots and explicitly allowlists exam 
   assert.doesNotMatch(loader, /INSERT |UPDATE public\.|random\(|is_correct|correct_category|explanation/);
   for (const key of ['questions', 'options', 'category_items', 'answers', 'remaining_seconds']) assert.ok(loader.includes(`'${key}'`));
   assert.match(loader, /v\.id=aq\.question_version_id AND v\.question_id=q\.id/);
-  assert.match(sql, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.match(generic, /RETURN private\.resume_tka_tryout\(p_attempt_id\)/);
+  assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.resume_exam_attempt/);
   assert.match(loader, /'attempt_type',a\.attempt_type/);
 });
 test('frontend starts server attempt with synchronous duplicate guard and recoverable errors', () => {

@@ -1,5 +1,8 @@
 "use client";
 import "./fightboss.css";
+import { supabase } from "@/lib/supabase";
+import { createBossfightClient, answerPayload } from "@/lib/student/bossfight-client";
+import { categoryOptions } from "@/lib/student/bossfight-client";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,7 +13,6 @@ import {
   BookOpen,
   Check,
   ChevronRight,
-  Coins,
   Crown,
   Moon,
   Pencil,
@@ -33,113 +35,9 @@ import {
   Zap,
 } from "lucide-react";
 export const SUBJECTS = ["Acak", "Matematika", "Bahasa Indonesia"];
-export const MOCK_QUESTIONS = [
-  {
-    id: "q1",
-    subject: "Bahasa Indonesia",
-    passage:
-      "Setiap sore, Nara melewati sebuah taman kecil di dekat sekolahnya. Dahulu taman itu menjadi tempat anak-anak membaca, bermain, dan menunggu orang tua. Namun, sejak beberapa bulan terakhir, bangkunya dipenuhi daun kering dan beberapa pot tanaman dibiarkan kosong. Sampah plastik juga mulai menumpuk di sudut pagar. Banyak warga mengeluh, tetapi belum ada yang mengambil langkah untuk merawatnya.\n\nPada suatu Jumat, Nara mengajak tiga temannya membersihkan taman. Mereka membawa sapu dari rumah, memilah sampah, dan menata kembali pot yang masih dapat digunakan. Pekerjaan itu ternyata lebih berat daripada yang mereka bayangkan. Setelah satu jam, baru sebagian kecil taman yang terlihat bersih. Salah seorang teman Nara menyarankan agar mereka berhenti karena merasa usaha mereka tidak akan membawa perubahan besar.\n\nNara tidak memaksa temannya untuk melanjutkan. Ia justru mengusulkan pembagian tugas yang lebih sederhana. Dua orang menyapu jalan setapak, satu orang mengumpulkan sampah plastik, sementara ia membersihkan bangku. Mereka juga membuat tulisan kecil berisi ajakan menjaga kebersihan, bukan larangan yang menyalahkan pengunjung. Menurut Nara, orang akan lebih mudah tergerak jika diajak bekerja bersama daripada hanya ditegur.\n\nSeorang penjual minuman yang melihat kegiatan mereka kemudian meminjamkan pengki dan menyediakan air minum. Keesokan harinya, beberapa orang tua datang membawa bibit bunga. Warga lain membantu memperbaiki bangku yang rusak. Dalam dua minggu, taman itu kembali digunakan sebagai tempat membaca dan berkumpul. Anak-anak bahkan membuat jadwal bergiliran untuk menyiram tanaman setelah pulang sekolah.\n\nKetika ditanya mengapa ia memulai kegiatan itu, Nara menjawab bahwa ia tidak menunggu semua orang setuju terlebih dahulu. Ia hanya ingin melakukan hal kecil yang dapat dikerjakan saat itu. Baginya, taman yang nyaman bukan hasil kerja satu orang, melainkan hasil kepedulian yang menular dari satu tindakan sederhana kepada tindakan berikutnya.",
-    question:
-      "Berdasarkan keseluruhan bacaan, pesan utama yang paling tepat adalah …",
-    options: [
-      "Perubahan hanya dapat terjadi jika seluruh warga menyetujuinya sejak awal.",
-      "Tindakan kecil yang dilakukan bersama dapat mendorong perubahan yang berarti.",
-      "Merawat taman merupakan tanggung jawab anak-anak yang bermain di sana.",
-      "Menegur pengunjung adalah cara terbaik untuk menjaga kebersihan taman.",
-    ],
-    answer: 1,
-    explanation:
-      "Tindakan sederhana Nara dan teman-temannya menggerakkan warga untuk ikut membantu. Pesan utama bacaan adalah kepedulian dan kerja sama yang dimulai dari langkah kecil dapat menghasilkan perubahan berarti.",
-  },
-  {
-    id: "q2",
-    subject: "Bahasa Indonesia",
-    question:
-      "Pada kalimat “Pelajar yang dinamis selalu aktif menyesuaikan diri dengan perubahan”, kata dinamis paling tepat bermakna …",
-    options: [
-      "aktif, giat, dan mudah menyesuaikan diri",
-      "sangat rajin belajar di dalam kelas",
-      "mudah dipengaruhi pendapat orang lain",
-      "kaku dan sulit diajak bekerja sama",
-    ],
-    answer: 0,
-    explanation:
-      "Dinamis berarti aktif, giat, dan mudah bergerak menyesuaikan diri dengan perubahan. Sinonimnya antara lain progresif dan energik.",
-  },
-  {
-    id: "q3",
-    subject: "Matematika",
-    question:
-      "Sebuah buku berharga Rp80.000 mendapat diskon 25%. Berapa harga setelah diskon?",
-    options: ["Rp20.000", "Rp55.000", "Rp65.000", "Rp60.000"],
-    answer: 3,
-    explanation: "Diskon = 25% × Rp80.000 = Rp20.000. Harga akhirnya Rp60.000.",
-  },
-  {
-    id: "q4",
-    subject: "Matematika",
-    question:
-      "Rata-rata nilai ulangan Doni pada empat kali tes adalah 78. Berapakah nilai tes kelima agar rata-ratanya menjadi 80?",
-    formula: "80 = (total 4 nilai + x) ÷ 5",
-    options: ["82", "84", "86", "88"],
-    answer: 3,
-    explanation:
-      "Total empat nilai = 4 × 78 = 312. Agar rata-rata lima tes = 80, total harus 5 × 80 = 400. Nilai kelima = 400 − 312 = 88.",
-  },
-  {
-    id: "q5",
-    subject: "Matematika",
-    question: "Sebuah persegi memiliki panjang sisi 9 cm. Berapakah luasnya?",
-    formula: "L = sisi × sisi",
-    options: ["18 cm²", "36 cm²", "81 cm²", "90 cm²"],
-    answer: 2,
-    explanation: "Luas persegi adalah sisi × sisi, sehingga 9 × 9 = 81 cm².",
-  },
-  {
-    id: "q6",
-    subject: "Matematika",
-    question: "Perhatikan pola bilangan berikut.",
-    formula: "3, 6, 12, 24, …",
-    options: ["30", "36", "48", "52"],
-    answer: 2,
-    explanation:
-      "Setiap suku dikalikan 2, sehingga suku berikutnya adalah 24 × 2 = 48. Perhatikan bahwa polanya kelipatan, bukan penjumlahan tetap.",
-  },
-  {
-    id: "q7",
-    subject: "Bahasa Indonesia",
-    passage:
-      "Perpustakaan sekolah kami baru saja diperbarui. Rak-rak buku disusun ulang berdasarkan tema sehingga pengunjung lebih mudah mencari bacaan. Koleksi baru berupa buku Ensiklopedia anak dan komik sains ditempatkan di sudut yang dekat dengan cahaya matahari. Pustakawan juga menambahkan pojok baca bean bag agar siswa betah berlama-lama.\n\nNamun, perubahan itu belum diiringi kebiasaan baru. Beberapa siswa masih mengembalikan buku melewati batas waktu dan ada yang meletakkan kembali buku pada rak yang salah. Kepala sekolah berencana menunjuk duta baca dari setiap kelas untuk mengingatkan teman secara ramah, bukan menghukum.",
-    question: "Ide pokok paragraf pertama bacaan di atas adalah …",
-    options: [
-      "Pustakawan menambahkan pojok baca bean bag.",
-      "Koleksi baru ditempatkan dekat cahaya matahari.",
-      "Perpustakaan sekolah baru saja diperbarui.",
-      "Beberapa siswa terlambat mengembalikan buku.",
-    ],
-    answer: 2,
-    explanation:
-      "Kalimat utama paragraf pertama berada di awal: perpustakaan sekolah baru diperbarui. Kalimat berikutnya menjelaskan perwujudan pembaruan tersebut.",
-  },
-  {
-    id: "q8",
-    subject: "Bahasa Indonesia",
-    question: "Manakah kalimat yang menggunakan kata baku dengan tepat?",
-    options: [
-      "Saya menganalisis data hasil penelitian bersama teman kelompok.",
-      "Dia memprediksi cuaca besok akan cerah berdasarkan aplikasi.",
-      "Kami akan merubah jadwal ujian karena bertepatan dengan lomba.",
-      "Adik mengerjakan PR dengan menggunakan penggaris baru.",
-    ],
-    answer: 0,
-    explanation:
-      "Kata baku yang benar adalah menganalisis (bukan menganalisa), memprediksi tetap memprediksi, dan merubah seharusnya mengubah. Opsi A memakai bentuk baku dengan imbuhan me- + analisis + -is menjadi menganalisis.",
-  },
-];
+
 const TURN_SECONDS = 30;
 const MAX_HP = 100;
-const BASE_DAMAGE = 20;
-const TURN_DELAY = 2400;
 const EMPTY_POWERS = { fifty: false, heal: false, freeze: false };
 function HealthBar({ label, value, boss = false, onEdit }) {
   return (
@@ -404,11 +302,11 @@ export default function BossFightArena() {
   const [questionOpen, setQuestionOpen] = useState(false);
   const [resting, setResting] = useState(false);
   const [healing, setHealing] = useState(null);
-  const [subject, setSubject] = useState("Acak");
-  const [draftSubject, setDraftSubject] = useState("Acak");
+  const [subject, setSubject] = useState("Matematika");
+  const [draftSubject, setDraftSubject] = useState("Matematika");
   const [matchMode, setMatchMode] = useState("system");
   const [draftMatchMode, setDraftMatchMode] = useState("system");
-  const [names, setNames] = useState(["Player 1", "Player 2"]);
+  const [names, setNames] = useState(["Player 1", "Player2"]);
   const [editing, setEditing] = useState(null);
   const [draftName, setDraftName] = useState("");
   const [activePlayer, setActivePlayer] = useState(0);
@@ -417,11 +315,11 @@ export default function BossFightArena() {
     { ...EMPTY_POWERS },
     { ...EMPTY_POWERS },
   ]);
-  const [questionOrder, setQuestionOrder] = useState([]);
-  const [battleMode, setBattleMode] = useState("limited");
+
+  const [battleMode, setBattleMode] = useState("death");
   const [maxQuestions, setMaxQuestions] = useState(5);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draftMode, setDraftMode] = useState("limited");
+  const [draftMode, setDraftMode] = useState("death");
   const [draftLimit, setDraftLimit] = useState("5");
   const [resultKind, setResultKind] = useState(null);
   const [playerHP, setPlayerHP] = useState(MAX_HP);
@@ -448,19 +346,76 @@ export default function BossFightArena() {
   const pendingRef = useRef(null);
   const impactId = useRef(0);
   const reduceMotion = useReducedMotion();
-  const available = MOCK_QUESTIONS.filter(
-    (item) => subject === "Acak" || item.subject === subject,
-  );
-  const pool = [...available].sort(
-    (a, b) => questionOrder.indexOf(a.id) - questionOrder.indexOf(b.id),
-  );
+  const [session, setSession] = useState(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+  const [tip, setTip] = useState(null);
+  const [hideTips, setHideTips] = useState(false);
+  const [selection, setSelection] = useState([]);
+  const [categories, setCategories] = useState({});
+  const [serverResult, setServerResult] = useState(null);
+  const retryRef = useRef(null);
+  const healRef = useRef(false);
+  const request = useCallback(async (payload) => createBossfightClient(async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data.session?.access_token;
+  })(payload), []);
+  function applySettings(settings) {
+    setSubject(settings.SUBJECT || "Matematika");
+    setMatchMode(settings.IS_PVP === "1" ? "pvp" : "system");
+    setBattleMode(!settings.FIGHT_MODE || settings.FIGHT_MODE === "Fight to Death" ? "death" : "limited");
+    setMaxQuestions(Number(settings.MAX_QUESTIONS));
+    setNames(previous => [previous[0], settings.P2_NAME || "Player2"]);
+  }
+  async function run(operation) {
+    retryRef.current = operation;
+    setBusy(true); setError("");
+    try { await operation(); retryRef.current = null; }
+    catch (failure) { setError(failure.message || "Koneksi terputus. Coba lagi."); }
+    finally { setBusy(false); }
+  }
+  async function acceptSession(next) {
+    setSession(next); applySettings(next.settings);
+    setPlayerHP(next.hp[0]); setBossHP(next.hp[1]); setCombos(next.combo);
+    setMaxCombo(previous => Math.max(previous, ...next.combo));
+    setActivePlayer((next.questions[0]?.player || 1) - 1);
+    setQuestionIndex(next.used);
+    setInventories(previous => previous.map((inventory, index) => ({...inventory, heal: next.healed[index]})));
+    if (next.terminal) {
+      const finished = next.result ? next : await request({action: "finish", attempt_id: next.attempt_id, records: []});
+      setSession(finished); setServerResult(finished.result);
+      setResultKind(finished.hp.includes(0) ? "ko" : "points");
+      setGameStatus(finished.result.winner === 0 ? "draw" : finished.result.victory ? "victory" : "defeat");
+      setQuestionOpen(false);
+    }
+  }
+  useEffect(() => {
+    let alive = true;
+    const operation = async () => {
+      const data = await request();
+      if (!alive) return;
+      applySettings(data.settings);
+      setTip(data.settings.SHOW_TIPS === "1" ? data.tip : null);
+    };
+    retryRef.current = operation;
+    operation().then(() => { if (alive) retryRef.current = null; })
+      .catch(failure => { if (alive) setError(failure.message); })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [request]);
+  // The server returns the entire remaining batch in authoritative order.
+  // Consume only its head; each answer response supplies the remaining queue/refill.
+  const pool = (session?.questions || []).map(q => ({
+    ...q, subject, question: q.text, passage: q.stimulus?.content_text,
+    options: (q.options || []).map(option => option.option_text),
+  }));
   const bossName =
     subject === "Matematika"
       ? "Raja Aljabar"
       : subject === "Bahasa Indonesia"
         ? "Pujangga Sastra"
         : "Ilmuwan Roket";
-  const arenaName = subject === "Acak" ? "Planet Mars" : `Arena ${subject}`;
   const pvp = matchMode === "pvp";
   const currentPlayer = pvp ? activePlayer : 0;
   const activeName = names[currentPlayer];
@@ -481,20 +436,9 @@ export default function BossFightArena() {
       /* Storage can be unavailable in private browsing. */
     }
   }
-  useEffect(() => {
-    const ids = MOCK_QUESTIONS.map((item) => item.id);
-    for (let i = ids.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [ids[i], ids[j]] = [ids[j], ids[i]];
-    }
-    const timeout = setTimeout(() => setQuestionOrder(ids), 0);
-    return () => clearTimeout(timeout);
-  }, []);
-  const question = pool[questionIndex % pool.length];
-  const correctCount = records.filter((record) => record.correct).length;
-  const accuracy = records.length
-    ? Math.round((correctCount / records.length) * 100)
-    : 0;
+  const question = pool[0] || {options: [], category_items: []};
+  const correctCount = serverResult?.correct ?? session?.correct ?? 0;
+  const accuracy = session?.used ? Math.round(correctCount / session.used * 100) : 0;
   const critical = comboCount >= 3;
   const playSound = useCallback((sound) => {
     if (mutedRef.current || typeof window === "undefined") return;
@@ -539,116 +483,50 @@ export default function BossFightArena() {
     },
     [],
   );
-  const answer = useCallback(
-    (choice) => {
-      if (
-        lockRef.current ||
-        gameStatus !== "playing" ||
-        settingsOpen ||
-        editing !== null ||
-        !questionOpen
-      )
-        return;
-      lockRef.current = true;
-      setLocked(true);
-      setSelected(choice);
-      setQuestionOpen(false);
-      setHealing(null);
-      const correct = choice === question.answer;
-      const nextCombo = correct ? comboCount + 1 : 0;
-      const isCritical = correct && nextCombo >= 3;
-      const damage = BASE_DAMAGE * (isCritical ? 1.5 : 1);
+  // Captures the displayed question and exact payload for offline retries.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const answer = async (choice) => {
+    if (busy || error || lockRef.current || !session || session.terminal || !session.questions.length || !questionOpen) return;
+    lockRef.current = true; setLocked(true); setSelected(choice);
+    const raw = session.questions[0];
+    const payload = { action: "batch", attempt_id: session.attempt_id, records: [{
+      question_id: raw.id, answer_payload: choice === null ? {} : answerPayload(raw, choice),
+      is_timeout: choice === null, heal: healRef.current,
+    }] };
+    const beforeCorrect = session.correct;
+    let accepted = null;
+    let feedbackApplied = false;
+    const operation = async () => {
+      // Once acknowledged, retry only finalization, never the answer or its effects.
+      const next = accepted ?? await request(payload);
+      accepted = next;
+      if (!feedbackApplied) {
+      feedbackApplied = true;
+      const correct = next.correct > beforeCorrect;
       const target = correct ? 1 - currentPlayer : currentPlayer;
-      const hit = correct ? damage : BASE_DAMAGE;
-      const nextBossHP = target === 1 ? Math.max(0, bossHP - hit) : bossHP;
-      const nextPlayerHP =
-        target === 0 ? Math.max(0, playerHP - hit) : playerHP;
-      const nextRecords = [
-        ...records,
-        { questionIndex, selected: choice, correct, player: currentPlayer },
-      ];
-      setRecords(nextRecords);
-      setCombos((previous) =>
-        previous.map((value, index) =>
-          index === currentPlayer ? nextCombo : value,
-        ),
-      );
-      setMaxCombo((previous) => Math.max(previous, nextCombo));
-      setBossHP(nextBossHP);
-      setPlayerHP(nextPlayerHP);
-      setImpact({
-        id: ++impactId.current,
-        attack: target === 0 ? "smash" : isCritical ? "kick" : "punch",
-        damage: hit,
-        target,
+      const damage = Math.max(0, session.hp[target] - next.hp[target]);
+      setImpact({id: ++impactId.current, target, damage, attack: target === 0 ? "smash" : next.combo[currentPlayer] >= 3 ? "kick" : "punch"});
+      playSound(correct ? "attack" : "hurt");
+      const record = {questionIndex, selected: choice, correct, player: currentPlayer, question};
+      setRecords(previous => {
+        const updated = previous.some(r => r.question.id === question.id) ? previous : [...previous, record];
+        try { sessionStorage.setItem('bossfight-review-' + session.attempt_id, JSON.stringify(updated)); } catch {}
+        return updated;
       });
-      setNotice(
-        pvp
-          ? `${activeName}: ${correct ? (isCritical ? "CRITICAL! Jawaban benar" : "Jawaban benar") : choice === null ? "Waktu habis" : "Jawaban salah"} · ${names[target]} −${hit} HP`
-          : correct
-            ? isCritical
-              ? `CRITICAL! Flying kick · ${damage} damage!`
-              : `Tepat! Pukulan masuk · ${damage} damage!`
-            : choice === null
-              ? "Waktu habis! Boss melakukan double smash."
-              : "Belum tepat! Boss membalas dengan double smash.",
-      );
-      playSound(correct ? (isCritical ? "critical" : "attack") : "hurt");
-      pendingRef.current = setTimeout(() => {
-        pendingRef.current = null;
-        const finished =
-          battleMode === "limited" && nextRecords.length >= maxQuestions;
-        if (nextBossHP === 0 || nextPlayerHP === 0 || finished) {
-          const knockout = nextBossHP === 0 || nextPlayerHP === 0;
-          const tied = pvp && nextPlayerHP === nextBossHP;
-          const won = pvp
-            ? nextPlayerHP > nextBossHP
-            : nextPlayerHP > 0 &&
-              (nextBossHP === 0 ||
-                nextRecords.filter((record) => record.correct).length >
-                  nextRecords.length / 2);
-          setResultKind(knockout ? "ko" : "points");
-          setGameStatus(tied ? "draw" : won ? "victory" : "defeat");
-          playSound(won ? "victory" : "defeat");
-        } else {
-          if (pvp) setActivePlayer(1 - currentPlayer);
-          setQuestionIndex((previous) => previous + 1);
-          setTimer(TURN_SECONDS);
-          setTimerMax(TURN_SECONDS);
-          setEliminated([]);
-          setSelected(null);
-          setImpact(null);
-          setLocked(false);
-          lockRef.current = false;
-          setQuestionOpen(true);
-          setNotice("Giliranmu! Pilih jawaban untuk menyerang.");
-        }
-      }, TURN_DELAY);
-    },
-    [
-      bossHP,
-      comboCount,
-      gameStatus,
-      playSound,
-      playerHP,
-      question.answer,
-      questionIndex,
-      records,
-      battleMode,
-      maxQuestions,
-      settingsOpen,
-      questionOpen,
-      editing,
-      pvp,
-      currentPlayer,
-      activeName,
-      names,
-    ],
-  );
+      healRef.current = false;
+      }
+      await acceptSession(next);
+      setSelection([]); setCategories({}); setEliminated([]);
+      setTimer(TURN_SECONDS); setTimerMax(TURN_SECONDS);
+      setSelected(null); setLocked(false); lockRef.current = false;
+      setNotice("Jawaban tersimpan. HP dan combo diperbarui oleh server.");
+    };
+    await run(operation);
+  };
   useEffect(() => {
     if (
       gameStatus !== "playing" ||
-      locked ||
+      locked || busy || error || tip ||
       settingsOpen ||
       editing !== null ||
       !questionOpen
@@ -663,7 +541,7 @@ export default function BossFightArena() {
       1000,
     );
     return () => clearTimeout(timeout);
-  }, [answer, gameStatus, locked, timer, settingsOpen, questionOpen, editing]);
+  }, [answer, gameStatus, locked, timer, settingsOpen, questionOpen, editing, busy, error, tip]);
   function activatePower(power) {
     if (
       lockRef.current ||
@@ -671,7 +549,7 @@ export default function BossFightArena() {
       settingsOpen ||
       editing !== null ||
       !questionOpen ||
-      powers[power]
+      powers[power] || busy || error || power === "fifty"
     )
       return;
     if (power === "heal" && activeHP === MAX_HP) return;
@@ -680,31 +558,9 @@ export default function BossFightArena() {
         index === currentPlayer ? { ...inventory, [power]: true } : inventory,
       ),
     );
-    if (power === "fifty") {
-      setEliminated(
-        question.options
-          .map((_, index) => index)
-          .filter((index) => index !== question.answer)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 2),
-      );
-      setNotice("50:50 aktif. Dua jawaban salah sudah dieliminasi.");
-    } else if (power === "heal") {
-      setHealing(Math.min(20, MAX_HP - activeHP));
-      setQuestionOpen(false);
-      lockRef.current = true;
-      setLocked(true);
-      (currentPlayer === 0 ? setPlayerHP : setBossHP)((previous) =>
-        Math.min(MAX_HP, previous + 20),
-      );
-      pendingRef.current = setTimeout(() => {
-        pendingRef.current = null;
-        setHealing(null);
-        setLocked(false);
-        lockRef.current = false;
-        setQuestionOpen(true);
-      }, 1800);
-      setNotice("Healing! HP pemain pulih hingga 20 poin.");
+    if (power === "heal") {
+      healRef.current = true;
+      setNotice("Heal disiapkan untuk jawaban berikutnya. HP dikonfirmasi server.");
     } else {
       setTimer((previous) => previous + 15);
       setTimerMax((previous) => previous + 15);
@@ -712,41 +568,31 @@ export default function BossFightArena() {
     }
     playSound("power");
   }
-  function restart() {
-    if (pendingRef.current) clearTimeout(pendingRef.current);
-    pendingRef.current = null;
-    lockRef.current = false;
-    setPlayerHP(MAX_HP);
-    setBossHP(MAX_HP);
-    setCombos([0, 0]);
-    setActivePlayer(0);
-    setMaxCombo(0);
-    setTimer(TURN_SECONDS);
-    setTimerMax(TURN_SECONDS);
-    setQuestionIndex(0);
-    setRecords([]);
-    setSelected(null);
-    setLocked(false);
-    setInventories([{ ...EMPTY_POWERS }, { ...EMPTY_POWERS }]);
-    const shuffled = MOCK_QUESTIONS.map((item) => item.id);
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    setQuestionOrder(shuffled);
-    setEliminated([]);
-    setImpact(null);
-    setReview(false);
-    setGameStatus("playing");
-    setResultKind(null);
-    setSettingsOpen(false);
-    setQuestionOpen(false);
-    setHealing(null);
-    setResting(false);
-    setNotice("Pertarungan baru dimulai. Siap bertarung? GO!");
+  async function restart() {
+    if (busy || error) return;
+    await run(async () => {
+      const next = await request({action: "start"});
+      let cached = [];
+      try { cached = JSON.parse(sessionStorage.getItem('bossfight-review-' + next.attempt_id) || '[]'); } catch {}
+      setRecords(cached); setReview(false); setServerResult(null); setGameStatus("playing");
+      setInventories([{...EMPTY_POWERS}, {...EMPTY_POWERS}]);
+      setLocked(false); lockRef.current = false; healRef.current = false;
+      setTimer(TURN_SECONDS); setTimerMax(TURN_SECONDS); setSelection([]); setCategories({});
+      await acceptSession(next);
+      setQuestionOpen(!next.terminal);
+    });
+  }
+  async function saveSettings(patch) {
+    if (busy || error) return;
+    await run(async () => {
+      const data = await request({action: "settings", settings: patch});
+      if (!session || serverResult) applySettings(data.settings);
+      setSettingsOpen(false); setEditing(null);
+      setNotice("Pengaturan disimpan untuk sesi berikutnya; sesi aktif tidak direset.");
+    });
   }
   const powerButtons = [
-    { id: "fifty", icon: Sparkles, label: "50:50", detail: "Hapus 2 opsi" },
+    { id: "fifty", icon: Sparkles, label: "50:50", detail: "Tidak tersedia tanpa kunci jawaban" },
     { id: "heal", icon: Heart, label: "Heal", detail: "+20 HP" },
     { id: "freeze", icon: Snowflake, label: "Freeze", detail: "+15 detik" },
   ];
@@ -761,6 +607,9 @@ export default function BossFightArena() {
         />
         <div className="relative mx-auto max-w-4xl">
           <DashboardBreadcrumb current="Boss Fight" />
+          {busy && <div role="status" className="my-4 animate-pulse rounded-2xl bg-slate-200 p-6">Memuat BossFight…</div>}
+          {error && <div role="alert" className="my-4 rounded-xl border border-rose-400 p-4">{error}<button className="ml-3 underline" disabled={busy} onClick={() => retryRef.current && run(retryRef.current)}>Coba lagi</button></div>}
+          {tip && <Popup title="Tips BossFight" onClose={() => { if (!busy) { if (hideTips) void run(async () => { await request({action: "settings", settings: {SHOW_TIPS: "0"}}); setTip(null); }); else setTip(null); } }}><div className="p-5"><p>{tip.message}</p><label className="mt-4 block"><input type="checkbox" checked={hideTips} onChange={e => setHideTips(e.target.checked)} /> Jangan tampilkan lagi</label></div></Popup>}
           <header className="mb-8 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-emerald-500 p-2.5 text-white shadow-lg shadow-emerald-500/20">
@@ -808,7 +657,7 @@ export default function BossFightArena() {
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
-                  disabled={locked && gameStatus === "playing"}
+                  disabled={busy || !!error || (locked && gameStatus === "playing")}
                   onClick={() => {
                     setDraftMatchMode(matchMode);
                     setDraftMode(battleMode);
@@ -924,7 +773,8 @@ export default function BossFightArena() {
                         type="button"
                         onClick={() => {
                           setResting(false);
-                          setQuestionOpen(true);
+                          if (busy || error || tip) return;
+                          if (session && !session.terminal) setQuestionOpen(true); else void restart();
                         }}
                         className="pointer-events-auto min-h-14 max-w-xs rounded-2xl border border-emerald-300 bg-emerald-600 px-5 py-4 text-center text-base font-black text-white shadow-xl shadow-emerald-950/20 transition hover:bg-emerald-500 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-500"
                       >
@@ -1002,12 +852,11 @@ export default function BossFightArena() {
             {settingsOpen && (
               <Popup
                 title="Pengaturan pertarungan"
-                onClose={() => setSettingsOpen(false)}
+                onClose={() => { if (!busy) setSettingsOpen(false); }}
               >
                 <section className="p-5">
                   <p className="mb-4 text-xs text-slate-500">
-                    Timer dijeda. Menerapkan pengaturan akan mengulang sesi dan
-                    mereset seluruh bantuan.
+                    Timer dijeda. Pengaturan disimpan untuk sesi berikutnya. Sesi aktif tidak direset.
                   </p>
                   <fieldset className="mb-4">
                     <legend className="mb-2 text-sm font-bold">
@@ -1081,25 +930,19 @@ export default function BossFightArena() {
                     <button
                       type="button"
                       disabled={
-                        draftMode === "limited" &&
+                        busy || !!error || draftMode === "limited" &&
                         (!Number.isInteger(Number(draftLimit)) ||
                           Number(draftLimit) < 1 ||
                           Number(draftLimit) > 100)
                       }
-                      onClick={() => {
-                        setMatchMode(draftMatchMode);
-                        setSubject(draftSubject);
-                        setBattleMode(draftMode);
-                        if (draftMode === "limited")
-                          setMaxQuestions(Number(draftLimit));
-                        restart();
-                      }}
+                      onClick={() => saveSettings({SUBJECT: draftSubject, IS_PVP: draftMatchMode === "pvp" ? "1" : "0", FIGHT_MODE: draftMode === "death" ? "Fight to Death" : "Maksimal jumlah soal", MAX_QUESTIONS: draftLimit})}
                       className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-40"
                     >
-                      Terapkan & mulai ulang
+                      Simpan untuk sesi berikutnya
                     </button>
                     <button
                       type="button"
+                      disabled={busy}
                       onClick={() => setSettingsOpen(false)}
                       className="rounded-xl border border-slate-300 px-4 py-3 text-sm dark:border-slate-700"
                     >
@@ -1111,7 +954,7 @@ export default function BossFightArena() {
             )}
           </AnimatePresence>
           <AnimatePresence>
-            {questionOpen && !settingsOpen && gameStatus === "playing" && (
+            {questionOpen && session && !busy && !error && !tip && !settingsOpen && gameStatus === "playing" && (
               <Popup
                 title={`Giliranmu - ${activeName}`}
                 color={currentPlayer === 1 ? "red" : "green"}
@@ -1184,6 +1027,8 @@ export default function BossFightArena() {
                       <h2 className="whitespace-pre-line break-words text-base font-bold leading-relaxed sm:text-xl">
                         {question.question}
                       </h2>
+                      {question.instruction && <p className="mt-2 text-sm">{question.instruction}</p>}
+                      {question.stimulus?.file_url && <a href={question.stimulus.file_url} target="_blank" rel="noopener noreferrer" className="underline">Buka media stimulus</a>}
                       {question.formula && (
                         <pre className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-lg font-semibold dark:border-slate-700 dark:bg-slate-950">
                           <code>{question.formula}</code>
@@ -1197,7 +1042,7 @@ export default function BossFightArena() {
                         key={id}
                         type="button"
                         disabled={
-                          settingsOpen ||
+                          settingsOpen || busy || !!error || id === "fifty" ||
                           locked ||
                           gameStatus !== "playing" ||
                           powers[id] ||
@@ -1224,13 +1069,13 @@ export default function BossFightArena() {
                     ))}
                   </div>
                   <div className="grid gap-3 border-t border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-950/20 sm:grid-cols-2 sm:p-7">
+                    {question.type === "PGK_KATEGORI" && question.category_items.map(item => <label key={item.item_number} className="block rounded-xl border p-3">{item.item_text}<select className="ml-3 rounded border p-2" value={categories[item.item_number] || ""} onChange={e => setCategories(previous => ({...previous, [item.item_number]: e.target.value}))}><option value="">Pilih kategori</option>{categoryOptions(question.category_items).map(label => <option key={label}>{label}</option>)}</select></label>)}
+                    {question.type === "PGK_MA" && <p className="col-span-full text-sm">Pilih semua jawaban yang benar. Terpilih: {selection.map(i => session.questions[0].options[i].option_code).join(", ") || "belum ada"}</p>}
                     {question.options.map((option, index) => {
                       const removed = eliminated.includes(index);
-                      const isAnswer = locked && index === question.answer;
-                      const wrong =
-                        locked &&
-                        selected === index &&
-                        index !== question.answer;
+                      // No local correctness inference: grading belongs to the server.
+                      const isAnswer = false;
+                      const wrong = false;
                       return (
                         <button
                           type="button"
@@ -1241,7 +1086,8 @@ export default function BossFightArena() {
                             removed ||
                             gameStatus !== "playing"
                           }
-                          onClick={() => answer(index)}
+                          onClick={() => question.type === "PGK_MA" ? setSelection(previous => previous.includes(index) ? previous.filter(i => i !== index) : [...previous, index]) : answer(index)}
+                          aria-pressed={question.type === "PGK_MA" ? selection.includes(index) : undefined}
                           aria-label={`${"ABCD"[index]}. ${option}${removed ? ", dieliminasi" : ""}`}
                           className={`group flex min-h-16 items-center gap-3 rounded-xl border-2 p-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${removed ? "border-transparent opacity-25" : isAnswer ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300" : wrong ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" : "border-slate-200 bg-white enabled:hover:border-emerald-400 enabled:hover:shadow-sm dark:border-slate-700 dark:bg-slate-900"}`}
                         >
@@ -1270,6 +1116,7 @@ export default function BossFightArena() {
                         </button>
                       );
                     })}
+                    {question.type !== "PG_TUNGGAL" && <button className="rounded-xl bg-emerald-600 p-3 font-bold text-white" disabled={question.type === "PGK_MA" ? !selection.length : question.category_items.some(item => !categories[item.item_number])} onClick={() => answer(question.type === "PGK_MA" ? selection : categories)}>Kirim jawaban</button>}
                   </div>
                 </section>
               </Popup>
@@ -1277,19 +1124,15 @@ export default function BossFightArena() {
           </AnimatePresence>
           <AnimatePresence>
             {editing !== null && (
-              <Popup title="Ganti nama pemain" onClose={() => setEditing(null)}>
+              <Popup title="Ganti nama pemain" onClose={() => { if (!busy) setEditing(null); }}>
                 <form
                   className="p-5"
                   onSubmit={(event) => {
                     event.preventDefault();
                     const name = draftName.trim();
-                    if (!name) return;
-                    setNames((previous) =>
-                      previous.map((value, index) =>
-                        index === editing ? name : value,
-                      ),
-                    );
-                    setEditing(null);
+                    if (!name || busy || error) return;
+                    if (editing === 1) void saveSettings({P2_NAME: name});
+                    else { setNames(previous => [name, previous[1]]); setEditing(null); }
                   }}
                 >
                   <label className="block text-sm font-bold">
@@ -1304,7 +1147,7 @@ export default function BossFightArena() {
                   </label>
                   <button
                     type="submit"
-                    disabled={!draftName.trim()}
+                    disabled={busy || !!error || !draftName.trim()}
                     className="mt-4 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white disabled:opacity-40"
                   >
                     Simpan nama
@@ -1341,7 +1184,7 @@ export default function BossFightArena() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {gameStatus !== "playing" && (
+          {serverResult && gameStatus !== "playing" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1390,8 +1233,9 @@ export default function BossFightArena() {
                       Bekal untuk ronde berikutnya
                     </h2>
                     <div className="space-y-4">
+                      {records.length < (session?.used || 0) && <p>Riwayat parsial: hanya jawaban yang tersimpan di browser ini tersedia setelah memuat ulang.</p>}
                       {records.map((record) => {
-                        const item = pool[record.questionIndex % pool.length];
+                        const item = record.question;
                         return (
                           <article
                             key={record.questionIndex}
@@ -1425,10 +1269,10 @@ export default function BossFightArena() {
                               Jawabanmu:{" "}
                               {record.selected === null
                                 ? "Tidak menjawab"
-                                : item.options[record.selected]}
+                                : Array.isArray(record.selected) ? record.selected.map(i => item.options[i]).join(", ") : typeof record.selected === "object" ? Object.entries(record.selected).map(([n, value]) => `${n}: ${value}`).join(", ") : item.options[record.selected]}
                             </p>
-                            <p className="mt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                              Kunci: {item.options[item.answer]}
+                            <p className="mt-1 text-xs text-slate-500">
+                              Penilaian dikonfirmasi server. Kunci jawaban tidak tersedia.
                             </p>
                             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                               {item.explanation}
@@ -1485,10 +1329,10 @@ export default function BossFightArena() {
                     <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-4 text-center dark:bg-slate-950">
                       <div>
                         <p className="text-xl font-black">
-                          {correctCount * 100}
+                          {correctCount}
                         </p>
                         <p className="mt-1 text-[10px] font-bold uppercase text-slate-500">
-                          Skor
+                          Benar
                         </p>
                       </div>
                       <div>
@@ -1509,7 +1353,7 @@ export default function BossFightArena() {
                       </div>
                     </div>
                     <p className="mt-3 text-center text-xs text-slate-500">
-                      {correctCount} benar dari {records.length} soal dijawab ·{" "}
+                      {correctCount} benar dari {session?.used || 0} soal dijawab ·{" "}
                       {battleMode === "death"
                         ? "Fight to Death · tanpa batas soal"
                         : `batas ${maxQuestions} soal`}
@@ -1517,18 +1361,10 @@ export default function BossFightArena() {
                     <div className="my-5 flex justify-center gap-5 text-sm font-bold">
                       <span className="flex items-center gap-1.5 text-violet-500">
                         <Crown size={17} /> +
-                        {gameStatus === "victory" ? correctCount * 50 + 100 : 0}{" "}
-                        XP
-                      </span>
-                      <span className="flex items-center gap-1.5 text-amber-500">
-                        <Coins size={17} /> +
-                        {gameStatus === "victory" ? correctCount * 10 + 25 : 0}{" "}
-                        koin
+                        {serverResult?.xp || 0} XP
                       </span>
                     </div>
-                    <p className="mb-5 text-center text-[10px] text-slate-400">
-                      Hadiah demo sesi ini; tidak disimpan ke akun.
-                    </p>
+                    <p className="mb-5 text-center text-[10px] text-slate-400">XP dikonfirmasi server untuk akun pemilik sesi. Tidak ada hadiah koin.</p>
                     <button
                       autoFocus
                       type="button"

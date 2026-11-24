@@ -36,25 +36,6 @@ BEGIN
       (a.started_at+a.duration_minutes*interval '1 minute'-clock_timestamp())))));
 END $$;
 
-CREATE OR REPLACE FUNCTION public.resume_exam_attempt(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=private.school_actor();
-BEGIN
-  IF NOT EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u) THEN
-    RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501';
-  END IF;
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND tka_code IS NOT NULL AND attempt_type='TRYOUT') THEN
-    RETURN private.resume_tka_tryout(p_attempt_id);
-  END IF;
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND attempt_type='EXERCISE') THEN
-    RETURN private.load_student_exercise(p_attempt_id);
-  END IF;
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=p_attempt_id AND attempt_type='ASSIGNMENT') THEN
-    RETURN private.resume_school_assignment(p_attempt_id);
-  END IF;
-  RAISE EXCEPTION 'Invalid attempt type' USING ERRCODE='22023';
-END $$;
-
 CREATE OR REPLACE FUNCTION public.start_tka_tryout(p_tka_code text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE
@@ -140,7 +121,8 @@ BEGIN
   RETURN private.resume_tka_tryout(aid)||jsonb_build_object('resumed',false);
 END $$;
 REVOKE ALL ON FUNCTION private.resume_tka_tryout(uuid) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.start_tka_tryout(text),public.resume_exam_attempt(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.start_tka_tryout(text),public.resume_exam_attempt(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.start_tka_tryout(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.start_tka_tryout(text) TO authenticated;
+-- public.resume_exam_attempt kini didefinisikan hanya di migration_generic_exam_attempt.sql.
 NOTIFY pgrst,'reload schema';
 COMMIT;

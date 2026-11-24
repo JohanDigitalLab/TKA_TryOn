@@ -10,18 +10,21 @@ test('exercise selection validates actor, education, count and snapshots atomica
  assert.doesNotMatch(sql,/\b(?:AS|DO) \$(?!\$|function\$)/);
 });
 test('active loader excludes keys and explanations while retaining nested structures',()=>{
- // Marker longgar agar tetap valid walau nama fungsi diberi prefix percobaan (mis. xxstart_...).
- const loader=sql.slice(0,sql.indexOf('start_student_exercise'));
+ // Slice hanya fungsi loader resume; helper save/submit memakai scorer privat secara sengaja.
+ const loader=sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'));
  assert.doesNotMatch(loader,/is_correct|correct_category|explanation|scoring_rule/);
  for(const key of ["'options'","'category_items'","'answers'","'remaining_seconds',NULL","user_id=u","attempt_type='EXERCISE'"]) assert.ok(loader.includes(key),key);
 });
-test('exercise save and submit retain structure checks without deadline; legacy dispatch preserved',()=>{
- const save=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION private.exercise_save_answer'),sql.indexOf('DO $$ BEGIN'));
+test('exercise save and submit retain structure checks without deadline; generic RPCs live only in the canonical file',()=>{
+ const save=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'),sql.indexOf('NOTIFY pgrst'));
  assert.ok(save.includes('private.exam_answer_payload_is_valid'));
  assert.ok(save.includes('ON CONFLICT (attempt_id, question_id)'));
  assert.ok(save.includes('private.exam_answer_is_correct'));
  assert.doesNotMatch(save,/duration_minutes/);
- for(const name of ['resume_exam_attempt','save_exam_answer','submit_exam_attempt']) assert.ok(sql.includes('private.exercise_legacy_'+name));
+ assert.doesNotMatch(sql,/CREATE OR REPLACE FUNCTION public\.(submit_exam_attempt|save_exam_answer|resume_exam_attempt)|exercise_legacy/);
+ const generic=read('docs/database/migration_generic_exam_attempt.sql');
+ for(const name of ['resume_exam_attempt','save_exam_answer','submit_exam_attempt']) assert.ok(generic.includes('public.'+name),name);
+ assert.doesNotMatch(generic,/exercise_legacy/);
 });
 test('first start, subsequent subjects, double click guards and untimed CBT are wired',()=>{
  const form=read('src/app/student/exercise/page.js'),cbt=read('src/app/student/challenge/page.js');
@@ -41,7 +44,7 @@ test('subjects.is_mandatory migration adds non-null boolean default true',()=>{
  assert.match(sql,/BEGIN;[\s\S]*COMMIT;/);
 });
 test('start_student_exercise gains p_theme and p_topic with latest published selection',()=>{
- const sql=read('docs/database/migration-start-student-exercise-theme-topic.sql');
+ const sql=read('docs/database/migration-start-student-exercise.sql');
  assert.match(sql,/public\.start_student_exercise\(\s*p_subject_code text,\s*p_question_count integer DEFAULT 20,\s*p_theme text DEFAULT NULL,\s*p_topic text DEFAULT NULL/);
  assert.match(sql,/DROP FUNCTION IF EXISTS public\.start_student_exercise\(text, integer\)/);
  assert.match(sql,/v_topic IS NOT NULL AND v_theme IS NULL/);

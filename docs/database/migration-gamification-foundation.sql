@@ -1,5 +1,5 @@
 -- Fondasi gamifikasi. Jalankan melalui Supabase SQL Editor.
--- Tidak menambahkan FK/policy/kolom relasi di luar kontrak yang diminta.
+-- Tidak menambahkan FK/policy/kolom relasi di luar kontrak yang requested.
 -- RLS tanpa policy menutup akses client; akses aplikasi perlu RPC/policy terpisah.
 BEGIN;
 SET LOCAL lock_timeout = '10s';
@@ -33,7 +33,7 @@ ALTER TABLE public.subject_topics
   ALTER COLUMN learning_material SET NOT NULL,
   ALTER COLUMN learning_material_url SET NOT NULL;
 
-ALTER TABLE public.exam_attempts ADD COLUMN IF NOT EXISTS gamification text;
+ALTER TABLE public.exam_attempts ADD COLUMN IF NOT EXISTS gamification_app text;
 ALTER TABLE public.question_versions
   ADD COLUMN IF NOT EXISTS estimate_minutes numeric NOT NULL DEFAULT 2,
   ADD COLUMN IF NOT EXISTS clue text;
@@ -47,9 +47,10 @@ CREATE TABLE IF NOT EXISTS public.virtual_pets (
   level int NOT NULL DEFAULT 0,
   status varchar(255),
   xp_score int NOT NULL DEFAULT 0,
-  drink_score int NOT NULL DEFAULT 100,
-  food_score int NOT NULL DEFAULT 100,
-  happy_score int NOT NULL DEFAULT 100,
+  hydration int NOT NULL DEFAULT 100,
+  hunger int NOT NULL DEFAULT 100,
+  happiness int NOT NULL DEFAULT 100,
+  last_updated_at timestamp,
   is_active bool NOT NULL DEFAULT true
 );
 
@@ -88,29 +89,48 @@ CREATE TABLE IF NOT EXISTS public.gamification_league_members (
   xp_base_score int NOT NULL DEFAULT 0
 );
 
+-- Tips gamifikasi. Spesifikasi: id uuid PK DEFAULT gen_random_uuid(),
+-- application text NOT NULL, message text NOT NULL, is_active bool NOT NULL DEFAULT true.
+CREATE TABLE IF NOT EXISTS public.gamification_tips (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  application text NOT NULL,
+  message text NOT NULL,
+  is_active bool NOT NULL DEFAULT true
+);
+
 CREATE TABLE IF NOT EXISTS public.map_adventure_topics (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
+  subject varchar(255) NOT NULL,
   theme varchar(255) NOT NULL,
   topic varchar(255) NOT NULL,
-  kemahilmu_timestamp timestamp,
-  kemahilmu_attempt_id uuid,
-  poslatihan_timestamp timestamp,
-  poslatihan_attempt_id uuid,
-  sidequest_timestamp timestamp,
+  material_status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
+  material_completed_at timestamp,
+  practice_status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
+  practice_attempt_id uuid,
+  sidequest_status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
   sidequest_attempt_id uuid,
-  mysterychest_timestamp timestamp,
-  mysterychest_attempt_id uuid,
-  pospenjaga_timestamp timestamp,
-  pospenjaga_attempt_id uuid
+  mysterychest_status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
+  mysterychest_completed_at timestamp,
+  gatekeeper_status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
+  gatekeeper_attempt_id uuid
 );
 
 CREATE TABLE IF NOT EXISTS public.map_adventure_themes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
+  subject varchar(255) NOT NULL,
   theme varchar(255) NOT NULL,
-  is_completed bool NOT NULL DEFAULT false,
-  completed_at timestamp
+  status varchar(50) NOT NULL DEFAULT 'LOCKED', -- LOCKED | UNLOCKED | COMPLETED
+  completed_at timestamp,
+  order_number int
+);
+
+CREATE TABLE IF NOT EXISTS public.map_adventure_status (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  points int NOT NULL DEFAULT 0,
+  stars int NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS public.map_adventure_tools (
@@ -123,6 +143,18 @@ CREATE TABLE IF NOT EXISTS public.map_adventure_tools (
   secondchance int NOT NULL DEFAULT 0
 );
 
+-- exam_attempt_answers.is_timeout: bool NOT NULL, DEFAULT false (penanda jawaban
+-- tersimpan karena waktu habis). Berkas terpisah tidak lagi dipakai; definisi ada di sini.
+ALTER TABLE public.exam_attempt_answers
+  ADD COLUMN IF NOT EXISTS is_timeout bool NOT NULL DEFAULT false;
+-- Pemulihan definisi bila kolom lama sempat dibuat nullable tanpa default.
+UPDATE public.exam_attempt_answers
+SET is_timeout = false
+WHERE is_timeout IS NULL;
+ALTER TABLE public.exam_attempt_answers
+  ALTER COLUMN is_timeout SET DEFAULT false,
+  ALTER COLUMN is_timeout SET NOT NULL;
+
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subject_themes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.virtual_pets ENABLE ROW LEVEL SECURITY;
@@ -130,8 +162,10 @@ ALTER TABLE public.virtual_pet_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gamification_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gamification_leagues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gamification_league_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gamification_tips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.map_adventure_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.map_adventure_themes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.map_adventure_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.map_adventure_tools ENABLE ROW LEVEL SECURITY;
 
 NOTIFY pgrst, 'reload schema';

@@ -1,6 +1,6 @@
 -- Pending deployment; see STUDENT_EXERCISE.md. Never apply automatically.
 BEGIN;
-CREATE OR REPLACE FUNCTION private.load_student_exercise(p_attempt_id uuid) RETURNS jsonb
+CREATE OR REPLACE FUNCTION private.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE u uuid:=auth.uid(); a public.exam_attempts%ROWTYPE; qs jsonb; ans jsonb;
 BEGIN
@@ -31,72 +31,7 @@ BEGIN
     'remaining_seconds',NULL);
 END $$;
 
-CREATE OR REPLACE FUNCTION public.xxstart_student_exercise(p_subject_code text, p_question_count integer DEFAULT 20)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE
-  u uuid:=auth.uid(); lvl text; g integer; subj text; aid uuid;
-  selected uuid[]:='{}'; more uuid[]; r record; actual integer;
-BEGIN
-  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_question_count IS NULL OR p_question_count NOT BETWEEN 1 AND 100 OR p_subject_code IS NULL THEN
-    RAISE EXCEPTION 'Invalid exercise configuration' USING ERRCODE='22023';
-  END IF;
-  SELECT lower(btrim(education_level)) INTO lvl FROM public.profiles WHERE id=u;
-  IF lvl IS NULL OR lvl NOT IN('sd','smp','sma') OR right(lower(p_subject_code),length(lvl)+1)<>'-'||lvl THEN
-    RAISE EXCEPTION 'Education level mismatch' USING ERRCODE='42501';
-  END IF;
-  SELECT name INTO subj FROM public.subjects WHERE subject_code=p_subject_code;
-  IF subj IS NULL THEN RAISE EXCEPTION 'Subject unavailable' USING ERRCODE='22023'; END IF;
-  g:=CASE lvl WHEN 'sd' THEN 6 WHEN 'smp' THEN 9 ELSE 12 END;
-  PERFORM pg_advisory_xact_lock(hashtextextended('learning:user:'||u::text,0));
-  SELECT id INTO aid FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj
-    AND attempt_type='EXERCISE' AND attempt_status='IN_PROGRESS' ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
-  IF aid IS NOT NULL THEN RETURN private.load_student_exercise(aid)||jsonb_build_object('resumed',true); END IF;
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj AND attempt_status='IN_PROGRESS') THEN
-    RAISE EXCEPTION 'Finish or resume existing subject session';
-  END IF;
-  -- Missing competency is NA. Shuffle topics independently inside each priority level.
-  FOR r IN
-    SELECT t.theme,t.topic,CASE coalesce(c.competency_level,'NA')
-      WHEN 'NA' THEN 0 WHEN 'KURANG' THEN 1 ELSE 2 END AS priority
-    FROM public.subject_topics t LEFT JOIN public.student_competency c
-      ON c.user_id=u AND c.subject=p_subject_code AND c.theme=t.theme AND c.topic=t.topic
-    WHERE t.subject_code=p_subject_code AND coalesce(c.competency_level,'NA') IN('NA','KURANG','CUKUP')
-    GROUP BY t.theme,t.topic,c.competency_level
-    ORDER BY priority,random()
-  LOOP
-    SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO more FROM (
-      SELECT q.id FROM public.questions q WHERE q.subject_code=p_subject_code AND q.grade=g
-        AND lower(q.education_level_id)=lvl AND q.question_status='PUBLISHED'
-        AND q.theme=r.theme AND q.topic=r.topic AND NOT(q.id=ANY(selected))
-        AND EXISTS(SELECT 1 FROM public.question_versions v WHERE v.question_id=q.id AND v.version_status='PUBLISHED')
-      ORDER BY random() LIMIT 1
-    ) x;
-    selected:=selected||more;
-    EXIT WHEN cardinality(selected)>=p_question_count;
-  END LOOP;
-  SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO more FROM (
-    SELECT q.id FROM public.questions q WHERE q.subject_code=p_subject_code AND q.grade=g
-      AND lower(q.education_level_id)=lvl AND q.question_status='PUBLISHED' AND NOT(q.id=ANY(selected))
-      AND EXISTS(SELECT 1 FROM public.question_versions v WHERE v.question_id=q.id AND v.version_status='PUBLISHED')
-    ORDER BY random() LIMIT greatest(0,p_question_count-cardinality(selected))
-  ) x;
-  selected:=selected||more;
-  IF cardinality(selected)=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
-  INSERT INTO public.exam_attempts(user_id,education_level,grade,subject_name,duration_minutes,total_questions,attempt_type,started_at,deadline_at)
-  VALUES(u,upper(lvl),g,subj,60,cardinality(selected),'EXERCISE',clock_timestamp(),NULL) RETURNING id INTO aid;
-  INSERT INTO public.exam_attempt_questions(attempt_id,question_id,question_version_id,question_order)
-  SELECT aid,q.id,v.id,row_number() OVER(ORDER BY random())::integer FROM public.questions q
-  JOIN LATERAL(SELECT id FROM public.question_versions WHERE question_id=q.id AND version_status='PUBLISHED'
-    ORDER BY version_number DESC,id DESC LIMIT 1) v ON true WHERE q.id=ANY(selected);
-  GET DIAGNOSTICS actual=ROW_COUNT;
-  IF actual=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
-  UPDATE public.exam_attempts SET total_questions=actual WHERE id=aid;
-  RETURN private.load_student_exercise(aid)||jsonb_build_object('resumed',false);
-END $$;
-REVOKE ALL ON FUNCTION public.xxstart_student_exercise(text,integer) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.xxstart_student_exercise(text,integer) TO authenticated;
-CREATE OR REPLACE FUNCTION private.exercise_save_answer(
+CREATE OR REPLACE FUNCTION private.save_exercise_answer(
   p_attempt_id uuid,
   p_question_id uuid,
   p_answer_payload jsonb
@@ -165,7 +100,7 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION private.exercise_submit_attempt(p_attempt_id uuid)
+CREATE OR REPLACE FUNCTION private.submit_exercise_attempt(p_attempt_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -234,65 +169,129 @@ BEGIN
 END;
 $function$;
 
-DO $$ BEGIN
- IF to_regprocedure('private.exercise_legacy_resume_exam_attempt(uuid)') IS NULL THEN
-   ALTER FUNCTION public.resume_exam_attempt(uuid) SET SCHEMA private;
-   ALTER FUNCTION private.resume_exam_attempt(uuid) RENAME TO exercise_legacy_resume_exam_attempt;
- END IF;
-END $$;
-CREATE OR REPLACE FUNCTION public.resume_exam_attempt(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=auth.uid(); kind text;
-BEGIN
- IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
- SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
- IF kind='EXERCISE' THEN RETURN private.load_student_exercise(p_attempt_id); END IF;
- RETURN private.exercise_legacy_resume_exam_attempt(p_attempt_id);
-END $$;
-REVOKE ALL ON FUNCTION private.exercise_legacy_resume_exam_attempt(uuid),private.load_student_exercise(uuid) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.resume_exam_attempt(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.resume_exam_attempt(uuid) TO authenticated;
-
-DO $$ BEGIN
- IF to_regprocedure('private.exercise_legacy_save_exam_answer(uuid,uuid,jsonb)') IS NULL THEN
-   ALTER FUNCTION public.save_exam_answer(uuid,uuid,jsonb) SET SCHEMA private;
-   ALTER FUNCTION private.save_exam_answer(uuid,uuid,jsonb) RENAME TO exercise_legacy_save_exam_answer;
- END IF;
-END $$;
-CREATE OR REPLACE FUNCTION public.save_exam_answer(p_attempt_id uuid,p_question_id uuid,p_answer_payload jsonb) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=auth.uid(); kind text;
-BEGIN
- IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
- SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
- IF kind='EXERCISE' THEN RETURN private.exercise_save_answer(p_attempt_id,p_question_id,p_answer_payload); END IF;
- RETURN private.exercise_legacy_save_exam_answer(p_attempt_id,p_question_id,p_answer_payload);
-END $$;
-REVOKE ALL ON FUNCTION private.exercise_legacy_save_exam_answer(uuid,uuid,jsonb),private.exercise_save_answer(uuid,uuid,jsonb) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.save_exam_answer(uuid,uuid,jsonb) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.save_exam_answer(uuid,uuid,jsonb) TO authenticated;
-
-DO $$ BEGIN
- IF to_regprocedure('private.exercise_legacy_submit_exam_attempt(uuid)') IS NULL THEN
-   ALTER FUNCTION public.submit_exam_attempt(uuid) SET SCHEMA private;
-   ALTER FUNCTION private.submit_exam_attempt(uuid) RENAME TO exercise_legacy_submit_exam_attempt;
- END IF;
-END $$;
-CREATE OR REPLACE FUNCTION public.submit_exam_attempt(p_attempt_id uuid) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=auth.uid(); kind text;
-BEGIN
- IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
- SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
- IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
- IF kind='EXERCISE' THEN RETURN private.exercise_submit_attempt(p_attempt_id); END IF;
- RETURN private.exercise_legacy_submit_exam_attempt(p_attempt_id);
-END $$;
-REVOKE ALL ON FUNCTION private.exercise_legacy_submit_exam_attempt(uuid),private.exercise_submit_attempt(uuid) FROM PUBLIC,anon,authenticated;
-REVOKE ALL ON FUNCTION public.submit_exam_attempt(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.submit_exam_attempt(uuid) TO authenticated;
-
 NOTIFY pgrst,'reload schema';
+COMMIT;
+
+-- Perluasan start_student_exercise: parameter opsional p_theme dan p_topic.
+-- - p_theme + p_topic diisi : ambil p_question_count soal acak pada theme & topic tsb.
+-- - hanya p_theme diisi    : ambil p_question_count soal acak pada theme tsb (topic acak).
+-- - keduanya kosong        : perilaku adaptif lama (berdasarkan student_competency).
+-- Soal selalu dari versi terbaru berstatus PUBLISHED (questions -> question_versions;
+-- options/category_items ikut termuat melalui private.resume_student_exercise).
+-- Signature lama (text,integer) di-drop agar PostgREST tidak ambigu; panggilan lama
+-- tetap cocok karena parameter baru memiliki DEFAULT NULL.
+-- Jalankan SETELAH migration-start-student-exercise.sql dan migration-subjects-is-mandatory.sql.
+BEGIN;
+
+DROP FUNCTION IF EXISTS public.start_student_exercise(text, integer);
+
+CREATE OR REPLACE FUNCTION public.start_student_exercise(
+  p_subject_code text,
+  p_question_count integer DEFAULT 20,
+  p_theme text DEFAULT NULL,
+  p_topic text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog
+AS $$
+DECLARE
+  u uuid := auth.uid();
+  lvl text;
+  g integer;
+  subj text;
+  aid uuid;
+  v_theme text := nullif(btrim(coalesce(p_theme, '')), '');
+  v_topic text := nullif(btrim(coalesce(p_topic, '')), '');
+  selected uuid[] := '{}';
+  more uuid[];
+  r record;
+  actual integer;
+BEGIN
+  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_question_count IS NULL OR p_question_count NOT BETWEEN 1 AND 100 OR p_subject_code IS NULL THEN
+    RAISE EXCEPTION 'Invalid exercise configuration' USING ERRCODE='22023';
+  END IF;
+  IF v_topic IS NOT NULL AND v_theme IS NULL THEN
+    RAISE EXCEPTION 'Invalid exercise configuration' USING ERRCODE='22023';
+  END IF;
+  SELECT lower(btrim(education_level)) INTO lvl FROM public.profiles WHERE id=u;
+  IF lvl IS NULL OR lvl NOT IN('sd','smp','sma') OR right(lower(p_subject_code),length(lvl)+1)<>'-'||lvl THEN
+    RAISE EXCEPTION 'Education level mismatch' USING ERRCODE='42501';
+  END IF;
+  SELECT name INTO subj FROM public.subjects WHERE subject_code=p_subject_code;
+  IF subj IS NULL THEN RAISE EXCEPTION 'Subject unavailable' USING ERRCODE='22023'; END IF;
+  g := CASE lvl WHEN 'sd' THEN 6 WHEN 'smp' THEN 9 ELSE 12 END;
+  PERFORM pg_advisory_xact_lock(hashtextextended('learning:user:'||u::text,0));
+  SELECT id INTO aid FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj
+    AND attempt_type='EXERCISE' AND attempt_status='IN_PROGRESS' ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
+  IF aid IS NOT NULL THEN RETURN private.resume_student_exercise(aid)||jsonb_build_object('resumed',true); END IF;
+  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj AND attempt_status='IN_PROGRESS') THEN
+    RAISE EXCEPTION 'Finish or resume existing subject session';
+  END IF;
+
+  IF v_theme IS NOT NULL THEN
+    -- Mode theme/topic: soal acak (versi terbaru PUBLISHED) dalam theme, opsional per topic.
+    SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO selected FROM (
+      SELECT q.id FROM public.questions q
+      WHERE q.subject_code=p_subject_code AND q.grade=g
+        AND lower(q.education_level_id)=lvl AND q.question_status='PUBLISHED'
+        AND q.theme=v_theme
+        AND (v_topic IS NULL OR q.topic=v_topic)
+        AND EXISTS(SELECT 1 FROM public.question_versions v
+          WHERE v.question_id=q.id AND v.version_status='PUBLISHED')
+      ORDER BY random() LIMIT p_question_count
+    ) x;
+  ELSE
+    -- Mode adaptif lama: kompetensi yang hilang (NA) didahulukan, lalu KURANG, lalu CUKUP.
+    FOR r IN
+      SELECT t.theme,t.topic,CASE coalesce(c.competency_level,'NA')
+        WHEN 'NA' THEN 0 WHEN 'KURANG' THEN 1 ELSE 2 END AS priority
+      FROM public.subject_topics t LEFT JOIN public.student_competency c
+        ON c.user_id=u AND c.subject=p_subject_code AND c.theme=t.theme AND c.topic=t.topic
+      WHERE t.subject_code=p_subject_code AND coalesce(c.competency_level,'NA') IN('NA','KURANG','CUKUP')
+      GROUP BY t.theme,t.topic,c.competency_level
+      ORDER BY priority,random()
+    LOOP
+      SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO more FROM (
+        SELECT q.id FROM public.questions q WHERE q.subject_code=p_subject_code AND q.grade=g
+          AND lower(q.education_level_id)=lvl AND q.question_status='PUBLISHED'
+          AND q.theme=r.theme AND q.topic=r.topic AND NOT(q.id=ANY(selected))
+          AND EXISTS(SELECT 1 FROM public.question_versions v WHERE v.question_id=q.id AND v.version_status='PUBLISHED')
+        ORDER BY random() LIMIT 1
+      ) x;
+      selected := selected||more;
+      EXIT WHEN cardinality(selected)>=p_question_count;
+    END LOOP;
+    SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO more FROM (
+      SELECT q.id FROM public.questions q WHERE q.subject_code=p_subject_code AND q.grade=g
+        AND lower(q.education_level_id)=lvl AND q.question_status='PUBLISHED' AND NOT(q.id=ANY(selected))
+        AND EXISTS(SELECT 1 FROM public.question_versions v WHERE v.question_id=q.id AND v.version_status='PUBLISHED')
+      ORDER BY random() LIMIT greatest(0,p_question_count-cardinality(selected))
+    ) x;
+    selected := selected||more;
+  END IF;
+
+  IF cardinality(selected)=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
+  INSERT INTO public.exam_attempts(user_id,education_level,grade,subject_name,duration_minutes,total_questions,attempt_type,started_at,deadline_at)
+  VALUES(u,upper(lvl),g,subj,60,cardinality(selected),'EXERCISE',clock_timestamp(),NULL) RETURNING id INTO aid;
+  INSERT INTO public.exam_attempt_questions(attempt_id,question_id,question_version_id,question_order)
+  SELECT aid,q.id,v.id,row_number() OVER(ORDER BY random())::integer FROM public.questions q
+  JOIN LATERAL(SELECT id FROM public.question_versions WHERE question_id=q.id AND version_status='PUBLISHED'
+    ORDER BY version_number DESC,id DESC LIMIT 1) v ON true WHERE q.id=ANY(selected);
+  GET DIAGNOSTICS actual=ROW_COUNT;
+  IF actual=0 THEN RAISE EXCEPTION 'No published questions available'; END IF;
+  UPDATE public.exam_attempts SET total_questions=actual WHERE id=aid;
+  RETURN private.resume_student_exercise(aid)||jsonb_build_object('resumed',false);
+END $$;
+
+COMMENT ON FUNCTION public.start_student_exercise(text, integer, text, text) IS
+  'Mulai sesi latihan EXERCISE; opsi p_theme/p_topic membatasi soal acak pada tema (dan topik) tertentu.';
+
+REVOKE ALL ON FUNCTION public.start_student_exercise(text, integer, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.start_student_exercise(text, integer, text, text) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;

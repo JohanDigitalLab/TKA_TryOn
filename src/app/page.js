@@ -361,13 +361,17 @@ export default function HomeNewPage() {
               className={`mt-5 text-center text-sm ${theme === "light" ? "text-slate-600" : "text-white/50"}`}
             >
               Belum punya akun?{" "}
-              <Link
-                href="/register"
-                onClick={() => setShowLogin(false)}
+              <button
+                type="button"
+                onClick={() => {
+                  // Tutup pop-up login lalu buka pop-up registrasi.
+                  setShowLogin(false);
+                  setRegisterLevel("");
+                }}
                 className="font-bold text-cyan-500"
               >
                 Daftar sekarang
-              </Link>
+              </button>
             </p>
           </form>
         </div>
