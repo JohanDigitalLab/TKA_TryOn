@@ -20,7 +20,7 @@ export default function StudentAssignmentsPage() {
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
-      if (!auth.user) { router.replace("/login"); return; }
+      if (!auth.user) { router.replace("/"); return; }
       const { data, error: rpcError } = await supabase.rpc("get_student_assignments");
       if (rpcError) throw rpcError;
       setItems(data || []);
