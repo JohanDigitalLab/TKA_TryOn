@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Local game themes never change the theme of other portal pages. */
+@custom-variant dark (&:where(.fightboss-scope.dark, .fightboss-scope.dark *, .virtualpet-scope.dark, .virtualpet-scope.dark *, .mapadventure-scope.dark, .mapadventure-scope.dark *));
+
 :root {
   color-scheme: light;
   --background: #f5f6f3;

@@ -24,6 +24,30 @@ const getServerGreetingSnapshot = () => "Selamat Datang";
 
 const services = [
   {
+    code: "mapadventure",
+    title: "Petualangan Peta Materi",
+    description: "Jelajahi pulau materi, latihan, dan tantangan dengan peralatan belajar.",
+    status: "MULAI PETUALANGAN",
+    href: "/student/mapadventure",
+    buttonClass: "bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-200",
+  },
+  {
+    code: "virtualpet",
+    title: "Sahabat Virtual",
+    description: "Adopsi dan rawat sahabat belajarmu.",
+    status: "KUNJUNGI PELIHARAAN",
+    href: "/student/virtualpet",
+    buttonClass: "bg-lime-700 text-white hover:bg-lime-800 focus-visible:ring-lime-200",
+  },
+  {
+    code: "fightboss",
+    title: "Boss Fight",
+    description: "Belajar sambil bertarung melawan boss atau bermain bersama teman.",
+    status: "MULAI BERTARUNG",
+    href: "/student/fightboss",
+    buttonClass: "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-200",
+  },
+  {
     code: "tryout",
     title: "Simulasi TKA",
     description:

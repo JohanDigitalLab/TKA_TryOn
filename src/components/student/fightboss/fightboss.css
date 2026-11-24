@@ -1,0 +1,7 @@
+.fightboss-scope {
+  color-scheme: light;
+}
+
+.fightboss-scope.dark {
+  color-scheme: dark;
+}
