@@ -1,7 +1,7 @@
 export const ITEM_IDS = ["water", "rice", "apple", "donut", "cake", "vitamin"];
 export const MODES = [
   { id: "KUIZ", count: 10, label: "Kuis", reward: "Air +1, nasi +1, XP profil +1" },
-  { id: "HOTS", count: 10, label: "HOTS", reward: "2 undian independen apel/donat/kue/vitamin (boleh sama), XP profil +2" },
+  { id: "HOTS", count: 10, label: "HOTS", reward: "2 undian independen apel/donat/kue/vitamin (boleh sama), XP profil +5" },
   { id: "PENYELAMATAN", count: 15, label: "Penyelamatan", reward: "Kenyang dan hidrasi +50 (maksimal 100), XP profil +2" },
 ];
 export function mapPet(state) {

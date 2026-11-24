@@ -255,6 +255,7 @@ DECLARE u uuid:=auth.uid(); lvl text; pid uuid; aid uuid; p public.virtual_pets%
   s private.virtualpet_sessions%ROWTYPE; inv public.virtual_pet_items%ROWTYPE;
   pool jsonb; scenario text; n integer; correct integer:=0; passed boolean; xp integer:=0;
   q jsonb; a jsonb; r jsonb; rewards jsonb; snack text; snacks jsonb:='[]'; i integer; item text;
+  nick text; log_text text;
 BEGIN
   IF u IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles pr JOIN auth.users au ON au.id=pr.id
     WHERE pr.id=u AND upper(btrim(pr.account_type))='STUDENT' AND pr.account_status='active'
@@ -358,7 +359,7 @@ BEGIN
     passed:=correct*100>=n*80;
     rewards:='{"water":0,"rice":0,"apple":0,"donut":0,"cake":0,"vitamin":0,"hunger":0,"hydration":0,"profile_xp":0}';
     IF passed THEN
-      xp:=CASE WHEN s.scenario='KUIZ' THEN 1 ELSE 2 END;
+      xp:=CASE s.scenario WHEN 'KUIZ' THEN 1 WHEN 'HOTS' THEN 5 ELSE 2 END;
       rewards:=jsonb_set(rewards,'{profile_xp}',to_jsonb(xp));
       IF s.scenario='KUIZ' THEN
         UPDATE public.virtual_pet_items SET water=water+1,rice=rice+1 WHERE virtual_pet_id=pid;
@@ -376,7 +377,15 @@ BEGIN
         rewards:=rewards||jsonb_build_object('hunger',least(50,100-p.hunger),'hydration',least(50,100-p.hydration));
       END IF;
       UPDATE public.profiles SET xp_score=xp_score+xp WHERE id=u;
-      INSERT INTO public.gamification_log(user_id,activity,xp_score) VALUES(u,'VirtualPet '||s.scenario||' menang',xp);
+      -- gamification_log has no application column (foundation contract); the app context
+      -- lives in the Indonesian activity sentence. Nickname falls back to full name/Siswa.
+      SELECT coalesce(nullif(btrim(pr.nickname),''),nullif(btrim(pr.full_name),''),'Siswa') INTO nick
+        FROM public.profiles pr WHERE pr.id=u;
+      log_text:=CASE s.scenario
+        WHEN 'KUIZ' THEN nick||' menyelesaikan quiz bersama '||p.name||'.'
+        WHEN 'HOTS' THEN nick||' menyelesaikan soal-soal HOTS bersama '||p.name||'.'
+        ELSE nick||' menyelamatkan '||p.name||' dari kepingsanan.' END;
+      INSERT INTO public.gamification_log(user_id,activity,xp_score) VALUES(u,log_text,xp);
     END IF;
     UPDATE private.virtualpet_sessions SET writing_results=true WHERE attempt_id=aid;
     INSERT INTO public.exam_attempt_answers(attempt_id,question_id,answer_payload,answered_at,is_timeout)

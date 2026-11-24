@@ -49,6 +49,7 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
   const user = id => db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [id]);
   const rpc = async (action, payload = {}) => (await db.query('SELECT public.virtualpet($1,$2::jsonb) data', [action, JSON.stringify(payload)])).rows[0].data;
   const count = async table => Number((await db.query(`SELECT count(*) n FROM ${table}`)).rows[0].n);
+  const rows = async statement => (await db.query(statement)).rows;
   const start = async (scenario = 'KUIZ') => (await rpc('start', { scenario })).session;
   const answers = (s, goodCount = s.total) => s.questions.map((q, i) => ({
     question_id: q.id,
@@ -182,6 +183,7 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     assert.equal(r.correct, 8); assert.equal(r.passed, true); assert.equal(r.score, 80); assert.equal(r.profile_xp, 1);
     assert.equal(r.inventory.water, 1); assert.equal(r.inventory.rice, 1); assert.equal(r.rewards.profile_xp, 1);
     assert.equal(r.pet.xp, 0); assert.equal(r.pet.level, 0);
+    assert.deepEqual(await rows('SELECT activity,xp_score FROM gamification_log'), [{ activity: 'Nina menyelesaikan quiz bersama Milo2.', xp_score: 1 }]);
     const exam = (await db.query('SELECT * FROM exam_attempts WHERE id=$1', [s.attempt_id])).rows[0];
     assert.equal(exam.attempt_type, 'GAMIFICATION'); assert.equal(exam.gamification_app, 'VIRTUALPET'); assert.equal(exam.attempt_status, 'SUBMITTED'); assert.equal(exam.correct_answers, 8); assert.equal(Number(exam.score), 80); assert.equal(exam.deadline_at, null);
     await db.exec(migration); // Redeployment after persisted state must not reset it.
@@ -189,7 +191,7 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     assert.deepEqual(replay.rewards, r.rewards); assert.deepEqual(replay.inventory, r.inventory); assert.equal(replay.profile_xp, 1); assert.equal(await count('gamification_log'), 1);
   });
 
-  await t.test('HOTS prioritizes hard OR long, only HOTS falls back, two frozen snack draws', async () => {
+  await t.test('HOTS prioritizes hard OR long, only HOTS falls back, two frozen snack draws and +5 XP', async () => {
     await bank(15);
     await db.exec(`UPDATE questions SET difficulty='Sulit' WHERE id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' LIMIT 2);
       UPDATE question_versions SET estimate_minutes=6 WHERE question_id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' AND difficulty<>'Sulit' LIMIT 2)`);
@@ -198,12 +200,13 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     assert.equal(s.questions.filter(q => q.difficulty === 'Sulit' || Number(q.estimate_minutes) > 5).length, 4);
     assert.equal(s.questions.filter(q => q.difficulty !== 'Sulit' && Number(q.estimate_minutes) <= 5).length, 6);
     const before = (await rpc('bootstrap')).inventory; const r = await finish(s, 8);
-    assert.equal(r.passed, true); assert.equal(r.rewards.profile_xp, 2); assert.equal(r.snacks.length, 2);
+    assert.equal(r.passed, true); assert.equal(r.rewards.profile_xp, 5); assert.equal(r.snacks.length, 2);
     const snackNames = ['apple', 'donut', 'cake', 'vitamin'];
     assert.ok(r.snacks.every(x => snackNames.includes(x)));
     assert.equal(snackNames.reduce((sum, key) => sum + r.rewards[key], 0), 2);
     for (const key of snackNames) assert.equal(r.inventory[key] - before[key], r.rewards[key]);
-    const replay = await finish(s, 0); assert.deepEqual(replay.snacks, r.snacks); assert.deepEqual(replay.inventory, r.inventory); assert.equal(replay.profile_xp, 3);
+    assert.equal((await rows('SELECT activity FROM gamification_log WHERE xp_score=5')).map(r => r.activity).join('|'), 'Nina menyelesaikan soal-soal HOTS bersama Milo2.');
+    const replay = await finish(s, 0); assert.deepEqual(replay.snacks, r.snacks); assert.deepEqual(replay.inventory, r.inventory); assert.equal(replay.profile_xp, 6);
   });
 
   await t.test('rescue requires 12/15 and adds 50 capped at 100 with effective reward', async () => {
@@ -212,8 +215,9 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     await db.query("UPDATE virtual_pets SET hunger=80,hydration=20,last_updated_at=clock_timestamp() AT TIME ZONE 'UTC' WHERE id=$1", [petId]);
     s = await start('PENYELAMATAN'); r = await finish(s, 12);
     assert.equal(r.total, 15); assert.equal(r.correct, 12); assert.equal(r.score, 80); assert.equal(r.passed, true);
-    assert.equal(r.pet.hunger, 100); assert.equal(r.pet.hydration, 70); assert.equal(r.rewards.hunger, 20); assert.equal(r.rewards.hydration, 50); assert.equal(r.profile_xp, 5);
-    const replay = await finish(s); assert.equal(replay.pet.hydration, 70); assert.equal(replay.profile_xp, 5); assert.equal(await count('gamification_log'), 3);
+    assert.equal(r.pet.hunger, 100); assert.equal(r.pet.hydration, 70); assert.equal(r.rewards.hunger, 20); assert.equal(r.rewards.hydration, 50); assert.equal(r.profile_xp, 8);
+    assert.equal((await rows('SELECT activity FROM gamification_log WHERE xp_score=2')).map(r => r.activity).join('|'), 'Nina menyelamatkan Milo2 dari kepingsanan.');
+    const replay = await finish(s); assert.equal(replay.pet.hydration, 70); assert.equal(replay.profile_xp, 8); assert.equal(await count('gamification_log'), 3);
   });
 
   await t.test('decay carries fractional points/minutes, feed clamps without resetting carry', async () => {

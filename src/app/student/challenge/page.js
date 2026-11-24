@@ -66,6 +66,8 @@ function ChallengeContent() {
   const answersRef = useRef({});
   const pendingSavesRef = useRef(new Map());
   const confirmDialogRef = useRef(null);
+  // Tipe attempt otoritatif dari server; menentukan RPC spesifik yang dipanggil.
+  const attemptTypeRef = useRef(null);
 
   useEffect(() => {
     const dialog = confirmDialogRef.current;
@@ -142,14 +144,25 @@ function ChallengeContent() {
         );
       }
 
+      // RPC spesifik per jalur sesi: tryout, resume latihan/tugas, atau mulai latihan baru.
+      const resumeId = resumeAttemptId || currentConfig.exerciseAttemptId || null;
+      const rpcName = assignmentId
+        ? "start_school_assignment"
+        : resumeAttemptId
+          ? "resume_tka_tryout"
+          : currentConfig.exerciseAttemptId
+            ? "resume_student_exercise"
+            : "start_student_exercise";
       const { data, error: rpcError } = await supabase.rpc(
-        assignmentId ? "start_school_assignment" : (resumeAttemptId || currentConfig.exerciseAttemptId) ? "resume_exam_attempt" : "start_student_exercise",
-        assignmentId ? { p_assignment_id: assignmentId } : (resumeAttemptId || currentConfig.exerciseAttemptId)
-          ? { p_attempt_id: resumeAttemptId || currentConfig.exerciseAttemptId }
-          : {
-              p_subject_code: currentConfig.subject_codes?.[index],
-              p_question_count: questionCount,
-            }
+        rpcName,
+        assignmentId
+          ? { p_assignment_id: assignmentId }
+          : resumeId
+            ? { p_attempt_id: resumeId }
+            : {
+                p_subject_code: currentConfig.subject_codes?.[index],
+                p_question_count: questionCount,
+              }
       );
 
       if (rpcError) throw rpcError;
@@ -164,12 +177,15 @@ function ChallengeContent() {
         );
       }
 
+      // Server selalu mengembalikan attempt_type; fallback hanya untuk keamanan.
+      const fallbackType = assignmentId ? "ASSIGNMENT" : resumeAttemptId ? "TRYOUT" : "EXERCISE";
+      const serverAttemptType = String(data.attempt_type || fallbackType).toUpperCase();
+      attemptTypeRef.current = serverAttemptType;
       setExamInfo((previous) => ({
         ...previous,
         grade: Number(data.grade || previous.grade),
         subject: data.subject_name || data.subject || previous.subject,
-        attemptType:
-          String(data.attempt_type || previous.attemptType || (assignmentId ? "ASSIGNMENT" : "EXERCISE")).toUpperCase(),
+        attemptType: serverAttemptType,
         resumed: Boolean(resumeAttemptId || data.resumed),
       }));
 
@@ -276,14 +292,17 @@ function ChallengeContent() {
       const savePromise = Promise.resolve(previousSave)
         .catch(() => {})
         .then(async () => {
-          const { error: saveError } = await supabase.rpc(
-            "save_exam_answer",
-            {
-              p_attempt_id: attemptId,
-              p_question_id: questionId,
-              p_answer_payload: payload,
-            }
-          );
+          const saveRpc =
+            attemptTypeRef.current === "TRYOUT"
+              ? "save_tka_answer"
+              : attemptTypeRef.current === "EXERCISE" || attemptTypeRef.current === "ASSIGNMENT"
+                ? "save_exercise_answer"
+                : "save_exam_answer";
+          const { error: saveError } = await supabase.rpc(saveRpc, {
+            p_attempt_id: attemptId,
+            p_question_id: questionId,
+            p_answer_payload: payload,
+          });
 
           if (saveError) throw saveError;
           setSaveStatus("saved");
@@ -520,12 +539,15 @@ function ChallengeContent() {
       // sebelum database menerima perintah submit.
       await Promise.all([...pendingSavesRef.current.values()]);
 
-      const { data, error: submitError } = await supabase.rpc(
-        "submit_exam_attempt",
-        {
-          p_attempt_id: attemptId,
-        }
-      );
+      const submitRpc =
+        attemptTypeRef.current === "TRYOUT"
+          ? "submit_tka_attempt"
+          : attemptTypeRef.current === "EXERCISE" || attemptTypeRef.current === "ASSIGNMENT"
+            ? "submit_exercise_attempt"
+            : "submit_exam_attempt";
+      const { data, error: submitError } = await supabase.rpc(submitRpc, {
+        p_attempt_id: attemptId,
+      });
 
       if (submitError) throw submitError;
 
@@ -585,6 +607,7 @@ function ChallengeContent() {
     startedRef.current = false;
     finishingRef.current = false;
     setIsFinishing(false);
+    attemptTypeRef.current = null;
     answersRef.current = {};
     pendingSavesRef.current.clear();
 

@@ -43,10 +43,11 @@ Prioritas status: fainted bila salah satu kebutuhan <=0; sick bila <=15; hungry_
 Lulus bila benar*100 >= total*80, bukan skor yang dibulatkan. Hanya kemenangan memberikan:
 
 - KUIZ: water +1, rice +1, XP profil +1.
-- HOTS: dua undian snack independen apple/donut/cake/vitamin (boleh item sama), XP profil +2. Pilihan dan jumlah dibekukan dalam result.
+- HOTS: dua undian snack independen apple/donut/cake/vitamin (boleh item sama), XP profil +5. Pilihan dan jumlah dibekukan dalam result.
 - PENYELAMATAN: hunger dan hydration +50, maksimum 100, XP profil +2; respons reward mencatat kenaikan efektif.
+- Log aktivitas memakai tabel fondasi `gamification_log` yang tidak memiliki kolom `application` (kolom itu hanya ada di `gamification_tips`); konteks aplikasi tertuang dalam kalimat Indonesia: "<nickname> menyelesaikan quiz bersama <nama pet>." (xp 1), "<nickname> menyelesaikan soal-soal HOTS bersama <nama pet>." (xp 5), "<nickname> menyelamatkan <nama pet> dari kepingsanan." (xp 2). Nickname fallback ke full_name lalu "Siswa".
 
-Finish menulis jawaban, hasil exam, reward, log XP dan result cache dalam satu transaksi. Retry attempt selesai mengembalikan skor/reward yang sama dengan bootstrap state terkini (decay tetap berjalan); tidak memberi ulang reward. Sesi aktif tunggal dan tidak bisa diganti untuk farming pool. Permainan selesai boleh dilanjutkan sesi baru, tanpa cooldown tambahan.
+Finish menulis jawaban, hasil exam, reward, log XP berbahasa Indonesia dan result cache dalam satu transaksi. Retry attempt selesai mengembalikan skor/reward yang sama dengan bootstrap state terkini (decay tetap berjalan); tidak memberi ulang reward maupun log. Sesi aktif tunggal dan tidak bisa diganti untuk farming pool. Permainan selesai boleh dilanjutkan sesi baru, tanpa cooldown tambahan.
 
 ## Verifikasi lokal dan sebelum produksi
 

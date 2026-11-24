@@ -5,10 +5,11 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE u uuid:=auth.uid(); a public.exam_attempts%ROWTYPE; qs jsonb; ans jsonb;
 BEGIN
   IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  -- Helper ini melayani sesi latihan mandiri (EXERCISE) dan tugas sekolah (ASSIGNMENT).
   SELECT * INTO a FROM public.exam_attempts
-  WHERE id=p_attempt_id AND user_id=u AND attempt_type='EXERCISE' FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Tryout unavailable' USING ERRCODE='42501'; END IF;
-  IF a.attempt_status<>'IN_PROGRESS' THEN RAISE EXCEPTION 'Tryout is not active'; END IF;
+  WHERE id=p_attempt_id AND user_id=u AND attempt_type IN('EXERCISE','ASSIGNMENT') FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Practice session unavailable' USING ERRCODE='42501'; END IF;
+  IF a.attempt_status<>'IN_PROGRESS' THEN RAISE EXCEPTION 'Practice session is not active'; END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'question_id',q.id,'question_version_id',v.id,'question_order',aq.question_order,
     'question_type',q.question_type,'question_text',v.question_text,'instruction',v.instruction,
@@ -26,7 +27,7 @@ BEGIN
   SELECT coalesce(jsonb_object_agg(x.question_id::text,x.answer_payload),'{}'::jsonb) INTO ans
   FROM public.exam_attempt_answers x WHERE x.attempt_id=a.id;
   RETURN jsonb_build_object('attempt_id',a.id,'subject_name',a.subject_name,'grade',a.grade,
-    'education_level',a.education_level,'attempt_type','EXERCISE','duration_minutes',NULL,'total_questions',a.total_questions,
+    'education_level',a.education_level,'attempt_type',a.attempt_type,'duration_minutes',a.duration_minutes,'total_questions',a.total_questions,
     'started_at',a.started_at,'tka_code',a.tka_code,'questions',qs,'answers',ans,
     'remaining_seconds',NULL);
 END $$;
@@ -54,14 +55,14 @@ BEGIN
 
   SELECT * INTO v_attempt
   FROM public.exam_attempts
-  WHERE id = p_attempt_id AND user_id = v_user_id
+  WHERE id = p_attempt_id AND user_id = v_user_id AND attempt_type IN('EXERCISE','ASSIGNMENT')
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Sesi ujian tidak ditemukan.';
+    RAISE EXCEPTION 'Sesi latihan tidak ditemukan.';
   END IF;
-  IF (v_attempt.attempt_status <> 'IN_PROGRESS' OR v_attempt.attempt_type <> 'EXERCISE') THEN
-    RAISE EXCEPTION 'Sesi ujian sudah selesai atau tidak aktif.';
+  IF (v_attempt.attempt_status <> 'IN_PROGRESS' OR v_attempt.attempt_type NOT IN('EXERCISE','ASSIGNMENT')) THEN
+    RAISE EXCEPTION 'Sesi latihan sudah selesai atau tidak aktif.';
   END IF;
   v_now := clock_timestamp();
 
@@ -120,11 +121,11 @@ BEGIN
 
   SELECT * INTO v_attempt
   FROM public.exam_attempts
-  WHERE id = p_attempt_id AND user_id = v_user_id
+  WHERE id = p_attempt_id AND user_id = v_user_id AND attempt_type IN('EXERCISE','ASSIGNMENT')
   FOR UPDATE;
 
-  IF NOT FOUND OR (v_attempt.attempt_status <> 'IN_PROGRESS' OR v_attempt.attempt_type <> 'EXERCISE') THEN
-    RAISE EXCEPTION 'Sesi ujian tidak ditemukan atau sudah selesai.';
+  IF NOT FOUND OR v_attempt.attempt_status <> 'IN_PROGRESS' THEN
+    RAISE EXCEPTION 'Sesi latihan tidak ditemukan atau sudah selesai.';
   END IF;
 
   -- Submit setelah deadline adalah auto-submit: nilai dihitung hanya dari
@@ -291,6 +292,50 @@ COMMENT ON FUNCTION public.start_student_exercise(text, integer, text, text) IS
 
 REVOKE ALL ON FUNCTION public.start_student_exercise(text, integer, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.start_student_exercise(text, integer, text, text) TO authenticated;
+
+-- Pembungkus publik spesifik latihan (EXERCISE/ASSIGNMENT). Halaman Latihan dan
+-- Challenge memakai fungsi ini, bukan submit_exam_attempt/save_exam_answer/
+-- resume_exam_attempt generik. Attempt gamification (GAMIFICATION) ditolak karena
+-- filter tipe di bawah hanya menerima EXERCISE/ASSIGNMENT.
+CREATE OR REPLACE FUNCTION public.resume_student_exercise(p_attempt_id uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE u uuid := auth.uid(); kind text;
+BEGIN
+  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
+  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
+  RETURN private.resume_student_exercise(p_attempt_id);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.save_exercise_answer(p_attempt_id uuid, p_question_id uuid, p_answer_payload jsonb) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE u uuid := auth.uid(); kind text;
+BEGIN
+  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
+  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
+  RETURN private.save_exercise_answer(p_attempt_id, p_question_id, p_answer_payload);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.submit_exercise_attempt(p_attempt_id uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE u uuid := auth.uid(); kind text;
+BEGIN
+  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT attempt_type INTO kind FROM public.exam_attempts WHERE id=p_attempt_id AND user_id=u FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Attempt unavailable' USING ERRCODE='42501'; END IF;
+  IF kind NOT IN('EXERCISE','ASSIGNMENT') THEN RAISE EXCEPTION 'Attempt is not a practice session' USING ERRCODE='42501'; END IF;
+  RETURN private.submit_exercise_attempt(p_attempt_id);
+END $$;
+
+REVOKE ALL ON FUNCTION public.resume_student_exercise(uuid),
+  public.save_exercise_answer(uuid,uuid,jsonb),
+  public.submit_exercise_attempt(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.resume_student_exercise(uuid),
+  public.save_exercise_answer(uuid,uuid,jsonb),
+  public.submit_exercise_attempt(uuid) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 

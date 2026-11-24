@@ -13,7 +13,19 @@ test('active loader excludes keys and explanations while retaining nested struct
  // Slice hanya fungsi loader resume; helper save/submit memakai scorer privat secara sengaja.
  const loader=sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'));
  assert.doesNotMatch(loader,/is_correct|correct_category|explanation|scoring_rule/);
- for(const key of ["'options'","'category_items'","'answers'","'remaining_seconds',NULL","user_id=u","attempt_type='EXERCISE'"]) assert.ok(loader.includes(key),key);
+ // EXERCISE mandiri dan ASSIGNMENT sekolah memakai helper latihan yang sama.
+ for(const key of ["'options'","'category_items'","'answers'","'remaining_seconds',NULL","user_id=u","attempt_type IN('EXERCISE','ASSIGNMENT')","'attempt_type',a.attempt_type"]) assert.ok(loader.includes(key),key);
+});
+
+test('public practice wrappers enforce ownership and reject non-practice attempts',()=>{
+ const wrappers=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.resume_student_exercise'));
+ for(const name of ['resume_student_exercise(p_attempt_id uuid)','save_exercise_answer(p_attempt_id uuid, p_question_id uuid, p_answer_payload jsonb)','submit_exercise_attempt(p_attempt_id uuid)']){
+  assert.ok(wrappers.includes(`CREATE OR REPLACE FUNCTION public.${name}`),name);
+ }
+ assert.equal((wrappers.match(/kind NOT IN\('EXERCISE','ASSIGNMENT'\)/g)||[]).length,3);
+ assert.equal((wrappers.match(/RETURN private\.(resume_student_exercise|save_exercise_answer|submit_exercise_attempt)\(/g)||[]).length,3);
+ assert.equal((wrappers.match(/WHERE id=p_attempt_id AND user_id=u FOR UPDATE/g)||[]).length,3);
+ assert.match(wrappers,/GRANT EXECUTE ON FUNCTION public\.resume_student_exercise\(uuid\),\s*public\.save_exercise_answer\(uuid,uuid,jsonb\),\s*public\.submit_exercise_attempt\(uuid\) TO authenticated/);
 });
 test('exercise save and submit retain structure checks without deadline; generic RPCs live only in the canonical file',()=>{
  const save=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION private.save_exercise_answer'),sql.indexOf('NOTIFY pgrst'));
