@@ -1,0 +1,61 @@
+# VirtualPet — deployment manual
+
+Status: SQL pending, **tidak diterapkan ke database live**. Migrasi dan RPC sudah diuji pada PostgreSQL WASM disposable (PGlite), bukan database produksi. Tetap review dan uji pada salinan schema deployment sebelum produksi.
+
+## Urutan
+
+1. Pastikan schema exam/profiles/auth existing beserta field akun, jenjang, dan deadline tersedia. Jalankan foundation [migration-gamification-foundation.sql](database/migration-gamification-foundation.sql), bukan membuat ulang tabel pet.
+2. Pasang helper exam [migration-stage-1.sql](database/migration-stage-1.sql), [migration-category-answer-case-insensitive.sql](database/migration-category-answer-case-insensitive.sql), helper exercise [migration-start-student-exercise.sql](database/migration-start-student-exercise.sql), dan helper tryout [migration-start-tka-tryout.sql](database/migration-start-tka-tryout.sql). Pertahankan migrasi/hardening existing lain sesuai runbook aplikasi.
+3. Dependensi gate BossFight tetap diperlukan: [migration-bossfight.sql](database/migration-bossfight.sql). Kemudian jalankan seluruh [migration-virtualpet.sql](database/migration-virtualpet.sql) sebagai satu transaksi memakai owner SQL terpercaya.
+4. Segera jalankan ulang [migration_generic_exam_attempt.sql](database/migration_generic_exam_attempt.sql), sumber tunggal tiga RPC generik. Tidak ada rename/wrapper/definisi legacy baru. Jadwalkan maintenance selama langkah 3–4; sebelum langkah 4 guard SQL sudah memblokir perubahan exam VirtualPet, tetapi gate resume generik belum diperbarui.
+
+Migrasi gagal tertutup bila ada duplikasi pet aktif per pengguna, inventory per pet, atau pengaturan SHOW_TIPS. Operator harus merekonsiliasi data secara eksplisit; migrasi tidak menghapus/menggabungkan data lama otomatis. Periksa juga CHECK constraint/type/trigger lokal yang tidak tercakup snapshot parsial; nilai GAMIFICATION harus diterima. Tipe attempt diperlebar menjadi varchar(20). Kolom duration_minutes existing NOT NULL tetap diisi 60 sebagai nilai kompatibilitas penyimpanan; **tidak dipakai sebagai timer**, deadline NULL, dan respons sesi mengembalikan remaining_seconds NULL.
+
+## Kontrak dan pemetaan
+
+Endpoint [public.virtualpet()](database/migration-virtualpet.sql:249) menerima tindakan bootstrap, settings, adopt, feed, start, finish melalui parameter p_action dan object p_payload. Semua tindakan mensyaratkan pengguna login, profil STUDENT aktif, auth terverifikasi, tidak dihapus/dibanned. Tidak mensyaratkan subscription. Semua akses memakai lock transaksi per pengguna sebelum lock pet/sesi/exam.
+
+- bootstrap: payload kosong, mengembalikan pet, inventory, settings, tip aktif acak, profile_xp, serta session aktif lengkap untuk resume.
+- settings: object settings berisi SHOW_TIPS string "0" atau "1"; nilai default "1" diinsert hanya bila absen pada group VIRTUALPET. Field lain ditolak. Tips hanya dari aplikasi VIRTUALPET yang aktif dan hanya ditampilkan saat diaktifkan.
+- adopt: pet_type dan pet_name string 1–50 karakter. Adopsi pertama memberikan stats 100, level/XP nol dan **keenam inventory nol**. Pada pet aktif existing hanya tipe/nama diubah, tanpa reset stats/inventory. Jika ada pet lama tetapi tidak aktif, operator harus memulihkannya; tidak dibuat pet baru untuk menghindari reset gratis. Tipe adalah label kosmetik, bukan sumber reward.
+- feed: item persis water/rice/apple/donut/cake/vitamin, mengurangi satu inventory. Water: hidrasi +30; rice: hunger +30; apple: hunger/hidrasi/happiness +10; donut: hunger/happiness +15; cake: hunger/happiness +20; vitamin: ketiganya +5. Semua maksimum 100. Tidak ada pembelian/reset dari payload.
+- start: scenario KUIZ/HOTS/PENYELAMATAN. KUIZ dan HOTS tepat 10 soal; PENYELAMATAN tepat 15. Jika ada sesi belum selesai, sesi tersebut dikembalikan tanpa memilih ulang, termasuk bila skenario permintaan berbeda. Tidak ada abandon endpoint.
+- finish: attempt_id dan array answers, masing-masing object berisi question_id dan answer_payload. Tepat satu record per soal, seluruh membership diperiksa; tidak menerima skor/reward klien. Jawaban PG_TUNGGAL memakai option_codes satu elemen; PGK_MA memakai option_codes array tanpa duplikasi (array kosong sah sebagai jawaban salah); PGK_KATEGORI memakai category_answers object dengan nomor item sebagai key dan seluruh item wajib terjawab. Category label mengikuti daftar yang dipisahkan slash, pembandingan trim dan case-insensitive. Field silang hanya boleh kosong. Semua payload dinilai dari snapshot privat, bukan tabel soal saat finish.
+
+Foundation tidak diubah: kolom [virtual_pets](database/migration-gamification-foundation.sql:42) tetap type, name, xp_score; respons memetakannya menjadi pet_type, pet_name, xp. XP kemenangan hanya menambah profil, bukan XP/level pet. Inventory tetap [virtual_pet_items](database/migration-gamification-foundation.sql:57) dengan enam kolom existing.
+
+## Soal dan integritas
+
+Jenjang diambil dari profiles.education_level tersimpan (sd/smp/sma), semua mapel diperbolehkan. Soal wajib published dengan versi published bernomor terbesar (draft baru tidak menggantikannya), hanya PG_TUNGGAL, PGK_MA, PGK_KATEGORI dengan struktur opsi/kategori dan kunci yang valid. Difficulty berada pada questions.difficulty (bukan versi); dinormalisasi uppercase agar MUDAH/SEDANG/SULIT maupun Mudah/Sedang/Sulit terbaca. Estimasi numeric berasal dari question_versions.estimate_minutes yang ditambahkan foundation.
+
+KUIZ/PENYELAMATAN **wajib** Mudah/Sedang DAN estimasi <=5 menit, tanpa fallback ke soal sulit/lama. Jika bank yang lolos filter kurang dari tepat 10/15 soal, start dibatalkan dengan P0001 dan pesan jumlah yang diperlukan/tersedia, tanpa menyimpan sesi atau exam parsial. **Hanya HOTS** memprioritaskan Sulit ATAU estimasi >5 menit lalu mengisi kekurangan secara acak dari soal valid tersisa pada jenjang sama, tanpa duplikasi; HOTS juga wajib tepat 10 soal atau ditolak. Versi terbaru dipilih **sebelum** menerapkan prioritas/filter struktur; tidak mundur ke versi published lama.
+
+Pertanyaan, opsi/kategori, stimulus dan kunci dibekukan pada pool sesi privat saat start; relasi exam_attempt_questions juga langsung disimpan. Guard trigger pada tiga tabel exam melindungi identitas lama dan baru, menolak insert bertag VirtualPet tanpa sesi privat, dan menutup perubahan di luar jendela tulis RPC. Akses tabel privat/helper dicabut dari PUBLIC/anon/authenticated; tidak mempercayai flag konfigurasi sesi yang dapat diatur klien. Akses langsung tabel pet/inventory dicabut dari role klien. Owner/service-role yang dapat memodifikasi schema, menonaktifkan trigger, atau menulis sesi privat tetap merupakan trust boundary; audit deployment ACL/RLS existing, khususnya RPC admin yang bersifat dinamis.
+
+**Tradeoff disengaja:** bootstrap/start mengirim answer_keys bersama soal atas permintaan untuk game low-stakes. Pengguna dapat melihat kunci dan memperoleh kemenangan dengan mudah; penilaian server mencegah manipulasi skor/payload dan replay reward, **bukan anti-cheat akademik**. Jangan gunakan endpoint ini untuk ujian bernilai tinggi atau leaderboard kompetitif tanpa desain ulang.
+
+## Decay dan reward
+
+last_updated_at existing adalah timestamp tanpa timezone dan diasumsikan UTC. Perbaiki data lama yang ternyata berzona lokal sebelum deployment. Decay diterapkan otomatis pada setiap tindakan yang memiliki pet aktif, termasuk bootstrap/feed/finish. Default hunger 4/jam, hidrasi 6/jam; operator saja boleh mengubah [private.virtualpet_config](database/migration-virtualpet.sql:20). Waktu dihitung dalam menit utuh, sisa detik dipertahankan pada timestamp dan pecahan poin pada tabel carry privat. Tidak ada client clock atau rate dari payload. Timestamp masa depan dikoreksi ke waktu server tanpa memberikan kenaikan stats. Tidak ada worker terjadwal: decay bersifat lazy saat RPC dipanggil.
+
+Prioritas status: fainted bila salah satu kebutuhan <=0; sick bila <=15; hungry_thirsty bila <40; happy bila kedua kebutuhan dan happiness >=70; selain itu normal. Hunger di sini adalah tingkat kenyang: angka besar lebih baik.
+
+Lulus bila benar*100 >= total*80, bukan skor yang dibulatkan. Hanya kemenangan memberikan:
+
+- KUIZ: water +1, rice +1, XP profil +1.
+- HOTS: dua undian snack independen apple/donut/cake/vitamin (boleh item sama), XP profil +2. Pilihan dan jumlah dibekukan dalam result.
+- PENYELAMATAN: hunger dan hydration +50, maksimum 100, XP profil +2; respons reward mencatat kenaikan efektif.
+
+Finish menulis jawaban, hasil exam, reward, log XP dan result cache dalam satu transaksi. Retry attempt selesai mengembalikan skor/reward yang sama dengan bootstrap state terkini (decay tetap berjalan); tidak memberi ulang reward. Sesi aktif tunggal dan tidak bisa diganti untuk farming pool. Permainan selesai boleh dilanjutkan sesi baru, tanpa cooldown tambahan.
+
+## Verifikasi lokal dan sebelum produksi
+
+[Test runtime VirtualPet](../tests/virtualpet-database.test.mjs) memakai pola [fixture BossFight](../tests/bossfight-database.test.mjs): PGlite in-memory, tanpa URL/kredensial database. Set environment VIRTUALPET_PGLITE_MODULE (atau BOSSFIGHT_PGLITE_MODULE) ke entry module PGlite absolut pada instalasi/cache lokal, kemudian jalankan Node test runner untuk kedua berkas tersebut. Jika paket belum tersedia, npm exec dengan opsi --package @electric-sql/pglite dapat mengisi cache sementara tanpa mengubah manifest proyek. Tanpa environment tersebut test integrasi sengaja dilewati; pastikan output runtime **skipped 0** sebelum mengklaim lulus.
+
+Fixture menerapkan migrasi foundation, BossFight, VirtualPet dan RPC generik aktual; VirtualPet/generik dipasang ulang untuk memeriksa redeployment. Tidak ada penggantian badan fungsi atau tipe baris untuk parser. Tabel pendukung dibuat minimal mengikuti kolom yang digunakan migrasi, dan helper exercise/tryout yang tidak dipanggil diganti stub. Kontrak kategori memakai category_label dipisahkan slash dan correct_category, sesuai migrasi stage-1/operator/workbook; tidak bergantung pada kolom category_options. Pemetaan pet/inventory dan estimasi berasal dari migrasi foundation aktual.
+
+Cakupan runtime: gate akun/auth, settings/tips, adopsi tanpa reset, inventory kosong; filter ketat dan shortage tepat 10/15 tanpa penulisan parsial; prioritas HOTS dan fallback; versi published terbaru versus draft; tiga tipe jawaban, kategori case-insensitive, payload malformed/duplikat/asing; snapshot tetap setelah kunci soal berubah; 7/10 gagal, 8/10 lulus, dua snack HOTS, 11/15 gagal dan 12/15 lulus rescue +50 capped; penyimpanan exam/XP/log dan replay reward; carry decay menit/pecahan, feed clamp, status fainted; ownership, resume sesi sama, tiga gate RPC generik, guard direct exam dan pemindahan membership, serta ACL role authenticated. Fixture BossFight hanya ditambah stub relasi membership VirtualPet agar gate kanonik dapat dieksekusi.
+
+Hasil eksekusi lokal 2026-11-24: suite terfokus VirtualPet database/actions/client dan BossFight database/backend **32 lulus, 0 gagal, 0 dilewati** (termasuk sembilan subtest runtime VirtualPet). Suite penuh **207 lulus, 4 gagal, 0 dilewati**, total 211. Kegagalan berada di [learning-access.test.mjs](../tests/learning-access.test.mjs:9) (assertion navigasi subscription), [registration.test.mjs](../tests/registration.test.mjs:50) (pemanggilan jalur registrasi), [student-history.test.mjs](../tests/student-history.test.mjs:41) (jumlah referensi RPC 3 versus ekspektasi 2), dan [ui-copy.test.mjs](../tests/ui-copy.test.mjs:18) (sapaan formal MapAdventure). Berkas-berkas tersebut di luar lingkup perbaikan SQL ini dan tidak diubah. Pemeriksaan whitespace diff lulus. Manifest/lockfile tidak diubah untuk memasang PGlite.
+
+**Batasan:** ini bukan salinan schema Supabase produksi, bukan pengujian konkurensi multi-koneksi, dan tidak mencakup seluruh trigger/history/kompetensi atau policy/RLS deployment existing. Sebelum produksi tetap uji duplikasi fail-closed pada data lama, start/finish paralel, audit service-role/admin RPC, serta kompatibilitas GAMIFICATION dan deadline NULL pada salinan schema/data aktual. Tidak ada koneksi/aplikasi migrasi ke database live; UI/build ditangani pekerjaan induk.

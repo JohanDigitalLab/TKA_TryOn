@@ -3,6 +3,7 @@
 -- save_exam_answer, dan resume_exam_attempt. Jika perlu perubahan (mis. filter
 -- tambahan), edit hanya di berkas ini, lalu jalankan ulang melalui Supabase SQL Editor.
 -- Dependensi: private.bossfight_sessions (migration-bossfight.sql),
+-- private.virtualpet_sessions (migration-virtualpet.sql),
 -- private.submit_exercise_attempt / private.save_exercise_answer /
 -- private.resume_student_exercise (migration-start-student-exercise.sql),
 -- private.resume_tka_tryout (migration-start-tka-tryout.sql),
@@ -21,6 +22,9 @@ DECLARE
   v_submitted_after_deadline boolean := false;
 BEGIN
   IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF EXISTS(SELECT 1 FROM private.virtualpet_sessions WHERE attempt_id=p_attempt_id) THEN
+    RAISE EXCEPTION 'Use VirtualPet RPC' USING ERRCODE='42501';
+  END IF;
   IF EXISTS(SELECT 1 FROM private.bossfight_sessions WHERE attempt_id=p_attempt_id) THEN
     RAISE EXCEPTION 'Use BossFight endpoint' USING ERRCODE='42501';
   END IF;
@@ -96,6 +100,9 @@ DECLARE
   v_now timestamptz;
 BEGIN
   IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF EXISTS(SELECT 1 FROM private.virtualpet_sessions WHERE attempt_id=p_attempt_id) THEN
+    RAISE EXCEPTION 'Use VirtualPet RPC' USING ERRCODE='42501';
+  END IF;
   IF EXISTS(SELECT 1 FROM private.bossfight_sessions WHERE attempt_id=p_attempt_id) THEN
     RAISE EXCEPTION 'Use BossFight endpoint' USING ERRCODE='42501';
   END IF;
@@ -161,6 +168,9 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE u uuid := auth.uid(); kind text;
 BEGIN
   IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF EXISTS(SELECT 1 FROM private.virtualpet_sessions WHERE attempt_id=p_attempt_id) THEN
+    RAISE EXCEPTION 'Use VirtualPet RPC' USING ERRCODE='42501';
+  END IF;
   IF EXISTS(SELECT 1 FROM private.bossfight_sessions WHERE attempt_id=p_attempt_id) THEN
     RAISE EXCEPTION 'Use BossFight endpoint' USING ERRCODE='42501';
   END IF;

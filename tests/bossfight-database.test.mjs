@@ -13,6 +13,8 @@ test('BossFight PostgreSQL integration: real RPC, helpers and persistence', { sk
     CREATE ROLE anon; CREATE ROLE authenticated;
     CREATE SCHEMA auth; CREATE SCHEMA private;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+    -- Canonical generic RPCs also gate VirtualPet; this suite only needs membership.
+    CREATE TABLE private.virtualpet_sessions(attempt_id uuid PRIMARY KEY);
     CREATE TABLE public.profiles(id uuid PRIMARY KEY,education_level text,nickname text,full_name text,xp_score integer DEFAULT 0);
     CREATE TABLE public.subjects(subject_code text,name text);
     CREATE TABLE public.user_settings(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,"group" text,name text,value text);
