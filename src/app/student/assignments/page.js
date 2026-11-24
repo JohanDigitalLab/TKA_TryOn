@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { assignmentAvailability } from "@/lib/school/assignments.mjs";
+import { assignmentAvailability, normalizeStudentAssignments } from "@/lib/school/assignments.mjs";
 
 const date = (value) => new Date(value).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 
@@ -14,8 +14,11 @@ export default function StudentAssignmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [now, setNow] = useState(0);
+  const generation = useRef(0);
   const load = useCallback(async () => {
+    const version = ++generation.current;
     setLoading(true);
+    setItems([]);
     setError("");
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -23,21 +26,23 @@ export default function StudentAssignmentsPage() {
       if (!auth.user) { router.replace("/login"); return; }
       const { data, error: rpcError } = await supabase.rpc("get_student_assignments");
       if (rpcError) throw rpcError;
-      setItems(data || []);
-      setNow(Date.now());
-    } catch (err) { setError(err.message || "Tugas belum dapat dimuat."); }
-    finally { setLoading(false); }
+      const items = normalizeStudentAssignments(data);
+      if (generation.current === version) { setItems(items); setNow(Date.now()); }
+    } catch (err) { if (generation.current === version) setError(err.message || "Tugas belum dapat dimuat."); }
+    finally { if (generation.current === version) setLoading(false); }
   }, [router]);
   useEffect(() => {
+    const requestGeneration = generation;
     const initialLoad = setTimeout(() => { void load(); }, 0);
     const timer = setInterval(() => setNow(Date.now()), 10000);
-    return () => { clearTimeout(initialLoad); clearInterval(timer); };
+    return () => { requestGeneration.current++; clearTimeout(initialLoad); clearInterval(timer); };
   }, [load]);
 
   return <main className="min-h-screen bg-[#f5f6f3] px-5 py-8 text-slate-900">
     <div className="mx-auto max-w-5xl">
       <nav className="flex justify-between border-b border-slate-300 pb-5 text-sm font-bold"><Link href="/student">← Ruang siswa</Link><button type="button" onClick={load} disabled={loading}>Muat ulang</button></nav>
       <header className="py-9"><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Tugas sekolah</p><h1 className="mt-3 text-4xl font-black tracking-tight">Agenda belajarmu.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">Setiap tugas memiliki satu kesempatan pengerjaan. Mulai saat tersedia cukup waktu untuk menyelesaikan seluruh durasi ujian.</p></header>
+      <Link className="mb-5 inline-block font-bold text-blue-800 underline" href="/student/agenda">Buka agenda sekolah SET →</Link>
       {error && <p role="alert" className="mb-5 border-l-2 border-amber-600 bg-amber-50 p-4 text-sm">{error}</p>}
       {loading ? <p role="status">Memuat tugas…</p> : !error && !items.length ? <p className="border border-slate-300 bg-white p-7 text-slate-600">Belum ada tugas dari sekolah. Latihan mandiri tetap tersedia di ruang siswa.</p> : <div className="divide-y divide-slate-200 border-y border-slate-300 bg-white">{items.map((item) => {
         const availability = assignmentAvailability(item, now);

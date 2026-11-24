@@ -49,6 +49,7 @@ export function transferPayload(values, recovery = false) {
   return { email, ...(recovery ? { reason: text(values.reason,"Alasan pemulihan",10,2000) } : {}) };
 }
 export function schoolError(error) {
+  if (error?.name === "SchoolContractError") return error.message;
   if (["PGRST202", "42883"].includes(error?.code)) return "Portal tahap 4 belum tersedia pada database ini. Penerapan backend masih menunggu persetujuan; tidak ada perubahan yang dilakukan.";
   if (error?.code === "42501") return "Akses ditolak. Pastikan email terverifikasi, akun aktif, dan izin sekolah/platform sesuai. Muat ulang konteks atau masuk dengan akun yang benar.";
   const known = { "Education level mismatch": "Jenjang akun siswa tidak cocok dengan kelas undangan. Hubungi admin untuk pemeriksaan profil.", "Invite unavailable": "Undangan tidak tersedia, kedaluwarsa, dicabut, atau kuotanya habis.", "Already affiliated with a school": "Akun sudah memiliki afiliasi sekolah. Hubungi admin sekolah.", "Class still has students or pending requests": "Kelas masih memiliki siswa atau permintaan menunggu. Pindahkan siswa dan selesaikan permintaan dahulu.", "School already registered": "NPSN sudah terdaftar.", "Student cannot become coordinator": "Akun siswa pada sekolah ini tidak dapat menerima peran koordinator.", "Invite revoked or expired": "Undangan dicabut/kedaluwarsa. Tolak permintaan lama dan buat undangan baru bila diperlukan." };

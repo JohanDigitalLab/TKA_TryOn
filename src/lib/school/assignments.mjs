@@ -5,13 +5,28 @@ export function assignmentAvailability(assignment, now = Date.now()) {
   const due = Date.parse(assignment.due_at);
   const opens = Date.parse(assignment.opens_at);
   if (!Number.isFinite(due) || !Number.isFinite(opens)) return { label: 'Jadwal tidak valid', canStart: false };
-  if (now >= due) return { label: 'Berakhir', canStart: false };
-  if (assignment.attempt_status === 'IN_PROGRESS') return { label: 'Lanjutkan', canStart: true };
-  if (assignment.attempt_id) return { label: 'Sesi berakhir', canStart: false };
   if (now < opens) return { label: 'Terjadwal', canStart: false };
+  // Resume after deadline permits the existing engine to finalize saved answers;
+  // revoked/cancelled access is still rejected server-side, including finalize.
+  if (assignment.attempt_status === 'IN_PROGRESS' && assignment.attempt_id) return { label: now >= due ? 'Buka sesi untuk finalisasi server' : 'Lanjutkan', canStart: true };
+  if (now >= due) return { label: 'Berakhir', canStart: false };
+  if (assignment.attempt_id) return { label: 'Sesi berakhir', canStart: false };
   const duration = Number(assignment.duration_minutes);
   if (!Number.isFinite(duration) || duration <= 0 || now + duration * 60000 > due) return { label: 'Waktu mulai habis', canStart: false };
   return { label: 'Kerjakan', canStart: true };
+}
+
+export function normalizeStudentAssignments(data) {
+  const uuid = value => typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
+  if (!Array.isArray(data) || data.length > 100 || !data.every(a => a && uuid(a.id)
+    && typeof a.title === 'string' && typeof a.school_name === 'string' && typeof a.subject_name === 'string'
+    && ['published', 'cancelled'].includes(a.status) && Number.isFinite(Date.parse(a.opens_at)) && Number.isFinite(Date.parse(a.due_at))
+    && Number.isInteger(a.question_count) && a.question_count > 0 && Number.isInteger(a.duration_minutes) && a.duration_minutes > 0
+    && (a.attempt_id === null || uuid(a.attempt_id)) && (a.attempt_status === null || ['IN_PROGRESS', 'SUBMITTED', 'EXPIRED'].includes(a.attempt_status))
+    && (a.score === null || (typeof a.score === 'number' && Number.isFinite(a.score))))) {
+    throw new Error('Respons daftar tugas tidak sesuai kontrak. Muat ulang; akses historis yang dicabut dapat menolak seluruh daftar.');
+  }
+  return data;
 }
 
 export function assignmentMutationPayload(form, schoolId, editing = null) {

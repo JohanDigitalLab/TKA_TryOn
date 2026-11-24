@@ -8,6 +8,7 @@ import { normalizePayload } from "@/lib/student/exam";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ScoreLineChart from "@/components/student/score-line-chart";
+import { studentHistoryRequest, normalizeStudentHistory, studentResultSessions } from "@/lib/student/rpc-contract.mjs";
 
 // =====================================================
 // HELPER
@@ -345,7 +346,7 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
             <div className="rounded-lg bg-slate-50 p-3">
               <p className="text-xs text-slate-500">Terjawab</p>
               <p className="mt-1 text-xl font-bold">
-                {session.answeredCount}
+                {session.answeredCount ?? "—"}
               </p>
             </div>
           </div>
@@ -494,17 +495,19 @@ export default function StudentResultsPage() {
         return;
       }
 
-      const { data, error: rpcError } = await supabase.rpc("get_student_exam_history", {
-        p_limit: 50,
-        p_before: null,
-      });
+      const request = studentHistoryRequest();
+      const { data, error: rpcError } = await supabase.rpc(request.name, request.args);
       if (!mounted) return;
       if (rpcError) {
         setHistoryError(rpcError.message || "Histori hasil belum berhasil dimuat.");
         setHistoryLoading(false);
         return;
       }
-      setHistory(Array.isArray(data) ? data : []);
+      try {
+        setHistory(normalizeStudentHistory(data));
+      } catch (error) {
+        setHistoryError(error.message || "Respons riwayat server tidak valid.");
+      }
       setHistoryLoading(false);
     }
 
@@ -533,25 +536,7 @@ export default function StudentResultsPage() {
     // fallback transisi ketika RPC histori benar-benar gagal, bukan ketika
     // akun memang belum memiliki hasil.
     if (historyError) return localResults;
-    return history.map((item, index) => ({
-      attemptId: item.attempt_id,
-      subject: item.subject || item.subject_name || "Mata pelajaran",
-      grade: item.grade,
-      mode: item.mode || item.config_snapshot?.mode || "legacy",
-      packageId: item.package_id || item.config_snapshot?.package_id || null,
-      configSnapshot: item.config_snapshot || null,
-      subjectIndex: index,
-      totalSubjects: history.length,
-      score: Number(item.score || 0),
-      totalQuestions: Number(item.total_questions || 0),
-      correctAnswers: Number(item.correct_answers || 0),
-      incorrectOrUnanswered: Number(item.incorrect_or_unanswered || 0),
-      answeredCount: Math.max(0, Number(item.total_questions || 0) - Number(item.incorrect_or_unanswered || 0)),
-      completedAt: item.submitted_at || item.created_at,
-      status: item.status || item.attempt_status,
-      review: item.review || null,
-      reviewError: item.reviewError || "",
-    }));
+    return studentResultSessions(history);
   }, [history, historyError, localResults]);
 
   useEffect(() => {

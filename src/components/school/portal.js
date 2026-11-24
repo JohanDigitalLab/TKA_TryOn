@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import PortalHeader from "@/components/portal-header";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { authLink, schoolError, statusLabels } from "@/lib/school/onboarding.mjs";
+import { schoolError, statusLabels } from "@/lib/school/onboarding.mjs";
+import { schoolRpc } from "@/lib/school/rpc-contract.mjs";
 
 export const inputClass = "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 min-h-11";
 export const buttonClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-blue-700 bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50";
@@ -27,7 +28,7 @@ export function ActionForm({ portal, label, children, onSubmit, confirm, reset =
     try { if (await onSubmit(values) && reset) form.reset(); } catch (error) { setLocalError(schoolError(error)); }
   }}><fieldset disabled={portal.busy} className="space-y-3">{children}{confirm && <label className="flex items-start gap-2 text-sm"><input type="checkbox" required className="mt-1 size-5 shrink-0" />Saya memahami dan mengonfirmasi: {confirm}</label>}<button className={buttonClass} type="submit">{portal.busy ? "Memproses…" : label}</button></fieldset>{localError && <p role="alert" className="text-sm text-red-700">{localError}</p>}</form>;
 }
-export async function rpc(name, params) { const result = await supabase.rpc(name, params); if (result.error) throw result.error; return result.data; }
+export async function rpc(name, params) { return schoolRpc(supabase, name, params); }
 export function PortalPage({ title, children, hideHeader = false, hideRefresh = false }) { return <Suspense fallback={<p role="status" className="p-8">Memuat portal…</p>}><PortalContent title={title} hideHeader={hideHeader} hideRefresh={hideRefresh}>{children}</PortalContent></Suspense>; }
 function PortalContent({ title, children, hideHeader, hideRefresh }) {
   const router = useRouter();
@@ -42,9 +43,10 @@ function PortalContent({ title, children, hideHeader, hideRefresh }) {
   const reload = useCallback(async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error && error.name !== "AuthSessionMissingError") throw error;
+    setError("");
     const account = data?.user || null;
     setUser(account);
-    if (!account?.email_confirmed_at) setContext(null);
+    setContext(null);
     if (account?.email_confirmed_at) setContext(await rpc("school_portal_context"));
   }, []);
   useEffect(() => {
@@ -76,7 +78,7 @@ function PortalContent({ title, children, hideHeader, hideRefresh }) {
     <PortalHeader displayName={user?.email?.split("@")[0] || "Sekolah"} signingOut={busy} onSignOut={() => run(async () => { const { error } = await supabase.auth.signOut(); if (error) throw error; router.replace("/"); }, null, "Kamu sudah keluar dari akun.")} />
     {!hideHeader && <header><h1 className="text-3xl font-black">{title}</h1>{user && <p className="mt-2 text-sm text-slate-600">Akun: {user.email}</p>}</header>}
     {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}{notice && <p role="status" className="rounded border border-green-200 bg-green-50 p-4 text-green-900">{notice}</p>}
-    {!ready ? <p role="status">Memeriksa akun…</p> : !user ? <>{<Content {...portal} guest />}<Panel title="Sudah memiliki akun?"><Link className={buttonClass} href={authLink("login",next)}>Masuk untuk melanjutkan</Link></Panel></> : !user.email_confirmed_at ? <Panel title="Verifikasi email diperlukan"><p>Konfirmasi email terlebih dahulu, kemudian masuk kembali. Akun guru dan staf tidak perlu mengisi jenjang pendidikan siswa.</p><button className={buttonClass} disabled={busy} onClick={() => run(async () => { const { error } = await supabase.auth.resend({ type: "signup", email: user.email, options: { emailRedirectTo: `${window.location.origin}${next}` } }); if(error) throw error; },null,"Permintaan verifikasi sudah diproses. Periksa kotak masuk dan folder spam emailmu.")}>Kirim ulang verifikasi</button></Panel> : context ? <>{!hideRefresh && <button type="button" className="text-sm font-bold text-blue-800 underline" disabled={busy} onClick={() => run(async () => true,null,"Data akun dan akses sekolah sudah diperbarui.")}>Perbarui data akun dan sekolah</button>}{<Content {...portal} />}</> : <button className={buttonClass} disabled={busy} onClick={() => run(async () => true)}>Coba muat portal kembali</button>}
+    {!ready ? <p role="status">Memeriksa akun…</p> : !user ? <>{<Content {...portal} guest />}<Panel title="Sudah memiliki akun?"><Link className={buttonClass} href="/">Buka halaman masuk</Link><p className="mt-2 text-sm">Setelah masuk, buka kembali halaman sekolah ini untuk melanjutkan. Simpan tautan undangan bila ada.</p></Panel></> : !user.email_confirmed_at ? <Panel title="Verifikasi email diperlukan"><p>Konfirmasi email terlebih dahulu, kemudian masuk kembali. Akun guru dan staf tidak perlu mengisi jenjang pendidikan siswa.</p><button className={buttonClass} disabled={busy} onClick={() => run(async () => { const { error } = await supabase.auth.resend({ type: "signup", email: user.email, options: { emailRedirectTo: `${window.location.origin}${next}` } }); if(error) throw error; },null,"Permintaan verifikasi sudah diproses. Periksa kotak masuk dan folder spam emailmu.")}>Kirim ulang verifikasi</button></Panel> : context ? <>{!hideRefresh && <button type="button" className="text-sm font-bold text-blue-800 underline" disabled={busy} onClick={() => run(async () => true,null,"Data akun dan akses sekolah sudah diperbarui.")}>Perbarui data akun dan sekolah</button>}{<Content {...portal} />}</> : <Panel title="Akses portal belum tersedia"><p>Pastikan akun terverifikasi, aktif dan memiliki membership sekolah yang benar. Hubungi koordinator/platform dengan kode kesalahan di atas untuk rekonsiliasi; afiliasi profil tidak memberi izin otomatis.</p><button className={buttonClass} disabled={busy} onClick={() => run(async () => true)}>Periksa ulang akses portal</button></Panel>}
   </div></main>;
 }
 export function SchoolSelect({ memberships, value, onChange, disabled }) { return <label className="block max-w-lg text-sm font-bold">Sekolah<select className={inputClass} value={value} disabled={disabled} onChange={e => onChange(e.target.value)}><option value="">Pilih sekolah…</option>{memberships.map(m => <option key={m.school_id} value={m.school_id}>{m.school_name}</option>)}</select></label>; }

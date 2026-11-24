@@ -21,6 +21,18 @@ test("payload dan deteksi jawaban ketiga tipe soal", () => {
   assert.deepEqual(getCategoryOptions([{ category_label: "BENAR", category_options: ["BENAR", "SALAH"] }]), ["BENAR", "SALAH"]);
 });
 
+test("kategori aktif mengikuti label server per item tanpa opsi boolean buatan", () => {
+  const items = [
+    { item_number: 1, category_label: " Sesuai / Tidak Sesuai " },
+    { item_number: 2, category_label: "Fakta / Opini / Prediksi" },
+  ];
+  assert.deepEqual(getCategoryOptions([items[0]]), ["Sesuai", "Tidak Sesuai"]);
+  assert.deepEqual(getCategoryOptions([items[1]]), ["Fakta", "Opini", "Prediksi"]);
+  assert.deepEqual(getCategoryOptions([{ category_label: "A / B", category_options: ["BENAR", "SALAH"] }]), ["A", "B"]);
+  assert.deepEqual(getCategoryOptions([{ category_options: ["Ya", "Tidak", "Ya", null] }]), ["Ya", "Tidak"]);
+  assert.deepEqual(getCategoryOptions([{}]), []);
+});
+
 test("akses storage tidak tersedia tidak menggagalkan prerender", () => {
   assert.deepEqual(getExamConfig(), {});
   assert.deepEqual(getSimulationResults(), []);

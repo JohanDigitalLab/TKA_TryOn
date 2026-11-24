@@ -73,7 +73,12 @@ test("signup no longer stores misleading school code metadata; staff has no educ
   const login = await readFile(new URL("../src/app/login/page.js",import.meta.url),"utf8");
   assert.doesNotMatch(student,/school_code\s*:/); assert.match(student,/joinPath\(values.code\)/);
   assert.match(staff,/registration_method: "school_staff"/); assert.doesNotMatch(staff,/education_level\s*:/);
-  assert.match(login,/localPath\(searchParams.get\("next"\)/);
-  assert.equal((login.match(/if \(authLock\.current\) return;/g) || []).length,3);
-  assert.equal((login.match(/<fieldset disabled=\{authBusy\}/g) || []).length,2);
+  // Login now has one password form, not the historical combined auth forms.
+  // Verify its actual safety invariants instead of variable names/form counts.
+  assert.match(login,/localPath\(params.get\("next"\), "\/home"\)/);
+  assert.match(login,/if \(lock\.current\) return;/);
+  assert.match(login,/lock\.current = true;[\s\S]*signInWithPassword/);
+  assert.match(login,/finally\s*\{\s*lock\.current = false;/);
+  assert.match(login,/<fieldset disabled=\{busy\}/);
+  assert.doesNotMatch(login,/name="education_level"/);
 });

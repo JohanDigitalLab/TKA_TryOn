@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { schoolRpc, staffMemberships } from "@/lib/school/rpc-contract.mjs";
 import { assignmentMutationPayload } from "@/lib/school/assignments.mjs";
 
 const emptyForm = { class_id: "", title: "", subject_name: "Matematika", question_count: 20, duration_minutes: 60, opens_at: "", due_at: "" };
@@ -18,6 +19,9 @@ export default function TeacherPage() {
   const [schoolId, setSchoolId] = useState("");
   const [workspace, setWorkspace] = useState({ classes: [], assignments: [] });
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
+  const operationLock = useRef(false);
+  const generation = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -29,30 +33,27 @@ export default function TeacherPage() {
   const schoolRef = useRef("");
 
   const load = useCallback(async (id) => {
-    const { data, error: rpcError } = await supabase.rpc("get_teacher_workspace", { p_school_id: id });
-    if (rpcError) throw rpcError;
-    if (schoolRef.current === id) setWorkspace(data || { classes: [], assignments: [] });
+    const version = ++generation.current;
+    setReady(false);
+    setWorkspace({ classes: [], assignments: [] });
+    setRanking(null); setConfirm(null);
+    const data = await schoolRpc(supabase, "get_teacher_workspace", { p_school_id: id });
+    if (schoolRef.current === id && generation.current === version) { setWorkspace(data); setReady(true); }
   }, []);
 
   useEffect(() => {
     let active = true;
+    const requestGeneration = generation;
     async function init() {
       try {
         const { data: auth, error: authError } = await supabase.auth.getUser();
         if (authError) throw authError;
         if (!auth.user) { router.replace("/login"); return; }
-        const { data, error: membershipError } = await supabase.from("school_memberships").select("school_id,role").eq("user_id", auth.user.id).eq("status", "active").in("role", ["teacher", "school_admin"]);
-        if (membershipError) throw membershipError;
+        const context = await schoolRpc(supabase, "school_portal_context");
         if (!active) return;
-        const ids = (data || []).map((m) => m.school_id);
-        let schools = [];
-        if (ids.length) {
-          const result = await supabase.from("schools").select("id,name").in("id", ids);
-          if (result.error) throw result.error;
-          schools = result.data || [];
-        }
-        if (!active) return;
-        setMemberships((data || []).map((m) => ({ ...m, name: schools.find((s) => s.id === m.school_id)?.name || "Sekolah" })));
+        const memberships = staffMemberships(context);
+        const ids = memberships.map((m) => m.school_id);
+        setMemberships(memberships.map((m) => ({ ...m, name: m.school_name })));
         if (ids.length) {
           schoolRef.current = ids[0];
           setSchoolId(ids[0]);
@@ -62,7 +63,7 @@ export default function TeacherPage() {
       finally { if (active) setLoading(false); }
     }
     void init();
-    return () => { active = false; };
+    return () => { active = false; schoolRef.current = ""; requestGeneration.current++; };
   }, [load, router]);
 
   useEffect(() => {
@@ -73,42 +74,44 @@ export default function TeacherPage() {
 
   async function changeSchool(id) {
     schoolRef.current = id;
-    setSchoolId(id); setEditing(null); setForm(emptyForm); setRanking(null); setError(""); setMessage(""); setLoading(true);
-    try { await load(id); } catch (err) { setError(err.message); }
-    finally { setLoading(false); }
+    setSchoolId(id); setConfirm(null); setEditing(null); setForm(emptyForm); setRanking(null); setError(""); setMessage(""); setLoading(true);
+    try { await load(id); } catch (err) { if (schoolRef.current === id) setError(err.message); }
+    finally { if (schoolRef.current === id) setLoading(false); }
   }
   async function save(event) {
     event.preventDefault();
-    if (busy) return;
+    if (!ready || operationLock.current) return;
+    operationLock.current = true;
     setBusy(true); setError(""); setMessage("");
     try {
       const payload = assignmentMutationPayload(form, schoolId, editing);
-      const { error: rpcError } = await supabase.rpc("save_school_assignment", payload);
-      if (rpcError) throw rpcError;
+      await schoolRpc(supabase, "save_school_assignment", payload);
       setEditing(null); setForm(emptyForm); setMessage("Draft tersimpan. Terbitkan agar tersedia untuk siswa.");
       await load(schoolId);
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
+    } catch (err) { setReady(false); setError(err.message); } finally { operationLock.current = false; setBusy(false); }
   }
   async function changeStatus() {
-    if (!confirm || busy) return;
+    if (!confirm || !ready || operationLock.current) return;
+    operationLock.current = true;
     const action = confirm;
     setBusy(true); setError(""); setMessage("");
     try {
-      const { error: rpcError } = await supabase.rpc("set_school_assignment_status", { p_assignment_id: action.item.id, p_status: action.status });
-      if (rpcError) throw rpcError;
+      await schoolRpc(supabase, "set_school_assignment_status", { p_assignment_id: action.item.id, p_status: action.status }, { schoolId });
       setConfirm(null); setRanking(null); setMessage(action.status === "published" ? "Tugas diterbitkan untuk siswa aktif dalam kelas." : "Tugas dibatalkan. Histori ujian tetap disimpan.");
       await load(schoolId);
-    } catch (err) { setConfirm(null); setError(err.message); } finally { setBusy(false); }
+    } catch (err) { setConfirm(null); setReady(false); setError(err.message); } finally { operationLock.current = false; setBusy(false); }
   }
   async function openRanking(item) {
+    if (!ready || operationLock.current) return;
+    operationLock.current = true;
     setBusy(true); setError(""); setRanking(null);
     try {
-      const { data, error: rpcError } = await supabase.rpc("get_school_assignment_ranking", { p_assignment_id: item.id });
-      if (rpcError) throw rpcError;
+      const data = await schoolRpc(supabase, "get_school_assignment_ranking", { p_assignment_id: item.id }, { schoolId });
       setRanking({ title: item.title, rows: data || [] });
-    } catch (err) { setError(err.message); } finally { setBusy(false); }
+    } catch (err) { setReady(false); setError(err.message); } finally { operationLock.current = false; setBusy(false); }
   }
   function edit(item) {
+    if (!ready || busy || loading) return;
     setEditing(item); setMessage("");
     setForm({ ...item, opens_at: localDate(item.opens_at), due_at: localDate(item.due_at) });
     document.getElementById("assignment-title")?.focus();
@@ -119,11 +122,13 @@ export default function TeacherPage() {
     <nav className="flex flex-wrap justify-between gap-4 border-b border-slate-300 pb-5 text-sm font-bold"><Link href="/school">← Ruang sekolah</Link><Link href="/school/manage">Kelola sekolah</Link><Link href="/school/messages">Pesan sekolah</Link><Link href="/student">Ruang siswa →</Link></nav>
     <p className="mt-4 text-sm text-slate-600">Akses guru legacy masih tingkat sekolah, belum per kelas/mapel. Undangan atau promosi guru baru tidak tersedia.</p>
     <header className="flex flex-wrap items-end justify-between gap-6 py-9"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Workspace guru & admin</p><h1 className="mt-3 text-4xl font-black tracking-tight">Susun tugas. Pantau hasil.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">Paket soal dikunci saat terbit. Semua penerima mengerjakan versi soal yang sama, dengan satu kesempatan per siswa.</p></div>{memberships.length > 0 && <label className="text-sm font-bold">Sekolah<select className={inputClass} value={schoolId} disabled={busy || loading} onChange={(e) => changeSchool(e.target.value)}>{memberships.map((m) => <option key={m.school_id} value={m.school_id}>{m.name}</option>)}</select></label>}</header>
+    <Link href="/school/agenda" className="mb-5 inline-block font-bold text-blue-800 underline">Agenda sekolah · satu paket SET</Link>
+    {!loading && !ready && <p role="status" className="mb-5">Tugas belum siap. Capability sekolah wajib terverifikasi; muat ulang untuk memeriksa kembali. Form dinonaktifkan.</p>}
     {error && <p role="alert" className="mb-5 border-l-2 border-amber-600 bg-amber-50 p-4 text-sm">{error}</p>}
     {message && <p role="status" className="mb-5 border-l-2 border-emerald-600 bg-emerald-50 p-4 text-sm">{message}</p>}
     {loading ? <p role="status">Memuat ruang guru…</p> : !memberships.length ? <section className="border border-slate-300 bg-white p-7"><h2 className="text-xl font-bold">Akses guru atau admin diperlukan</h2><p className="mt-3 text-sm text-slate-600">Hubungi administrator sekolah untuk memperoleh keanggotaan aktif.</p></section> : <div className="grid items-start gap-8 lg:grid-cols-[0.8fr_1.2fr]">
       <section className="border border-slate-300 bg-white p-6"><h2 className="text-xl font-black">{editing ? "Edit draft" : "Tugas baru"}</h2><p className="mt-2 text-xs leading-6 text-slate-500">Tersedia untuk kelas 6 dan 9 sesuai dukungan engine saat ini. Buat kelas dan keanggotaan siswa melalui administrasi sekolah sebelum menerbitkan tugas.</p>
-        <form onSubmit={save} className="mt-5"><fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
+        <form onSubmit={save} className="mt-5"><fieldset disabled={busy || loading || !ready} className="space-y-4 disabled:opacity-60">
           <label className="block text-sm font-bold">Judul<input id="assignment-title" required minLength={3} maxLength={160} className={inputClass} value={form.title} onChange={(e) => field("title", e.target.value)} /></label>
           <label className="block text-sm font-bold">Kelas<select required className={inputClass} value={form.class_id} onChange={(e) => field("class_id", e.target.value)}><option value="">Pilih kelas</option>{workspace.classes.filter((c) => [6, 9].includes(c.grade)).map((c) => <option key={c.id} value={c.id}>{c.name} · {c.academic_year || c.grade}</option>)}</select></label>
           <label className="block text-sm font-bold">Mata pelajaran<input required maxLength={100} className={inputClass} value={form.subject_name} onChange={(e) => field("subject_name", e.target.value)} /><span className="mt-1 block text-xs font-normal text-slate-500">Gunakan nama persis seperti pada bank soal terbit.</span></label>

@@ -35,7 +35,7 @@ const levels = [
 const plans = [
   {
     name: "Siswa Mandiri",
-    href: "/register",
+    href: "/register?method=independent",
     action: "Daftar Sekarang",
     price: "Rp49.000",
     suffix: "sekali bayar sampai lulus",
@@ -49,7 +49,7 @@ const plans = [
   },
   {
     name: "Sekolah",
-    href: "/register",
+    href: "/school/register",
     action: "Daftar Sekarang",
     price: "Rp25.000",
     suffix: "per siswa",

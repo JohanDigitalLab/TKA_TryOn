@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
+import { studentHistoryRequest, normalizeStudentHistory } from "@/lib/student/rpc-contract.mjs";
 import PortalHeader from "@/components/portal-header";
 
 function subscribeToClock(onChange) {
@@ -75,10 +76,11 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
           return;
         }
 
+        const historyRequest = studentHistoryRequest({ dashboard: true });
         const [{ data: profileData, error: profileError }, { data: attemptsData, error: attemptsError }, { data: historyData, error: historyError }] = await Promise.all([
           supabase.from("profiles").select(subscriptionMode ? "full_name, education_level, profile_completed, has_tried_tryout, has_tried_exercise" : "full_name, education_level, profile_completed").eq("id", userData.user.id).maybeSingle(),
           supabase.rpc("get_student_active_attempts"),
-          supabase.rpc("get_student_dashboard_history", { limit: 5 }),
+          supabase.rpc(historyRequest.name, historyRequest.args),
         ]);
         if (profileError) throw profileError;
         if (attemptsError) throw attemptsError;
@@ -86,7 +88,7 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
         if (!mounted) return;
         setProfile(profileData || { full_name: userData.user.email?.split("@")[0] || "Siswa" });
         setActiveAttempts(Array.isArray(attemptsData) ? attemptsData : []);
-        setHistory(Array.isArray(historyData) ? historyData : []);
+        setHistory(normalizeStudentHistory(historyData));
       } catch (err) {
         if (mounted) setError(err.message || "Dashboard belum berhasil dimuat.");
       } finally {
@@ -109,12 +111,10 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
     setHistoryLoading(true);
     setHistoryError("");
     try {
-      const { data, error: requestError } = await supabase.rpc("get_student_dashboard_history", {
-        limit: nextShowAll ? 0 : 5,
-      });
+      const request = studentHistoryRequest({ dashboard: true, limit: nextShowAll ? 0 : 5 });
+      const { data, error: requestError } = await supabase.rpc(request.name, request.args);
       if (requestError) throw requestError;
-      if (!Array.isArray(data)) throw new Error("Respons riwayat server tidak valid.");
-      setHistory(data);
+      setHistory(normalizeStudentHistory(data));
       setShowAllHistory(nextShowAll);
     } catch (err) {
       setHistoryError(err.message || "Riwayat belum berhasil dimuat.");
@@ -156,6 +156,7 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
             </div>}
          </section>
 
+        <nav aria-label="Aktivitas sekolah" className="mb-6 flex flex-wrap gap-4 font-bold text-blue-800"><Link href="/student/assignments">Tugas sekolah</Link><Link href="/student/agenda">Agenda sekolah SET</Link></nav>
         <section id="layanan" className="mb-10 scroll-mt-28">
           <div className="mb-5">
             <h2 id="label-layanan" className="text-2xl font-extrabold tracking-tight text-slate-950">{subscriptionMode ? "Coba dulu sebelum memutuskan" : "Pilih aktifitas kamu"}</h2>
@@ -200,7 +201,7 @@ export default function StudentPage({ actionContent, subscriptionMode = false } 
                   <tr key={attempt.attempt_id} className="text-slate-700">
                     <td className="px-5 py-4">{index + 1}</td>
                     <td className="whitespace-nowrap px-5 py-4">{formatAttemptDate(attempt.started_at)}</td>
-                    <td className="px-5 py-4">{attempt.attempt_type === "TRYOUT" ? "Simulasi TKA" : "Latihan Soal"}</td>
+                    <td className="px-5 py-4">{attempt.attempt_type === "TRYOUT" ? "Simulasi TKA" : attempt.attempt_type === "EXERCISE" ? "Latihan Soal" : attempt.attempt_type === "ASSIGNMENT" ? "Tugas Sekolah" : "Sesi Belajar"}</td>
                     <td className="px-5 py-4">{attempt.subject_name || "-"}</td>
                     <td className="px-5 py-4 font-bold">{attempt.score ?? "-"}</td>
                     <td className="px-5 py-4 text-right"><Link href={`/student/review/${encodeURIComponent(attempt.attempt_id)}`} aria-label={`Review ${attempt.subject_name || "simulasi"}`} className="inline-flex rounded-lg bg-blue-700 px-4 py-2 font-bold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">Review</Link></td>

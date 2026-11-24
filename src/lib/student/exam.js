@@ -87,13 +87,18 @@ export function getCategoryOptions(items = []) {
   const values = [];
 
   items.forEach((item) => {
-    if (item.category_label) values.push(item.category_label);
-    if (item.category_options && Array.isArray(item.category_options)) {
+    // Active TKA/agenda responses supply canonical slash-separated labels;
+    // older responses may supply only the derived options array.
+    if (typeof item.category_label === "string" && item.category_label.includes("/")) {
+      values.push(...item.category_label.split(/\s*\/\s*/));
+    } else if (Array.isArray(item.category_options) && item.category_options.length) {
       values.push(...item.category_options);
+    } else if (typeof item.category_label === "string") {
+      values.push(item.category_label);
     }
   });
 
-  return [...new Set(values.filter(Boolean))];
+  return [...new Set(values.filter((value) => typeof value === "string").map((value) => value.trim()).filter(Boolean))];
 }
 
 export function getSimulationResults() {

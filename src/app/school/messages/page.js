@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Empty, Panel, PortalPage, SchoolSelect, rpc } from "@/components/school/portal";
 import { MessageComposer, Messages, NewTicket, Tickets } from "@/components/school/communications";
-import { supabase } from "@/lib/supabase";
 import { schoolError } from "@/lib/school/onboarding.mjs";
 
 function Inbox({ portal, membership }) {
@@ -21,10 +20,9 @@ function Inbox({ portal, membership }) {
         let members;
         if(admin) members = (await rpc("school_admin_workspace",{ p_school_id:schoolId })).members.filter(m => m.status === "active");
         else {
-          // Existing RLS may expose only own membership; no directory bypass.
-          const { data, error } = await supabase.from("school_memberships").select("user_id,role").eq("school_id",schoolId).eq("status","active").eq("role","school_admin");
-          if(error) throw error;
-          members = data || [];
+          // No SELECT grant for memberships; ask for a contact ID and let the
+          // authenticated communication RPC verify the scoped recipient.
+          members = [];
         }
         if(alive) { setData(result); setRecipients(members); }
       } catch(e) { if(alive) setError(schoolError(e)); }

@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
+import { studentAttemptRequest, studentAttemptQuestions, attemptRemainingSeconds } from "@/lib/student/rpc-contract.mjs";
+import { schoolRpc } from "@/lib/school/rpc-contract.mjs";
+import { requireAdvanced } from "@/lib/school/advanced.mjs";
 
 // =====================================================
 // HELPER
@@ -20,6 +23,7 @@ function ChallengeContent() {
   const searchParams = useSearchParams();
   const resumeAttemptId = searchParams.get("attemptId");
   const assignmentId = searchParams.get("assignmentId");
+  const scheduledId = searchParams.get("scheduledId");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +60,7 @@ function ChallengeContent() {
   });
 
   const startedRef = useRef(false);
+  const timerAnchor = useRef(null);
   const finishingRef = useRef(false);
   const answersRef = useRef({});
   const pendingSavesRef = useRef(new Map());
@@ -76,10 +81,10 @@ function ChallengeContent() {
     ).length;
   }, [questions, answers]);
 
-  const config = getExamConfig();
+  const config = scheduledId !== null ? {} : getExamConfig();
   const subjects = normalizeSubjects(config);
   const subjectIndex = Number(config.currentSubjectIndex || 0);
-  const hasNextSubject = !assignmentId && !resumeAttemptId && subjectIndex < subjects.length - 1;
+  const hasNextSubject = config.source !== "server" && scheduledId === null && !assignmentId && !resumeAttemptId && subjectIndex < subjects.length - 1;
 
   // =====================================================
   // MEMULAI / MEMULIHKAN SESI MATA PELAJARAN
@@ -104,16 +109,24 @@ function ChallengeContent() {
         );
       }
 
-      const currentConfig = getExamConfig();
+      const currentConfig = scheduledId !== null ? {} : getExamConfig();
       const subjectList = normalizeSubjects(currentConfig);
       const index = Number(currentConfig.currentSubjectIndex || 0);
       const subject = subjectOverride || subjectList[index] || subjectList[0] || "Matematika";
       const grade = normalizeGrade(currentConfig);
       const duration = Math.min(240, Math.max(1, Number(currentConfig.duration) || 60));
-      const questionCount = Math.min(100, Math.max(1, Number(currentConfig.questionCount || currentConfig.totalQuestions) || 20));
-      const simulationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentConfig.simulationId || "") ? currentConfig.simulationId : crypto.randomUUID();
+      // Local grouping only; never generate or reinterpret a browser UUID as a TKA code.
+      const simulationId = currentConfig.source === "server" ? null : currentConfig.simulationId || null;
 
-      if (!resumeAttemptId && !assignmentId) {
+      const request = studentAttemptRequest({ assignmentId, scheduledId, resumeAttemptId, config: currentConfig });
+      if (scheduledId !== null) {
+        const context = await schoolRpc(supabase, "school_portal_context");
+        const memberships = context.memberships.filter(m => m.role === "student");
+        if (memberships.length !== 1) throw new Error("Membership siswa ambigu atau tidak tersedia. Buka kembali agenda sekolah.");
+        await requireAdvanced(supabase, memberships[0].school_id);
+      }
+
+      if (!resumeAttemptId && !assignmentId && scheduledId === null) {
         currentConfig.simulationId = simulationId;
         currentConfig.currentSubjectIndex = index;
         sessionStorage.setItem("tryon-exam-config", JSON.stringify(currentConfig));
@@ -122,26 +135,13 @@ function ChallengeContent() {
       setExamInfo({
         grade,
         subject,
-        subjectIndex: assignmentId ? 0 : index,
-        totalSubjects: assignmentId ? 1 : subjectList.length || 1,
+        subjectIndex: assignmentId || scheduledId !== null ? 0 : index,
+        totalSubjects: assignmentId || scheduledId !== null ? 1 : subjectList.length || 1,
         simulationId,
         resumed: Boolean(resumeAttemptId),
       });
 
-      const { data, error: rpcError } = await supabase.rpc(
-        assignmentId ? "start_school_assignment" : resumeAttemptId ? "resume_exam_attempt" : "start_learning_attempt",
-        assignmentId ? { p_assignment_id: assignmentId } : resumeAttemptId
-          ? { p_attempt_id: resumeAttemptId }
-          : {
-              p_package_id: simulationId,
-              p_mode: currentConfig.activityType === "latihan" ? "mission" : "simulation",
-              p_subjects: subjectList.length ? subjectList : [subject],
-              p_grade: grade,
-              p_subject_name: subject,
-              p_question_count: questionCount,
-              p_duration_minutes: duration,
-            }
-      );
+      const { data, error: rpcError } = await supabase.rpc(request.name, request.args);
 
       if (rpcError) throw rpcError;
 
@@ -162,42 +162,21 @@ function ChallengeContent() {
         resumed: Boolean(resumeAttemptId || data.resumed),
       }));
 
-      const effectiveSubject = data.subject_name || data.subject || subject;
-      const mapped = data.questions.map((item, index) => ({
+      const mapped = studentAttemptQuestions(data).map((item) => ({
         ...item,
-        number: item.question_order || index + 1,
-        subject: effectiveSubject,
-        type: normalizeType(item.question_type),
-        question: item.question_text,
-        stimulus:
-          item.stimulus?.content_text ||
-          item.stimulus?.title ||
-          "",
-        options: (item.options || []).map((option) => ({
-          code: option.option_code,
-          text: option.option_text,
-          is_correct: option.is_correct,
-          explanation: option.explanation,
-        })),
-        category_items: (item.category_items || []).map((category) => ({
-          item_number: category.item_number,
-          item_text: category.item_text,
-          category_label: category.category_label,
-          category_options: category.category_options,
-          correct_category: category.correct_category,
-          explanation: category.explanation,
-        })),
+        type: normalizeType(item.type),
       }));
 
+      // Agenda must not fall back to a browser duration or a different session.
+      if (scheduledId !== null && (data.schedule_id !== scheduledId || data.remaining_seconds == null || !Number.isFinite(Date.parse(data.deadline_at)))) {
+        throw new Error("Identitas atau waktu agenda dari server tidak valid. Buka kembali agenda; jangan mulai sesi mandiri.");
+      }
+      // Timer menggunakan sisa waktu dari server.
+      const serverRemaining = attemptRemainingSeconds(data, duration);
       setAttemptId(data.attempt_id);
       setQuestions(mapped);
-
-      // Timer menggunakan sisa waktu dari server.
-      setRemaining(
-        Number.isFinite(Number(data.remaining_seconds))
-          ? Math.max(0, Number(data.remaining_seconds))
-          : Number(data.duration_minutes || duration) * 60
-      );
+      timerAnchor.current = serverRemaining === null ? null : { at: performance.now(), seconds: serverRemaining };
+      setRemaining(serverRemaining);
 
       // Jawaban kosong untuk semua soal sebagai nilai awal.
       const initialAnswers = {};
@@ -222,7 +201,7 @@ function ChallengeContent() {
 
       // Jika waktu sudah habis ketika siswa membuka kembali halaman,
       // sesi langsung diproses sebagai ujian yang telah berakhir.
-      if (Number(data.remaining_seconds) <= 0) {
+      if (data.remaining_seconds != null && Number(data.remaining_seconds) <= 0) {
         setRemaining(0);
       }
     } catch (err) {
@@ -231,7 +210,7 @@ function ChallengeContent() {
     } finally {
       setLoading(false);
     }
-  }, [resumeAttemptId, assignmentId]);
+  }, [resumeAttemptId, assignmentId, scheduledId]);
 
   useEffect(() => {
     const timer = setTimeout(() => startExam(), 0);
@@ -400,7 +379,7 @@ function ChallengeContent() {
   const saveSessionResult = useCallback(
     (data, reviewData) => {
       // Hasil tugas tersimpan di database; jangan menimpa cache simulasi mandiri.
-      if (assignmentId) return;
+      if (assignmentId || scheduledId !== null || resumeAttemptId) return;
       const currentConfig = getExamConfig();
       const currentSubjects = normalizeSubjects(currentConfig);
       const index = Number(currentConfig.currentSubjectIndex || 0);
@@ -444,7 +423,7 @@ function ChallengeContent() {
         JSON.stringify(data)
       );
     },
-    [answeredCount, attemptId, assignmentId, examInfo, questions.length]
+    [answeredCount, attemptId, assignmentId, scheduledId, resumeAttemptId, examInfo, questions.length]
   );
 
   // =====================================================
@@ -498,7 +477,7 @@ function ChallengeContent() {
   // =====================================================
 
   const nextSubject = () => {
-    const currentConfig = getExamConfig();
+    const currentConfig = scheduledId !== null ? {} : getExamConfig();
     const subjectList = normalizeSubjects(currentConfig);
 
     const nextIndex =
@@ -593,12 +572,13 @@ function ChallengeContent() {
   // TIMER
   // =====================================================
 
-  const isTimeExpired = remaining <= 0;
+  const isUntimed = remaining === null;
+  const isTimeExpired = !isUntimed && remaining <= 0;
   const timerWarning = remaining > 0 && remaining <= 300;
   const timerCritical = remaining > 0 && remaining <= 60;
 
   useEffect(() => {
-    if (loading || finished || !attemptId) return;
+    if (loading || finished || !attemptId || isUntimed) return;
 
     if (isTimeExpired) {
       const timer = setTimeout(() => finishExam(), 0);
@@ -612,12 +592,13 @@ function ChallengeContent() {
           return 0;
         }
 
-        return previous - 1;
+        const anchor = timerAnchor.current;
+        return anchor ? Math.max(0, Math.ceil(anchor.seconds - (performance.now() - anchor.at) / 1000)) : previous - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [loading, finished, attemptId, isTimeExpired, finishExam]);
+  }, [loading, finished, attemptId, isUntimed, isTimeExpired, finishExam]);
 
   // =====================================================
   // TANDA RAGU-RAGU
@@ -966,10 +947,6 @@ function ChallengeContent() {
     answers[question.question_id]
   );
 
-  const categoryOptions = getCategoryOptions(
-    question.category_items
-  );
-
   return (
     <main className="min-h-screen bg-slate-100 text-slate-800">
       {navigationWarning && (
@@ -1029,7 +1006,7 @@ function ChallengeContent() {
                     : "text-blue-700"
               }`}
             >
-              {formatTime(remaining)}
+              {isUntimed ? "Tanpa batas waktu" : formatTime(remaining)}
             </p>
             {timerCritical && (
               <p
@@ -1235,7 +1212,7 @@ function ChallengeContent() {
             <div className="mt-6 space-y-4">
               <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
                 Tentukan kategori yang tepat untuk setiap pernyataan.
-                Pilih BENAR atau SALAH pada masing-masing pernyataan.
+                Pilih salah satu kategori yang tersedia pada masing-masing pernyataan.
               </div>
 
               {question.category_items.length === 0 && (
@@ -1259,7 +1236,7 @@ function ChallengeContent() {
                     </p>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      {["BENAR", "SALAH"].map((category) => {
+                      {getCategoryOptions([item]).map((category) => {
                         const active = selectedCategory === category;
 
                         return (
@@ -1485,6 +1462,11 @@ function ChallengeContent() {
   );
 }
 
+function ChallengeSession() {
+  const params = useSearchParams();
+  return <ChallengeContent key={params.toString()} />;
+}
+
 export default function ChallengePage() {
   return (
     <Suspense
@@ -1494,7 +1476,7 @@ export default function ChallengePage() {
         </main>
       }
     >
-      <ChallengeContent />
+      <ChallengeSession />
     </Suspense>
   );
 }

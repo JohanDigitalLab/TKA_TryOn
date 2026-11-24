@@ -7,6 +7,8 @@ import PortalHeader from "@/components/portal-header";
 import Link from "next/link";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
 import { buttonClass, Panel } from "@/components/school/portal";
+import SchoolOverview from "@/components/school/overview";
+import { assertSchoolMembership, schoolRpc } from "@/lib/school/rpc-contract.mjs";
 
 export default function SchoolPage() {
   const router = useRouter();
@@ -21,7 +23,7 @@ export default function SchoolPage() {
   const [topics, setTopics] = useState([]);
   const [activeSubject, setActiveSubject] = useState("");
   const [studentPage, setStudentPage] = useState(1);
-  const [selected, setSelected] = useState(null);
+  const [context, setContext] = useState(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -43,40 +45,20 @@ export default function SchoolPage() {
           .eq("id", userData.user.id)
           .maybeSingle();
         if (profileError) throw profileError;
-        if (profileData?.account_type !== "SCHOOL" || !profileData?.school_id) {
-          router.replace("/home");
-          return;
-        }
         if (!mounted) return;
 
         setUser(userData.user);
         setProfile(profileData);
-
-        const { data, error: requestError } = await supabase.rpc(
-          "get_school_students",
-        );
-        if (requestError) {
-          if (requestError.code === "PGRST202")
-            throw new Error(
-              "RPC dashboard sekolah belum tersedia. Jalankan migrasi migration-school-dashboard.sql di Supabase SQL Editor.",
-            );
-          throw requestError;
-        }
-        if (!data?.school || !Array.isArray(data.students))
-          throw new Error("Respons dashboard sekolah tidak valid.");
-
-        const { data: topicData, error: topicError } = await supabase.rpc(
-          "get_school_subject_topics",
-        );
-        if (topicError) {
-          if (topicError.code === "PGRST202")
-            throw new Error(
-              "RPC kompetensi sekolah belum tersedia. Jalankan migration-school-subject-topics.sql di Supabase SQL Editor.",
-            );
-          throw topicError;
-        }
-        if (!Array.isArray(topicData))
-          throw new Error("Respons kompetensi sekolah tidak valid.");
+        const trustedContext = await schoolRpc(supabase, "school_portal_context");
+        if (!mounted) return;
+        setContext(trustedContext);
+        // Managed profiles are legacy read-only, never the class authority.
+        if (profileData?.account_type !== "SCHOOL" || !profileData.school_id) return;
+        assertSchoolMembership(trustedContext, profileData.school_id);
+        const data = await schoolRpc(supabase, "get_school_students");
+        if (data.school.id !== profileData.school_id) throw new Error("SCHOOL_SCOPE_MISMATCH: Sekolah respons tidak cocok dengan pemetaan akun. Hubungi platform.");
+        if (mounted) { setSchool(data.school); setStudents(data.students); }
+        const topicData = await schoolRpc(supabase, "get_school_subject_topics");
 
         const subjectIds = [
           ...new Set(
@@ -132,12 +114,9 @@ export default function SchoolPage() {
     );
   }
 
-  if (!profile || profile.account_type !== "SCHOOL" || !profile.school_id) {
-    return null;
-  }
 
   const displayName =
-    profile.full_name || user?.email?.split("@")[0] || "Sekolah";
+    profile?.full_name || user?.email?.split("@")[0] || "Sekolah";
 
   const totalStudentPages = Math.max(1, Math.ceil(students.length / pageSize));
   const visibleStudents = students.slice(
@@ -189,6 +168,8 @@ export default function SchoolPage() {
             </p>
           </section>
 
+          {context && <SchoolOverview context={context} />}
+          {!context && <Panel title="Konteks sekolah belum tersedia"><p>Pastikan email terverifikasi dan akun aktif, lalu masuk kembali atau hubungi koordinator/platform untuk memeriksa membership. Akses tidak diberikan dari profil saja.</p><Link className="text-blue-800 underline" href="/school/register">Periksa pengajuan sekolah</Link></Panel>}
           <section id="action" className="mb-10 scroll-mt-28">
             <div className="flex flex-wrap gap-3 mt-4">
               {school?.id && (
@@ -200,15 +181,10 @@ export default function SchoolPage() {
                 </Link>
               )}
               <Link className={buttonClass} href="/teacher">
-                Buat Tugas Sekolah
+                Tugas guru (capability gated)
               </Link>
-              <button
-                type="button"
-                className={buttonClass}
-                onClick={() => setSelected({ action: "schedule" })}
-              >
-                Jadwalkan Try Out
-              </button>
+              <Link className={buttonClass} href="/school/agenda">Agenda sekolah SET</Link>
+              <p className="text-sm text-slate-600">Tugas dan agenda hanya aktif setelah capability sekolah terverifikasi server. Review lintas siswa dan reset sandi tidak tersedia di sini.</p>
             </div>
           </section>
 
@@ -218,9 +194,10 @@ export default function SchoolPage() {
                 id="label-riwayat"
                 className="text-2xl font-extrabold tracking-tight text-slate-950"
               >
-                Daftar Siswa
+                Daftar Siswa — Profil Terkelola Legacy (Baca-saja)
               </h2>
             </div>
+            <p className="mb-4 text-sm text-slate-600">Daftar ini bukan membership kelas. Penempatan kelas dan akses siswa dikelola pada Kelola sekolah. Profil yang belum dipetakan tidak diberi hak otomatis.</p>
             <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
               <table id="student-list" className="min-w-full text-left text-sm">
                 <thead className="border-y border-slate-200 bg-slate-50 text-slate-500">
@@ -252,20 +229,7 @@ export default function SchoolPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
-                            {["Profil", "Review", "Reset Password"].map(
-                              (action) => (
-                                <button
-                                  key={action}
-                                  type="button"
-                                  className="whitespace-nowrap rounded-lg border border-blue-200 px-3 py-2 font-bold text-blue-700 hover:bg-blue-50"
-                                  onClick={() =>
-                                    setSelected({ student, action })
-                                  }
-                                >
-                                  {action}
-                                </button>
-                              ),
-                            )}
+                            <details className="max-w-sm"><summary className="cursor-pointer font-bold text-blue-700">Detail profil baca-saja</summary><dl className="space-y-2 py-3"><dt className="font-bold">Nama</dt><dd>{student.full_name || "—"}</dd><dt className="font-bold">NISN</dt><dd>{student.nisn || "—"}</dd><dt className="font-bold">Sekolah profil legacy</dt><dd>{school?.name || "—"}</dd></dl><p className="text-xs text-slate-600">Membership dan kelas tidak disimpulkan dari afiliasi profil ini.</p></details>
                           </div>
                         </td>
                       </tr>
@@ -276,7 +240,7 @@ export default function SchoolPage() {
                         colSpan="4"
                         className="px-4 py-8 text-center text-slate-500"
                       >
-                        Belum ada siswa yang dikelola sekolah.
+                        {school ? "Belum ada profil siswa terkelola pada sekolah ini." : "Daftar legacy belum tersedia: diperlukan akun SCHOOL dan membership admin aktif pada sekolah yang sama. Gunakan manajemen membership untuk daftar siswa kelas."}
                       </td>
                     </tr>
                   )}

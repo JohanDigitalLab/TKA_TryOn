@@ -6,7 +6,7 @@ import StudentPage from "../student/page";
 const plans = [
   {
     name: "Siswa Mandiri",
-    href: "/register",
+    href: "/register?method=independent",
     action: "Aktifkan Sekarang",
     price: "Rp49.000",
     suffix: "sekali bayar sampai lulus",
@@ -20,7 +20,7 @@ const plans = [
   },
   {
     name: "Sekolah",
-    href: "/register",
+    href: "/school/register",
     action: "Aktifkan Sekarang",
     price: "Rp25.000",
     suffix: "per siswa",
@@ -50,6 +50,7 @@ export function SubscriptionPlans() {
               <Link href={plan.href} className={`mt-8 block rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}>{plan.action}</Link>
             </article>
           ))}
+          <p className="text-sm text-slate-600 md:col-span-2">Siswa yang mendapat undangan sekolah dapat <Link href="/register?method=school" className="font-bold text-blue-700 underline">daftar sebagai siswa sekolah</Link>.</p>
         </div>
   );
 }

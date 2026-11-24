@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import LearningAccess from "@/components/learning-access";
+import { studentAttemptRequest } from "@/lib/student/rpc-contract.mjs";
 
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
@@ -94,6 +95,15 @@ function MissionsForm({ params }) {
       status: "in_progress",
       savedAt: new Date().toISOString(),
     };
+
+    // Validate before overwriting existing config/results. The legacy form does
+    // not yet carry the server-owned subject/configuration identifiers.
+    try {
+      studentAttemptRequest({ config: configuration });
+    } catch (error) {
+      setMessage(error.message);
+      return;
+    }
 
     sessionStorage.setItem(
       "tryon-exam-config",
