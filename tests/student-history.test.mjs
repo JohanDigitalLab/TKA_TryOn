@@ -38,14 +38,15 @@ test('staging SQL regression includes null, whitespace, CSV, ownership and legac
     'insufficient_privilege', 'ROLLBACK;']) assert.ok(sql.includes(fragment), fragment);
 });
 
-test('dashboard and relevant copy use renamed RPC without changing limits', async () => {
-  for (const path of ['src/app/student/page.js', 'src/app/student/page copy.js']) {
-    const source = await read(path);
-    assert.match(source, /supabase\.rpc\("get_student_history", \{ p_limit: 5 \}\)/);
-    assert.match(source, /supabase\.rpc\(\s*"get_student_history",\s*\{\s*p_limit: nextShowAll \? 0 : 5,/);
-    assert.equal((source.match(/"get_student_history"/g) || []).length, 2);
-    assert.doesNotMatch(source, /get_student_dashboard_history/);
-  }
+test('dashboard memakai RPC riwayat terbaru tanpa mengubah batas', async () => {
+  // Salinan lama 'src/app/student/page copy.js' sudah dihapus; hanya halaman aktif diperiksa.
+  const source = await read('src/app/student/page.js');
+  assert.match(source, /supabase\.rpc\("get_student_history", \{ p_limit: 5 \}\)/);
+  assert.match(source, /supabase\.rpc\("get_student_history", \{ p_limit: 0 \}\)/);
+  assert.match(source, /supabase\.rpc\(\s*"get_student_history",\s*\{\s*p_limit: nextShowAll \? 0 : 5,/);
+  // Dua panggilan awal (5 terakhir + semua untuk badge) ditambah toggle riwayat.
+  assert.equal((source.match(/"get_student_history"/g) || []).length, 3);
+  assert.doesNotMatch(source, /get_student_dashboard_history/);
 });
 
 test('rename uses actual historical signature and preserves implementation/default/ACL', async () => {

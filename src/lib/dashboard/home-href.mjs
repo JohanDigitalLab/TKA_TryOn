@@ -2,11 +2,12 @@
  * Menentukan URL "Home" untuk breadcrumb berdasarkan profil pengguna.
  *
  * Aturan (berurutan):
- * 1. is_subscribed = false                  -> /subscription
- * 2. STUDENT (mandiri maupun managed)       -> /student
- * 3. SCHOOL dengan school_id                -> /school
- * 5. ADMIN                                  -> /admin
- * 6. lainnya / profil belum ada             -> /home
+ * 1. STUDENT (mandiri maupun managed,       -> /student
+ *    termasuk yang belum berlangganan;
+ *    paket langganan kini tampil di /student)
+ * 2. SCHOOL dengan school_id                -> /school
+ * 3. ADMIN                                  -> /admin
+ * 4. lainnya / profil belum ada             -> /home
  *
  * @param {{is_subscribed?: boolean|null, account_type?: string|null, is_managed?: boolean|null, school_id?: string|null}|null|undefined} profile
  * @param {string} [fallback="/home"] URL cadangan bila profil belum ada/tidak dikenali.
@@ -17,7 +18,6 @@
 export function getHomeHref(profile, fallback = "/home") {
   const safeFallback = fallback || "/home";
   if (!profile) return safeFallback;
-  if (profile.is_subscribed === false) return "/subscription";
 
   const accountType = String(profile.account_type || "").toUpperCase();
 

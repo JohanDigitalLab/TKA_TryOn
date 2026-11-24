@@ -49,9 +49,12 @@ test("jenjang hanya diminta bila belum dipilih dan tetap divalidasi", () => {
 
 test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async () => {
   const read = path => readFile(new URL(path, import.meta.url), "utf8");
-  const subscription = await read("../src/app/subscription/page.js");
+  // Paket langganan kini hidup di dashboard siswa (/student), bukan halaman terpisah.
+  const subscription = await read("../src/app/student/page.js");
   assert.ok(!subscription.includes('href: "/register"'));
   assert.ok(!subscription.includes('href: "/school/register"'));
+  assert.ok(!subscription.includes('href: "/subscription"'));
+  assert.ok(subscription.includes("export function SubscriptionPlans"));
   // Aktivasi paket memakai settings WhatsApp per paket.
   assert.ok(subscription.includes('messageSetting: "WA_MSG_SISWA"'));
   assert.ok(subscription.includes('messageSetting: "WA_MSG_SEKOLAH"'));
@@ -69,6 +72,10 @@ test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async
   assert.ok(register.includes("{level ? ("));
   assert.ok(register.includes("registrationEducationLevel(context, values.education_level)"));
   assert.ok(register.includes('registration_method: "independent"'));
+  // Beranda tidak lagi menautkan halaman /register; pendaftaran dibuka lewat modal.
   const home = await read("../src/app/page.js");
-  assert.ok(home.includes("studentRegistrationPath({ level: level.value })"));
+  assert.ok(!home.includes('href="/register"'));
+  assert.ok(home.includes("import RegisterModal"));
+  assert.ok(home.includes("<RegisterModal"));
+  assert.ok(home.includes("setRegisterLevel(path.level)"));
 });

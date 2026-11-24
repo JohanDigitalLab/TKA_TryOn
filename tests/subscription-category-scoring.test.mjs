@@ -4,27 +4,27 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("halaman /subscription tidak mengalihkan dirinya sendiri saat user belum berlangganan", async () => {
+test("dashboard /student menampilkan paket langganan tanpa redirect berputar", async () => {
   const page = await read("src/app/student/page.js");
 
-  // Blok pemeriksaan langganan harus memberi jalan keluar untuk subscriptionMode
-  // agar user is_subscribed=false tidak terjebak di layar "Mengalihkan…".
+  // Akun belum berlangganan tetap berada di /student: state unsubscribed
+  // diaktifkan, profile diisi, dan fungsi kembali sebelum RPC dashboard.
   const guard = page.slice(
     page.indexOf("if (profileData?.is_subscribed !== true) {"),
-    page.indexOf("router.replace(\"/subscription\")")
+    page.indexOf("get_student_active_attempts")
   );
 
-  assert.match(guard, /if \(subscriptionMode\) \{/);
+  assert.match(guard, /setUnsubscribed\(true\)/);
   assert.match(guard, /setProfile\(/);
   assert.match(guard, /return;/);
 
-  // Setelah subscriptionMode ditangani, jangan memanggil RPC dashboard
-  // yang menuntut langganan aktif.
-  const subscriptionPage = await read("src/app/subscription/page.js");
-  assert.match(
-    subscriptionPage,
-    /<StudentDashboard subscriptionMode actionContent=\{<SubscriptionPlans \/>\} \/>/
-  );
+  // Tidak boleh ada lagi redirect ke /subscription maupun prop subscriptionMode.
+  assert.doesNotMatch(page, /router\.replace\("\/subscription"\)/);
+  assert.doesNotMatch(page, /subscriptionMode/);
+
+  // Paket langganan dirender di dalam dashboard siswa.
+  assert.match(page, /<SubscriptionPlans \/>/);
+  assert.match(page, /export function SubscriptionPlans/);
 });
 
 test("skor PGK_KATEGORI membandingkan kategori tanpa peka kapitalisasi", async () => {

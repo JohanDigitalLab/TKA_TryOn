@@ -31,22 +31,22 @@ const paths = [
     tag: "KELAS 6",
     title: "SD / MI",
     text: "Mulai kenal pola soal TKA dengan cara yang fun.",
-    href: "/register?level=sd",
     color: "from-cyan-400 to-blue-500",
+    level: "sd",
   },
   {
     tag: "KELAS 9",
     title: "SMP / MTs",
     text: "Upgrade skill akademikmu sebelum next chapter.",
-    href: "/register?level=smp",
     color: "from-violet-400 to-fuchsia-500",
+    level: "smp",
   },
   {
     tag: "KELAS 12",
     title: "SMA / MA / SMK",
     text: "Bikin persiapanmu lebih terarah dan anti panik.",
-    href: "/register?level=sma",
     color: "from-orange-300 to-pink-500",
+    level: "sma",
   },
 ];
 
@@ -277,7 +277,7 @@ export default function HomeNewPage() {
             <button
               key={path.title}
               type="button"
-              onClick={() => setRegisterLevel(path.href.split("=")[1])}
+              onClick={() => setRegisterLevel(path.level)}
               className={`group rounded-3xl bg-gradient-to-br ${path.color} p-6 text-left text-[#10102a] transition hover:-translate-y-2 hover:rotate-1`}
             >
               <div className="flex items-start justify-between">

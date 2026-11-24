@@ -22,6 +22,91 @@ function subscribeToClock(onChange) {
 const getGreetingSnapshot = () => getTimeGreeting();
 const getServerGreetingSnapshot = () => "Selamat Datang";
 
+// Paket langganan; kini menyatu di dashboard siswa sebagai panel "Pilih paket berlangganan".
+const plans = [
+  {
+    name: "Siswa Mandiri",
+    action: "Aktifkan Sekarang",
+    messageSetting: "WA_MSG_SISWA",
+    price: "Rp49.000",
+    suffix: "sekali bayar sampai lulus",
+    tone: "blue",
+    features: [
+      "Simulasi TKA berbasis CBT",
+      "Latihan soal sesuai jenjang",
+      "Riwayat hasil dan review jawaban",
+      "Rekomendasi belajar dari hasil pengerjaan",
+    ],
+  },
+  {
+    name: "Sekolah",
+    action: "Aktifkan Sekarang",
+    messageSetting: "WA_MSG_SEKOLAH",
+    price: "Rp25.000",
+    suffix: "per siswa",
+    tone: "blue",
+    features: [
+      "Dashboard sekolah dan pengelolaan siswa",
+      "Jadwal try-out bersama",
+      "Penugasan latihan dengan batas waktu",
+      "Monitoring hasil belajar dan peringkat",
+    ],
+  },
+];
+
+function normalizeWhatsAppNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  // 08xx -> 628xx agar valid untuk tautan wa.me.
+  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  return digits;
+}
+
+async function openActivationWhatsApp(plan) {
+  // Ambil nomor dan pesan dari tabel settings lewat RPC get_setting.
+  const [{ data: numberData }, { data: messageData }] = await Promise.all([
+    supabase.rpc("get_setting", { p_name: "WA_NUMBER" }),
+    supabase.rpc("get_setting", { p_name: plan.messageSetting }),
+  ]);
+
+  const number = normalizeWhatsAppNumber(numberData);
+  const message = String(messageData || "").trim();
+
+  // Setting nomor WA belum tersedia; tidak melakukan apa-apa.
+  if (!number) return;
+
+  const url = `https://wa.me/${number}${
+    message ? `?text=${encodeURIComponent(message)}` : ""
+  }`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+export function SubscriptionPlans() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {plans.map((plan) => (
+        <article key={plan.name} className={`border p-6 sm:p-8 ${plan.tone === "blue" ? "rounded-xl border-slate-300 bg-white" : "rounded-xl border-slate-300 bg-slate-900 text-white"}`}>
+          <p className={`text-sm font-bold ${plan.tone === "blue" ? "text-blue-700" : "text-blue-200"}`}>{plan.name}</p>
+          <div className="mt-4 flex flex-wrap items-baseline gap-2">
+            <span className="text-4xl font-black">{plan.price}</span>
+            <span className={`text-sm ${plan.tone === "blue" ? "text-slate-500" : "text-slate-300"}`}>{plan.suffix}</span>
+          </div>
+          <ul className={`mt-7 space-y-3 text-sm ${plan.tone === "blue" ? "text-slate-600" : "text-slate-200"}`}>
+            {plan.features.map((feature) => <li key={feature} className="flex gap-3"><span className="font-bold text-blue-400" aria-hidden="true">✓</span><span>{feature}</span></li>)}
+          </ul>
+          <button
+            type="button"
+            onClick={() => openActivationWhatsApp(plan)}
+            className={`mt-8 block w-full rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}
+          >
+            {plan.action}
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 const services = [
   {
     code: "mapadventure",
@@ -130,11 +215,7 @@ function ActivityBadge({ attempts }) {
   );
 }
 
-export function StudentDashboard({
-  actionContent,
-  subscriptionMode = false,
-  requireIndependentStudent = false,
-} = {}) {
+export function StudentDashboard({ requireIndependentStudent = false } = {}) {
   const router = useRouter();
   const greeting = useSyncExternalStore(
     subscribeToClock,
@@ -152,6 +233,7 @@ export function StudentDashboard({
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [unsubscribed, setUnsubscribed] = useState(false);
   const [managedActionsVisible, setManagedActionsVisible] = useState(null);
 
   useEffect(() => {
@@ -174,9 +256,7 @@ export function StudentDashboard({
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select(
-            subscriptionMode
-              ? "account_type, is_managed, is_subscribed, full_name, education_level, profile_completed, has_tried_tryout, has_tried_exercise"
-              : "account_type, is_managed, is_subscribed, full_name, education_level, profile_completed",
+            "account_type, is_managed, is_subscribed, full_name, education_level, profile_completed",
           )
           .eq("id", userData.user.id)
           .maybeSingle();
@@ -193,19 +273,15 @@ export function StudentDashboard({
           return;
         }
         if (profileData?.is_subscribed !== true) {
-          if (subscriptionMode) {
-            // Halaman /subscription memang untuk user belum berlangganan.
-            // Jangan redirect ke dirinya sendiri; cukup tampilkan plan.
-            setProfile(
-              profileData || {
-                full_name: userData.user.email?.split("@")[0] || "Siswa",
-              },
-            );
-            return;
-          }
-          denied = true;
-          setRedirecting(true);
-          router.replace("/subscription");
+          // Akun yang belum berlangganan tetap berada di /student dan langsung
+          // melihat paket langganan, tanpa redirect berputar dan tanpa memanggil
+          // RPC dashboard yang menuntut langganan aktif.
+          setProfile(
+            profileData || {
+              full_name: userData.user.email?.split("@")[0] || "Siswa",
+            },
+          );
+          setUnsubscribed(true);
           return;
         }
 
@@ -242,7 +318,7 @@ export function StudentDashboard({
     return () => {
       mounted = false;
     };
-  }, [router, subscriptionMode, requireIndependentStudent]);
+  }, [router, requireIndependentStudent]);
 
   const initials = useMemo(() => {
     const name = profile?.full_name || "Siswa";
@@ -337,21 +413,33 @@ export function StudentDashboard({
               id="quote"
               className="mt-2 text-sm leading-6 text-slate-600 sm:text-base"
             >
-              {subscriptionMode
+              {unsubscribed
                 ? "Ayo berlangganan untuk bisa menggunakan semua fitur. Daftar satu sekolah, lebih murah dan lebih banyak fitur."
                 : "Lanjutkan latihan, kerjakan simulasi, dan pantau perkembangan belajarmu."}
             </p>
           </div>
         </section>
 
+        {unsubscribed ? (
+          <section id="langganan" className="mb-10 scroll-mt-28">
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950">
+              Pilih paket berlangganan
+            </h2>
+            <p className="mt-2 mb-5 text-sm text-slate-600">
+              Aktifkan paket untuk membuka seluruh simulasi, latihan, dan
+              monitoring hasil belajar.
+            </p>
+            <SubscriptionPlans />
+          </section>
+        ) : (
+        <>
         <ActivityBadge attempts={activityAttempts} />
 
-        {(actionContent ||
-          (profile?.is_managed !== true &&
+        {((profile?.is_managed !== true &&
             profile?.profile_completed !== true) ||
           (profile?.is_managed === true && managedActionsVisible !== false)) && (
           <section id="action" className="mb-10 scroll-mt-28">
-            {actionContent ?? (profile?.is_managed === true ? (
+            {profile?.is_managed === true ? (
             <StudentActionTables onVisibilityChange={handleManagedActionsVisibility} />
           ) : (
             <div className="mt-4">
@@ -373,7 +461,7 @@ export function StudentDashboard({
                 </span>
               </Link>
             </div>
-            ))}
+            )}
           </section>
         )}
 
@@ -383,20 +471,11 @@ export function StudentDashboard({
               id="label-layanan"
               className="text-2xl font-extrabold tracking-tight text-slate-950"
             >
-              {subscriptionMode
-                ? "Coba dulu sebelum memutuskan"
-                : "Pilih aktifitas kamu"}
+              Pilih aktifitas kamu
             </h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {services.map((service) => {
-              const disabled =
-                subscriptionMode &&
-                ((service.code === "tryout" &&
-                  profile?.has_tried_tryout === true) ||
-                  (service.code === "exercise" &&
-                    profile?.has_tried_exercise === true));
-              return (
+            {services.map((service) => (
                 <article
                   key={service.code}
                   className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:-translate-y-2 hover:rotate-1"
@@ -407,26 +486,14 @@ export function StudentDashboard({
                   <p className="mt-3 flex-1 text-sm leading-6 text-slate-500">
                     {service.description}
                   </p>
-                  {disabled ? (
-                    <button
-                      type="button"
-                      disabled
-                      title="Kesempatan mencoba sudah digunakan. Silakan berlangganan."
-                      className="mt-6 flex min-h-11 cursor-not-allowed items-center justify-center rounded-lg bg-slate-200 px-4 py-3 text-sm font-bold text-slate-500"
-                    >
-                      {service.status} →
-                    </button>
-                  ) : (
-                    <Link
-                      href={service.href}
-                      className={`mt-6 flex min-h-11 items-center justify-center rounded-lg px-4 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 ${service.buttonClass}`}
-                    >
-                      {service.status} →
-                    </Link>
-                  )}
+                  <Link
+                    href={service.href}
+                    className={`mt-6 flex min-h-11 items-center justify-center rounded-lg px-4 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 ${service.buttonClass}`}
+                  >
+                    {service.status} →
+                  </Link>
                 </article>
-              );
-            })}
+            ))}
           </div>
         </section>
 
@@ -522,6 +589,8 @@ export function StudentDashboard({
             </table>
           </div>
         </section>
+        </>
+        )}
       </div>
     </main>
   );

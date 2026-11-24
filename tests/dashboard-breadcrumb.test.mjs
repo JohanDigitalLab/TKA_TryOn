@@ -6,8 +6,10 @@ import { getHomeHref } from "../src/lib/dashboard/home-href.mjs";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("getHomeHref memetakan profil ke URL dashboard yang benar", () => {
-  assert.equal(getHomeHref({ is_subscribed: false, account_type: "ADMIN" }), "/subscription");
-  assert.equal(getHomeHref({ is_subscribed: false }), "/subscription");
+  // Halaman /subscription sudah dihapus; status langganan tidak lagi menentukan home.
+  assert.equal(getHomeHref({ is_subscribed: false, account_type: "ADMIN" }), "/admin");
+  assert.equal(getHomeHref({ is_subscribed: false, account_type: "STUDENT" }), "/student");
+  assert.equal(getHomeHref({ is_subscribed: false }), "/home");
   assert.equal(getHomeHref({ is_subscribed: true, account_type: "STUDENT", is_managed: false }), "/student");
   assert.equal(getHomeHref({ is_subscribed: true, account_type: "STUDENT", is_managed: true }), "/student");
   assert.equal(getHomeHref({ is_subscribed: true, account_type: "student", is_managed: null }), "/student");

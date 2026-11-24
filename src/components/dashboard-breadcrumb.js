@@ -7,8 +7,8 @@ import { getHomeHref, HOME_HREF_PROFILE_COLUMNS } from "@/lib/dashboard/home-hre
 
 /**
  * Breadcrumb sederhana: "Home / <halaman saat ini>".
- * Tautan Home ditentukan getHomeHref(profil) — /subscription, /student,
- * /school, atau /admin — dengan fallback /home selama profil belum dimuat
+ * Tautan Home ditentukan getHomeHref(profil) — /student, /school,
+ * atau /admin — dengan fallback /home selama profil belum dimuat
  * atau tidak dikenali.
  */
 export default function DashboardBreadcrumb({ current }) {

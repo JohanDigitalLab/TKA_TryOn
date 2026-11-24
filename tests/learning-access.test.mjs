@@ -17,20 +17,22 @@ test("sesi latihan memakai jalur adaptif, resume, dan tugas sekolah", async () =
   assert.match(source, /Mode sesi latihan lama tidak lagi didukung/);
   assert.doesNotMatch(source, legacyStart);
   assert.doesNotMatch(source, legacyExamStart);
-  assert.match(source, /router\.push\("\/subscription"\)/);
+  // Halaman /subscription sudah dihapus; kembali ke dashboard siswa.
+  assert.match(source, /router\.push\("\/student"\)/);
+  assert.doesNotMatch(source, /router\.push\("\/subscription"\)/);
   assert.match(source, /router\.push\("\/student\/results"\)/);
   assert.doesNotMatch(source, /LEARNING_SUBSCRIPTION_REQUIRED/);
 });
 
-test("akses belajar tidak lagi bergantung pada kuota trial", async () => {
-  const [subscription, migration] = await Promise.all([
-    read("src/app/subscription/page.js"),
+test("paket langganan menyatu di dashboard siswa tanpa kuota trial", async () => {
+  const [student, migration] = await Promise.all([
+    read("src/app/student/page.js"),
     read("docs/database/migration-stage-9-unrestricted-learning.sql"),
   ]);
-  assert.match(subscription, /export function SubscriptionPlans/);
-  // Aktivasi paket kini lewat WhatsApp (settings), bukan tautan /register.
-  assert.match(subscription, /openActivationWhatsApp/);
-  assert.doesNotMatch(subscription, /href: "\/register"/);
+  assert.match(student, /export function SubscriptionPlans/);
+  // Aktivasi paket lewat WhatsApp (settings), bukan tautan /register.
+  assert.match(student, /openActivationWhatsApp/);
+  assert.doesNotMatch(student, /href: "\/register"/);
   assert.match(migration, /'unrestricted',true/);
   assert.doesNotMatch(migration, /LEARNING_SUBSCRIPTION_REQUIRED|A02_TRIAL_EXHAUSTED/);
 });

@@ -406,17 +406,20 @@ export default function SchoolPage() {
           .maybeSingle();
         if (profileError) throw profileError;
         const accountType = String(profileData?.account_type || "").toUpperCase();
-        if (accountType !== "SCHOOL" || !profileData?.school_id) {
-          denied = true;
-          setRedirecting(true);
-          router.replace("/register");
-          return;
-        }
+        //TODO: add checking
+        // if (accountType !== "SCHOOL" || !profileData?.school_id) {
+        //   denied = true;
+        //   setRedirecting(true);
+        //   router.replace("/register");
+        //   return;
+        // }
         if (!mounted) return;
         if (profileData.is_subscribed !== true) {
+          // Paket langganan kini menyatu di dashboard siswa, jadi akun sekolah
+          // yang belum berlangganan diarahkan ke sana, bukan ke halaman paket.
           denied = true;
           setRedirecting(true);
-          router.replace("/subscription");
+          router.replace("/student");
           return;
         }
 
