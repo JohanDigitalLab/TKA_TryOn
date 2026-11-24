@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 import useVirtualpetRoom from "./useVirtualpetRoom";
-import VirtualpetQuiz from "./VirtualpetQuiz";
+import VirtualpetQuiz, { VirtualpetAnswerReview } from "./VirtualpetQuiz";
 import { MODES } from "@/lib/student/virtualpet-client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -98,13 +98,13 @@ const LABEL = {
   normal: "Nyaman & tenang",
   hungry_thirsty: "Butuh perhatian",
   sick: "Sedang kurang sehat",
-  fainted: "Sedang hibernasi",
+  fainted: "Pingsan, perlu penyelamatan",
 };
 /** Self-contained vector illustration, shared by the room and adoption cards. */
 function PetIllustration({ species, status, small = false }) {
   const reduced = useReducedMotion();
-  const ill = status === "sick";
-  const asleep = status === "fainted";
+  const fainted = status === "fainted";
+  const ill = status === "sick" || fainted;
   const happy = status === "happy";
   const color = ill
     ? "#bcabc0"
@@ -135,24 +135,14 @@ function PetIllustration({ species, status, small = false }) {
         fill="#61492f"
         opacity=".12"
       />
-      {asleep && (
-        <>
-          <rect
-            x="38"
-            y="43"
-            width="284"
-            height="238"
-            rx="100"
-            fill="#d7edf3"
-            fillOpacity=".65"
-            stroke="#87bac7"
-            strokeWidth="5"
-          />
-          <path d="M63 230h234" stroke="#87bac7" strokeWidth="5" />
-          <text x="267" y="80" fill="#6585a1" fontSize="28" fontWeight="bold">
-            Zz
-          </text>
-        </>
+      {fainted && (
+        <g data-pet-care="infus" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M318 270V40q0-12-12-12h-24M301 270h34" fill="none" stroke="#8ba5ae" strokeWidth="5" />
+          <rect x="271" y="38" width="36" height="58" rx="8" fill="#edf9fb" stroke="#8bbacb" strokeWidth="3" />
+          <path d="M275 65h28v21q0 6-7 6h-14q-7 0-7-6Z" fill="#9fd6e8" />
+          <path d="M289 96v42q0 25-20 40l-16 19v34" fill="none" stroke="#84b9cd" strokeWidth="3" />
+          <path d="M285 49h8m-4-4v8" stroke="#d98e98" strokeWidth="3" />
+        </g>
       )}
       <ellipse cx="181" cy="214" rx="91" ry="61" fill={color} />
       <ellipse cx="137" cy="260" rx="31" ry="15" fill={color} />
@@ -206,7 +196,7 @@ function PetIllustration({ species, status, small = false }) {
       <motion.g
         style={{ transformOrigin: "180px 145px" }}
         animate={
-          !small && !happy && !asleep && !reduced
+          !small && !happy && !fainted && !reduced
             ? { scaleY: [1, 1, 0.08, 1, 1] }
             : { scaleY: 1 }
         }
@@ -220,9 +210,9 @@ function PetIllustration({ species, status, small = false }) {
           <g stroke="#433327" strokeWidth="6" fill="none" strokeLinecap="round">
             <path d="M116 148q11-20 22 0m84 0q11-20 22 0" />
           </g>
-        ) : asleep ? (
-          <g stroke="#554355" strokeWidth="5" fill="none" strokeLinecap="round">
-            <path d="m115 148 22 4m85 0 22-4" />
+        ) : fainted ? (
+          <g stroke="#554355" strokeWidth="4" fill="none" strokeLinecap="round">
+            <path d="m118 139 17 14m0-14-17 14m106-14 17 14m0-14-17 14" />
           </g>
         ) : (
           <>
@@ -267,7 +257,7 @@ function PetIllustration({ species, status, small = false }) {
       {species === "bear" && (
         <path d="m151 235 29 16 29-16-9 23h-39Z" fill="#f5ce80" />
       )}
-      {!ill && !asleep && (
+      {!ill && (
         <>
           <path
             d="M154 79q23-18 49-3"
@@ -293,8 +283,9 @@ function PetIllustration({ species, status, small = false }) {
           />
         </>
       )}
+      {fainted && <rect x="244" y="224" width="24" height="12" rx="4" fill="#faf2df" stroke="#c7b698" strokeWidth="2" transform="rotate(-12 256 230)" />}
       {ill && (
-        <>
+        <g data-pet-care="kompres">
           <rect
             x="139"
             y="88"
@@ -310,7 +301,7 @@ function PetIllustration({ species, status, small = false }) {
             stroke="#bedfea"
             strokeWidth="3"
           />
-        </>
+        </g>
       )}
       {status === "hungry_thirsty" && (
         <path d="M269 111q-18 25 0 25t0-25" fill="#84c7e4" />
@@ -412,15 +403,19 @@ export default function VirtualPetRoom() {
   const [adopt, setAdopt] = useState(false);
   const [bag, setBag] = useState(false);
   const [help, setHelp] = useState(false);
+  const [rescueOpen, setRescueOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const audio = useRef(null);
   const room = useRef(null);
   const timer = useRef(null);
   const effectTimers = useRef([]);
   const lastStatus = useRef(null);
   const reduced = useReducedMotion();
+  const fainted = !!pet && (pet.hydration === 0 || pet.hunger === 0);
   const status = pet?.status || "normal";
+  const statusMessage = LABEL[status];
   const level = pet?.level ?? 0;
-  const xp = pet ? pet.xp % 100 : 0;
+  const xp = pet ? pet.xp % 10 : 0;
   const totalItems = pet
     ? Object.values(pet.inventory).reduce((a, b) => a + b, 0)
     : 0;
@@ -509,7 +504,7 @@ export default function VirtualPetRoom() {
     notify(item.name + " diberikan — " + item.benefit);
   }
   async function startQuiz(scenario) {
-    if (await run("start", { scenario })) { setHelp(false); setBag(false); }
+    if (await run("start", { scenario })) { setHelp(false); setBag(false); setRescueOpen(false); }
   }
   const modalOpen = loaded && !tips && !session && !result && (!pet || adopt);
   return (
@@ -705,7 +700,9 @@ export default function VirtualPetRoom() {
                 <FloorBag count={totalItems} onOpen={openBag} />
                 <div className="relative z-10 mb-8 h-[225px] w-[265px] max-w-[85%] sm:mb-9 sm:h-[260px] sm:w-[310px] md:max-w-[78%]">
                   {pet ? (
-                    <PetIllustration species={pet.species} status={status} />
+                    <div className="h-full w-full origin-bottom transition-transform duration-500" style={{ transform: `scale(${0.8 + Math.min(level, 10) * 0.02})` }}>
+                      <PetIllustration species={pet.species} status={status} />
+                    </div>
                   ) : (
                     <PetIllustration species="capybara" status="normal" />
                   )}
@@ -787,14 +784,9 @@ export default function VirtualPetRoom() {
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
                 <span className="flex items-center gap-2 text-xs vp-muted">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-[#9db47d]" />
-                  {pet?.name || "Sahabatmu"}{" "}
-                  {status === "happy"
-                    ? "merasa disayang. Terus pertahankan!"
-                    : "menantikan perhatian kecil darimu."}
+                  {`${pet?.name || "Sahabatmu"} ${fainted ? " pingsan! Perlu penyelamatan." : status === "happy" ? " merasa disayang. Terus pertahankan!" : " menantikan perhatian kecil darimu."}`}
                 </span>
-                <span className="hidden text-[10px] vp-muted sm:block">
-                  Diperbarui otomatis
-                </span>
+                {fainted ? <button className="vp-btn bg-rose-100 text-rose-800" disabled={busy} onClick={() => setRescueOpen(true)}>Misi Penyelamatan</button> : <span className="hidden text-[10px] vp-muted sm:block">Diperbarui otomatis</span>}
               </div>
             </section>
             <aside className="flex flex-col gap-4">
@@ -824,22 +816,22 @@ export default function VirtualPetRoom() {
                   <span className="flex shrink-0 items-center gap-1 rounded-lg bg-[#f8f0d7] px-2.5 py-1.5 text-[11px] font-bold text-[#9b8345]">
                     <Star size={12} fill="currentColor" /> Level {level}
                   </span>
-                  <span className="truncate rounded-full bg-[var(--soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--green)]">
-                    {status === "happy" ? "♡" : "◌"} {LABEL[status]}
+                  <span className="rounded-2xl bg-[var(--soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--green)]">
+                    {status === "happy" ? "♡" : "◌"} {statusMessage}
                   </span>
                 </div>
                 <div className="mb-2 flex justify-between text-[10px]">
                   <span className="font-semibold">Tumbuh bersama</span>
-                  <span className="vp-muted">{xp} / 100 XP</span>
+                  <span className="vp-muted">{xp} / 10 XP</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--soft)]">
                   <motion.div
                     className="h-full rounded-full bg-[#a6b881]"
-                    animate={{ width: `${xp}%` }}
+                    animate={{ width: `${xp * 10}%` }}
                   />
                 </div>
                 <p className="mt-2 text-[10px] vp-muted">
-                  XP profil: {profileXp} · Hadiah kuis menambah XP profil, bukan XP pet.
+                  Hadiah kuis menambah XP profil dan pet.
                 </p>
               </section>
               <section className="vp-panel hidden flex-1 p-4 md:block">
@@ -869,13 +861,12 @@ export default function VirtualPetRoom() {
               </section>
             </aside>
           </div>
-          {status === "fainted" && pet && (
-            <section className="vp-panel mt-5 p-5">
-              <h3 className="font-bold">Misi penyelamatan: 15 soal tanpa batas waktu</h3>
-              <p className="my-3 text-xs vp-muted">Minimal 12/15 benar (80%): kenyang dan hidrasi +50, maksimal 100; XP profil +2.</p>
-              <button disabled={busy} className="vp-btn bg-[#73895d] text-white" onClick={() => startQuiz("PENYELAMATAN")}>Mulai penyelamatan</button>
-            </section>
-          )}
+          {fainted && rescueOpen && !session && !tips && !result && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"><section role="dialog" aria-modal="true" aria-labelledby="vp-rescue-title" className="vp-panel w-full max-w-md p-6">
+            <h3 id="vp-rescue-title" className="text-xl font-bold">Misi Penyelamatan</h3>
+            <p className="my-3 text-sm vp-muted">10 soal tanpa batas waktu. Minimal 8/10 benar (80%): kenyang dan hidrasi +50, maksimal 100; XP profil dan pet masing-masing +2.</p>
+            {error && <p role="alert" className="my-3 text-sm text-rose-600">{error}</p>}
+            <div className="mt-5 flex flex-wrap justify-end gap-2"><button className="vp-btn bg-[var(--soft)]" disabled={busy} onClick={() => setRescueOpen(false)}>Tutup</button><button disabled={busy} className="vp-btn bg-[#73895d] text-white" onClick={() => startQuiz("PENYELAMATAN")}>{busy ? "Menyiapkan…" : "Mulai penyelamatan"}</button></div>
+          </section></div>}
           <section className="vp-dot mt-5 flex flex-col items-start gap-4 rounded-2xl border border-[#e0e7d5] bg-[#edf2e5] p-4 text-[#526644] sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-[#3a4c33] dark:bg-[#2b3b29]">
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/60 text-[#82976b]">
@@ -910,7 +901,23 @@ export default function VirtualPetRoom() {
         </main>
         {tips && <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="vp-tip-title" className="vp-panel w-full max-w-md p-6"><h2 id="vp-tip-title" className="font-bold">Tips sahabat virtual</h2><p className="my-4 whitespace-pre-wrap">{tips.message}</p><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={busy} checked={hideTips} onChange={event => updateTips(event.target.checked)} />Jangan tampilkan lagi</label><button disabled={busy} className="vp-btn mt-4 bg-[#73895d] text-white" onClick={dismissTips}>Lanjutkan</button></section></div>}
         {session && !tips && <VirtualpetQuiz key={session.attempt_id} session={session} busy={busy} error={error} onFinish={payload => run("finish", payload)} />}
-        {result && !tips && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"><section role="dialog" aria-modal="true" aria-labelledby="vp-result-title" className="vp-panel w-full max-w-md p-6"><h2 id="vp-result-title" className="text-xl font-bold">{result.passed ? "Misi berhasil!" : "Terus semangat belajar!"}</h2><p className="my-3">Hasil server: {result.correct}/{result.total} benar · Nilai {result.score} · Ambang 80%</p><ul className="text-sm">{Object.entries(result.rewards || {}).filter(([, count]) => count > 0).map(([id, count]) => <li key={id}>{ITEMS.find(item => item.id === id)?.name || ({ profile_xp: "XP profil", hunger: "Kenyang", hydration: "Hidrasi" })[id] || id}: +{count}</li>)}</ul>{!result.passed && <p className="text-sm">Belum mendapat hadiah. Coba lagi dengan sesi baru.</p>}<button className="vp-btn mt-4 bg-[#73895d] text-white" onClick={dismissResult}>Kembali ke ruangan</button></section></div>}
+        {result && !tips && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"><section role="dialog" aria-modal="true" aria-labelledby="vp-result-title" className={`vp-panel vp-modal w-full p-6 ${reviewOpen ? "max-w-3xl" : "max-w-lg"}`}>
+          <h2 id="vp-result-title" className="text-xl font-bold">{reviewOpen ? "Review jawaban" : result.passed ? "Misi berhasil!" : "Terus semangat belajar!"}</h2>
+          {reviewOpen && result.review ? <div className="mt-4"><VirtualpetAnswerReview session={result.review.session} answers={result.review.answers} /></div> : <>
+            <div className="my-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Jawaban benar", result.correct], ["Total pertanyaan", result.total], ["Skor", result.score], ["Ambang", "80%"]].map(([label, value]) => <div key={label} className="rounded-2xl bg-[var(--soft)] p-3 text-center"><p className="text-2xl font-bold">{value}</p><p className="mt-1 text-xs vp-muted">{label}</p></div>)}</div>
+            <ul aria-label="Reward yang didapat" className="mb-4 flex flex-wrap gap-2">{["hunger", "hydration", "rice", "water", "apple", "donut", "cake", "vitamin", "xp"].map(id => [id, id === "xp" ? (result.rewards?.profile_xp ?? result.rewards?.pet_xp ?? 0) : (result.rewards?.[id] ?? 0)]).filter(([, count]) => count > 0).map(([id, count]) => {
+              const item = ITEMS.find(item => item.id === id);
+              const label = item?.name || ({ xp: "XP profil dan pet", hunger: "Kenyang", hydration: "Hidrasi" })[id] || id;
+              const icon = item?.emoji || ({ xp: "⭐", hunger: "🍽️", hydration: "💧" })[id] || "🎁";
+              return <li key={id} aria-label={`${label} +${count}`} title={`${label} +${count}`} className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--soft)] px-3 py-2 text-sm font-bold"><span aria-hidden="true">{icon}</span><span aria-hidden="true">+{count}</span></li>;
+            })}</ul>
+            {!result.passed && <p className="text-sm">Belum mendapat hadiah. Coba lagi dengan sesi baru.</p>}
+          </>}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            {result.review && <button className="vp-btn bg-[var(--soft)]" onClick={() => setReviewOpen(value => !value)}>{reviewOpen ? "Kembali ke hasil" : "Review jawaban"}</button>}
+            <button className="vp-btn bg-[#73895d] text-white" onClick={() => { setReviewOpen(false); dismissResult(); }}>Kembali ke ruangan</button>
+          </div>
+        </section></div>}
         <AnimatePresence>
           {bag && loaded && !tips && !session && !result && (
             <motion.div
@@ -1174,12 +1181,14 @@ export default function VirtualPetRoom() {
                 >
                   <X size={16} />
                 </button>
-                <BookOpen className="mb-4 text-[var(--green)]" size={30} />
-                <h2 id="quiz-title" className="text-xl font-bold">
-                  Belajar untuk sahabatmu
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed vp-muted">Soal acak lintas mata pelajaran sesuai jenjang, tanpa timer. Hadiah hanya jika minimal 80% benar (8/10 atau 12/15), dinilai server. Sesi aktif harus diselesaikan dan dilanjutkan setelah memuat ulang.</p>
-                {MODES.map(mode => <button key={mode.id} disabled={busy || !pet} className="vp-btn mt-3 w-full flex-col bg-[var(--soft)] text-left" onClick={() => startQuiz(mode.id)}><span>{mode.label} · {mode.count} soal</span><span className="text-xs font-normal">{mode.reward}</span></button>)}
+                <div className="flex items-center gap-3 pr-9">
+                  <BookOpen className="shrink-0 text-[var(--green)]" size={30} aria-hidden="true" />
+                  <h2 id="quiz-title" className="min-w-0 text-xl font-bold">
+                    Belajar untuk sahabatmu
+                  </h2>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed vp-muted">Soal acak lintas mata pelajaran sesuai jenjang, tanpa timer. Hadiah hanya jika minimal 80% benar (4/5 atau 8/10). Sesi aktif harus diselesaikan dan dilanjutkan setelah memuat ulang.</p>
+                {MODES.filter(mode => mode.id !== "PENYELAMATAN").map(mode => <button key={mode.id} disabled={busy || !pet} className="vp-btn mt-3 w-full flex-col bg-[var(--soft)] text-left" onClick={() => startQuiz(mode.id)}><span>{mode.label} · {mode.count} soal</span><span className="text-xs font-normal">{mode.reward}</span></button>)}
               </section>
             </motion.div>
           )}

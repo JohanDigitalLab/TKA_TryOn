@@ -73,6 +73,7 @@ BEGIN
   p.hydration:=greatest(0,least(100,p.hydration)-least(100,floor(w))::integer);
   UPDATE public.virtual_pets SET hunger=p.hunger,hydration=p.hydration,
     happiness=greatest(0,least(100,p.happiness)),
+    level=greatest(0,p.xp_score/10),
     status=private.virtualpet_status(p.hunger,p.hydration,greatest(0,least(100,p.happiness))),
     last_updated_at=CASE WHEN p.last_updated_at IS NULL OR p.last_updated_at>t THEN t
       ELSE p.last_updated_at + m*interval '1 minute' END WHERE id=p.id;
@@ -320,7 +321,9 @@ BEGIN
       RAISE EXCEPTION 'Scenario must be KUIZ, HOTS or PENYELAMATAN' USING ERRCODE='22023'; END IF;
     SELECT lower(btrim(education_level)) INTO lvl FROM public.profiles WHERE id=u;
     IF lvl IS NULL OR lvl NOT IN('sd','smp','sma') THEN RAISE EXCEPTION 'Persisted education level unavailable' USING ERRCODE='P0001'; END IF;
-    n:=CASE WHEN scenario='PENYELAMATAN' THEN 15 ELSE 10 END;
+    IF scenario='PENYELAMATAN' AND p.status<>'fainted' THEN
+      RAISE EXCEPTION 'Rescue requires a fainted pet' USING ERRCODE='P0001'; END IF;
+    n:=CASE WHEN scenario='PENYELAMATAN' THEN 10 ELSE 5 END;
     pool:=private.virtualpet_pool(lvl,scenario,n); aid:=gen_random_uuid();
     -- Deferred FK allows the private authorization row to precede guarded exam INSERT.
     INSERT INTO private.virtualpet_sessions(attempt_id,user_id,pet_id,scenario,pool,writing_results) VALUES(aid,u,pid,scenario,pool,true);
@@ -357,10 +360,10 @@ BEGIN
       AND gamification_app='VIRTUALPET' AND attempt_status='IN_PROGRESS' AND deadline_at IS NULL FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'VirtualPet exam integrity violation' USING ERRCODE='P0001'; END IF;
     passed:=correct*100>=n*80;
-    rewards:='{"water":0,"rice":0,"apple":0,"donut":0,"cake":0,"vitamin":0,"hunger":0,"hydration":0,"profile_xp":0}';
+    rewards:='{"water":0,"rice":0,"apple":0,"donut":0,"cake":0,"vitamin":0,"hunger":0,"hydration":0,"profile_xp":0,"pet_xp":0}';
     IF passed THEN
       xp:=CASE s.scenario WHEN 'KUIZ' THEN 1 WHEN 'HOTS' THEN 5 ELSE 2 END;
-      rewards:=jsonb_set(rewards,'{profile_xp}',to_jsonb(xp));
+      rewards:=rewards||jsonb_build_object('profile_xp',xp,'pet_xp',xp);
       IF s.scenario='KUIZ' THEN
         UPDATE public.virtual_pet_items SET water=water+1,rice=rice+1 WHERE virtual_pet_id=pid;
         rewards:=rewards||'{"water":1,"rice":1}';
@@ -377,6 +380,7 @@ BEGIN
         rewards:=rewards||jsonb_build_object('hunger',least(50,100-p.hunger),'hydration',least(50,100-p.hydration));
       END IF;
       UPDATE public.profiles SET xp_score=xp_score+xp WHERE id=u;
+      UPDATE public.virtual_pets SET xp_score=xp_score+xp WHERE id=pid;
       -- gamification_log has no application column (foundation contract); the app context
       -- lives in the Indonesian activity sentence. Nickname falls back to full name/Siswa.
       SELECT coalesce(nullif(btrim(pr.nickname),''),nullif(btrim(pr.full_name),''),'Siswa') INTO nick

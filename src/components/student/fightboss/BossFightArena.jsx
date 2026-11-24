@@ -365,7 +365,7 @@ export default function BossFightArena() {
     setSubject(settings.SUBJECT || "Matematika");
     setMatchMode(settings.IS_PVP === "1" ? "pvp" : "system");
     setBattleMode(!settings.FIGHT_MODE || settings.FIGHT_MODE === "Fight to Death" ? "death" : "limited");
-    setMaxQuestions(Number(settings.MAX_QUESTIONS));
+    setMaxQuestions(Number(settings.MAX_QUESTIONS || 5));
     setNames(previous => [previous[0], settings.P2_NAME || "Player2"]);
   }
   async function run(operation) {
@@ -505,8 +505,12 @@ export default function BossFightArena() {
       const correct = next.correct > beforeCorrect;
       const target = correct ? 1 - currentPlayer : currentPlayer;
       const damage = Math.max(0, session.hp[target] - next.hp[target]);
+      setQuestionOpen(false);
+      setPlayerHP(next.hp[0]); setBossHP(next.hp[1]);
+      const isCritical = correct && next.combo[currentPlayer] >= 3;
+      setNotice(pvp ? `${activeName}: ${correct ? (isCritical ? "CRITICAL! Jawaban benar" : "Jawaban benar") : choice === null ? "Waktu habis" : "Jawaban salah"} · ${names[target]} −${damage} HP` : correct ? (isCritical ? `CRITICAL! Flying kick · ${damage} damage!` : `Tepat! Pukulan masuk · ${damage} damage!`) : choice === null ? "Waktu habis! Boss melakukan double smash." : "Belum tepat! Boss membalas dengan double smash.");
       setImpact({id: ++impactId.current, target, damage, attack: target === 0 ? "smash" : next.combo[currentPlayer] >= 3 ? "kick" : "punch"});
-      playSound(correct ? "attack" : "hurt");
+      playSound(correct ? (isCritical ? "critical" : "attack") : "hurt");
       const record = {questionIndex, selected: choice, correct, player: currentPlayer, question};
       setRecords(previous => {
         const updated = previous.some(r => r.question.id === question.id) ? previous : [...previous, record];
@@ -514,12 +518,16 @@ export default function BossFightArena() {
         return updated;
       });
       healRef.current = false;
+      // Biarkan arena terlihat sampai animasi serangan dan angka damage selesai.
+      await new Promise(resolve => { pendingRef.current = setTimeout(resolve, 2200); });
+      pendingRef.current = null;
       }
       await acceptSession(next);
       setSelection([]); setCategories({}); setEliminated([]);
       setTimer(TURN_SECONDS); setTimerMax(TURN_SECONDS);
       setSelected(null); setLocked(false); lockRef.current = false;
-      setNotice("Jawaban tersimpan. HP dan combo diperbarui oleh server.");
+      setNotice("Giliranmu! Pilih jawaban untuk menyerang.");
+      setQuestionOpen(!next.terminal);
     };
     await run(operation);
   };
@@ -567,6 +575,19 @@ export default function BossFightArena() {
       setNotice("Freeze Time! Tambahan 15 detik untuk soal ini.");
     }
     playSound("power");
+  }
+  function resetToReady() {
+    if (busy || lockRef.current) return;
+    setQuestionOpen(false); setResting(false); setSettingsOpen(false); setEditing(null);
+    setSession(null); setServerResult(null); setReview(false); setResultKind(null);
+    setGameStatus("playing"); setPlayerHP(MAX_HP); setBossHP(MAX_HP);
+    setActivePlayer(0); setCombos([0, 0]); setMaxCombo(0); setQuestionIndex(0); setRecords([]);
+    setImpact(null); setHealing(null); setSelected(null); setLocked(false);
+    setSelection([]); setCategories({}); setEliminated([]);
+    setInventories([{...EMPTY_POWERS}, {...EMPTY_POWERS}]);
+    setTimer(TURN_SECONDS); setTimerMax(TURN_SECONDS);
+    lockRef.current = false; healRef.current = false; retryRef.current = null;
+    setError(""); setNotice("Pilih jawaban yang tepat untuk menyerang!");
   }
   async function restart() {
     if (busy || error) return;
@@ -1283,7 +1304,7 @@ export default function BossFightArena() {
                     </div>
                     <button
                       type="button"
-                      onClick={restart}
+                      onClick={resetToReady}
                       className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
                     >
                       <RotateCcw size={16} /> Main Lagi
@@ -1364,11 +1385,10 @@ export default function BossFightArena() {
                         {serverResult?.xp || 0} XP
                       </span>
                     </div>
-                    <p className="mb-5 text-center text-[10px] text-slate-400">XP dikonfirmasi server untuk akun pemilik sesi. Tidak ada hadiah koin.</p>
                     <button
                       autoFocus
                       type="button"
-                      onClick={restart}
+                      onClick={resetToReady}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     >
                       <RotateCcw size={16} /> Main Lagi <ArrowRight size={16} />

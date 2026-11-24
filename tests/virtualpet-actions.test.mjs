@@ -52,6 +52,8 @@ test('bounded payloads reject unknown fields, token/score/reward and malformed a
     assert.equal((await f.execute(action, payload, user)).ok, false);
     assert.equal(f.calls.length, 0);
   }
+  assert.equal(validPayload('finish', { attempt_id: user, answers: answers.slice(0, 5) }), true);
+  assert.equal(validPayload('finish', { attempt_id: user, answers: answers.slice(0, 4) }), false);
   assert.equal(validPayload('finish', { attempt_id: user, answers: answers.map(a => ({ ...a, answer_payload: { option_codes: [] } })) }), true);
   assert.equal(validPayload('finish', { attempt_id: user, answers: answers.map(a => ({ ...a, answer_payload: { category_answers: { 1: 'Benar', 2: 'Salah' } } })) }), true);
 });
@@ -61,8 +63,8 @@ test('RPC errors and thrown auth failures are sanitized; question shortage remai
     assert.equal(result.ok, false);
     assert.doesNotMatch(result.error, /secret|SQL|schema|private/);
   }
-  const shortage = await fixture({ rpc: { error: { code: 'P0001', message: 'Soal published valid tidak cukup untuk HOTS: dibutuhkan 10, tersedia 3 pada jenjang smp' } } }).execute('start', { scenario: 'HOTS' }, user);
-  assert.match(shortage.error, /diperlukan 10, tersedia 3/);
+  const shortage = await fixture({ rpc: { error: { code: 'P0001', message: 'Soal published valid tidak cukup untuk HOTS: dibutuhkan 5, tersedia 3 pada jenjang smp' } } }).execute('start', { scenario: 'HOTS' }, user);
+  assert.match(shortage.error, /diperlukan 5, tersedia 3/);
   const execute = createVirtualpetActions({ cookies: async () => { throw Error('secret'); }, getUser: async () => null });
   assert.doesNotMatch(JSON.stringify(await execute('bootstrap', {}, user)), /secret/);
 });

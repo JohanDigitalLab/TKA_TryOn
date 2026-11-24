@@ -174,7 +174,11 @@ test('UI integration contract: no demo bank/local progression, reading gate, act
   const ui = readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx', import.meta.url), 'utf8');
   const hook = readFileSync(new URL('../src/components/student/mapadventure/useMapAdventure.js', import.meta.url), 'utf8');
   assert.doesNotMatch(ui + hook, /Math\.random|ISLANDS_MATH|rollChest|arithSeries|localStorage|onReset|setPoints|setInventory|setProgress|answer_keys/);
-  for (const expected of ['state.islands.map', 'state.subjects.map', 'state.wallet.points', 'state.status.stars', 'game.result.points', 'game.reward.tools', 'session.answered', 'effects.clue', 'effects.eliminated', 'effects.secondchance', 'effects.retried']) assert.ok(ui.includes(expected), expected);
+  assert.match(ui, /<IslandNavigation islands=\{state.islands\} nodes=\{state.nodes\}/);
+  const map = readFileSync(new URL('../src/components/student/mapadventure/IslandMap.jsx', import.meta.url), 'utf8');
+  assert.match(map, /islands.map/);
+  assert.doesNotMatch(map, /Math\.random|localStorage|setProgress|answer_keys/);
+  for (const expected of ['state.subjects.map', 'state.wallet.points', 'state.status.stars', 'game.result.points', 'game.reward.tools', 'session.answered', 'effects.clue', 'effects.eliminated', 'effects.secondchance', 'effects.retried']) assert.ok(ui.includes(expected), expected);
   assert.match(ui, /session.stage !== "practice"/);
   assert.match(ui, /role="timer"/);
   assert.match(ui, /questionSecondsLeft\(session, performance.now\(\) - receivedAt\)/);

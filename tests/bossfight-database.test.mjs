@@ -62,7 +62,7 @@ test('BossFight PostgreSQL integration: real RPC, helpers and persistence', { sk
   await user(''); await assert.rejects(rpc('bootstrap'), /Authentication/);
   await user(uid);
   const boot = await rpc('bootstrap');
-  assert.deepEqual(boot.settings, { SHOW_TIPS: '1', SUBJECT: 'Matematika', IS_PVP: '0', FIGHT_MODE: 'Maksimal jumlah soal', MAX_QUESTIONS: '10', P2_NAME: 'Player2' });
+  assert.deepEqual(boot.settings, { SHOW_TIPS: '1', SUBJECT: 'Matematika', IS_PVP: '0', FIGHT_MODE: 'Maksimal jumlah soal', MAX_QUESTIONS: '5', P2_NAME: 'Player2' });
   assert.equal(boot.tip.message, 'Tip Boss'); assert.equal(await count('user_settings'), 6);
   await db.query(`DELETE FROM user_settings WHERE user_id=$1 AND name='P2_NAME'`, [uid]);
   assert.equal((await rpc('bootstrap')).settings.P2_NAME, 'Player2');

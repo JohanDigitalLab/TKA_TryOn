@@ -88,7 +88,9 @@ export default function useMapAdventure() {
     const saved = await run("settings", { settings: { SHOW_TIPS: checked ? "0" : "1" } });
     if (!saved && version === generation.current) setHideTips(previous);
   }
-  return { state, busy, error, notice, tips, hideTips, updateTips, run,
+  const closeFeedback = useCallback(() => { setError(""); setNotice(""); }, []);
+  const reportError = useCallback(message => { setNotice(""); setError(message); }, []);
+  return { state, busy, error, notice, tips, hideTips, updateTips, run, closeFeedback, reportError,
     material, closeMaterial: () => setMaterial(null), result, closeResult: () => setResult(null),
     reward, closeReward: () => setReward(null), closeTips: () => setTips(null),
     openGachaChest: (nodeId, tier) => openGachaChest(run, nodeId, tier) };

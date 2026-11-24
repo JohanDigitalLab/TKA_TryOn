@@ -43,7 +43,7 @@ REVOKE ALL ON FUNCTION private.bossfight_guard_exam() FROM PUBLIC,anon,authentic
 
 CREATE OR REPLACE FUNCTION private.bossfight_settings(p_patch jsonb DEFAULT '{}') RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=auth.uid(); k text; val text; d jsonb:='{"SHOW_TIPS":"1","SUBJECT":"Matematika","IS_PVP":"0","FIGHT_MODE":"Maksimal jumlah soal","MAX_QUESTIONS":"10","P2_NAME":"Player2"}'; s jsonb;
+DECLARE u uuid:=auth.uid(); k text; val text; d jsonb:='{"SHOW_TIPS":"1","SUBJECT":"Matematika","IS_PVP":"0","FIGHT_MODE":"Maksimal jumlah soal","MAX_QUESTIONS":"5","P2_NAME":"Player2"}'; s jsonb;
 BEGIN
  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
  IF jsonb_typeof(p_patch) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid settings' USING ERRCODE='22023'; END IF;

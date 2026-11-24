@@ -4,7 +4,7 @@ Endpoint /api/bossfight memakai Authorization Bearer JWT Supabase pengguna; tanp
 
 ## Actions
 
-- GET / bootstrap: settings string SHOW_TIPS=1, SUBJECT=Matematika, IS_PVP=0, FIGHT_MODE=Maksimal jumlah soal, MAX_QUESTIONS=10, P2_NAME=Player2. Missing settings disisipkan tanpa menimpa nilai tersimpan; tip acak aktif application BOSSFIGHT atau null.
+- GET / bootstrap: settings string SHOW_TIPS=1, SUBJECT=Matematika, IS_PVP=0, FIGHT_MODE=Maksimal jumlah soal, MAX_QUESTIONS=5, P2_NAME=Player2. Missing settings disisipkan tanpa menimpa nilai tersimpan; tip acak aktif application BOSSFIGHT atau null.
 - settings: payload berisi settings patch. Semua nilai wajib string. Nama tidak dikenal ditolak. FIGHT_MODE hanya Maksimal jumlah soal atau Fight to Death; MAX_QUESTIONS integer 1–100. P2_NAME dapat diganti dan tersimpan untuk sesi berikutnya.
 - start: membuat/resume satu sesi aktif. Settings dibekukan. SUBJECT dicocokkan dengan jenjang profil; soal dan versi PUBLISHED, estimasi positif maksimal 5 menit, acak tanpa duplikasi. Mode terbatas mengambil maksimal MAX_QUESTIONS, atau lebih sedikit jika bank kurang. Death mengambil initial batch konfigurasi, bukan 1000 soal.
 - batch: payload attempt_id dan records array 0–100. Record memuat question_id, answer_payload, is_timeout dan heal boolean eksplisit. Banyak jawaban dapat dikirim dalam satu panggilan; wajib mengikuti urutan outstanding. Skip, duplicate dalam request, urutan mundur, payload tidak valid atau perubahan jawaban terkunci ditolak secara atomik. Retry record identik tidak menggandakan damage. Array kosong me-resume sesi.

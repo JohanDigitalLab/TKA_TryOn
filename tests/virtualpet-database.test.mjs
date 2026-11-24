@@ -106,21 +106,23 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
   });
 
   await t.test('strict easy/medium <=5 intersection, exact shortage and no partial session writes', async () => {
-    await bank(15);
+    await bank(12);
     await db.exec(`UPDATE questions SET difficulty='Sulit' WHERE id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' LIMIT 1);
       UPDATE question_versions SET estimate_minutes=6 WHERE question_id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' AND difficulty='Sedang' LIMIT 1);
       UPDATE questions SET education_level_id='smp' WHERE id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' AND difficulty='Sedang' AND id NOT IN(SELECT question_id FROM question_versions WHERE estimate_minutes=6) LIMIT 1)`);
-    let pool = (await db.query("SELECT private.virtualpet_pool('sd','KUIZ',10) p")).rows[0].p;
-    assert.equal(pool.length, 10); assert.equal(new Set(pool.map(q => q.id)).size, 10);
+    let pool = (await db.query("SELECT private.virtualpet_pool('sd','KUIZ',5) p")).rows[0].p;
+    assert.equal(pool.length, 5); assert.equal(new Set(pool.map(q => q.id)).size, 5);
     assert.ok(pool.every(q => ['MUDAH', 'SEDANG'].includes(q.difficulty.trim().toUpperCase()) && Number(q.estimate_minutes) <= 5));
     const before = await count('exam_attempts');
-    await assert.rejects(start('PENYELAMATAN'), /dibutuhkan 15, tersedia 12/);
-    await bank(9);
+    await db.exec("UPDATE virtual_pets SET hunger=0 WHERE is_active");
+    await assert.rejects(start('PENYELAMATAN'), /dibutuhkan 10, tersedia 9/);
+    await bank(4);
     // Plenty of hard/long questions exist but MUST NOT fill a KUIZ shortage.
     await db.exec("UPDATE questions SET question_status='PUBLISHED' WHERE difficulty='Sulit'");
-    await assert.rejects(start(), /dibutuhkan 10, tersedia 9/);
+    await assert.rejects(start(), /dibutuhkan 5, tersedia 4/);
     assert.equal(await count('exam_attempts'), before); assert.equal(await count('private.virtualpet_sessions'), 0);
-    await bank(14); await assert.rejects(start('PENYELAMATAN'), /dibutuhkan 15, tersedia 14/);
+    await bank(9); await assert.rejects(start('PENYELAMATAN'), /dibutuhkan 10, tersedia 9/);
+    await db.exec("UPDATE virtual_pets SET hunger=100,hydration=100 WHERE is_active");
   });
 
   await t.test('latest published version wins; draft, malformed keys and unusable categories are excluded', async () => {
@@ -144,13 +146,13 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
   });
 
   await t.test('all three types, active resume, ownership, immutable snapshots and malformed answer rollback', async () => {
-    await bank(10);
+    await bank(5);
     const s = await start();
     assert.deepEqual(new Set(s.questions.map(q => q.type)), new Set(['PG_TUNGGAL', 'PGK_MA', 'PGK_KATEGORI']));
-    assert.equal(s.total, 10); assert.equal(s.deadline_at, null); assert.equal(s.remaining_seconds, null);
+    assert.equal(s.total, 5); assert.equal(s.deadline_at, null); assert.equal(s.remaining_seconds, null);
     assert.equal((await start('HOTS')).attempt_id, s.attempt_id);
     assert.deepEqual((await rpc('bootstrap')).session, s);
-    assert.equal(await count('exam_attempt_questions'), 10);
+    assert.equal(await count('exam_attempt_questions'), 5);
     await user(other); await rpc('adopt', { pet_type: 'bird', pet_name: 'Other' });
     await assert.rejects(finish(s), /session unavailable/); assert.equal((await rpc('bootstrap')).session, null);
     await user(uid);
@@ -176,18 +178,18 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     // Current bank keys/text change after start; frozen pool remains authoritative.
     await db.exec("UPDATE question_options SET is_correct=NOT is_correct; UPDATE question_category_items SET correct_category='Salah'; UPDATE question_versions SET question_text='Changed'");
     assert.deepEqual((await rpc('bootstrap')).session, s);
-    const r = await finish(s, 7); assert.equal(r.correct, 7); assert.equal(r.score, 70); assert.equal(r.passed, false); assert.equal(r.profile_xp, 0);
-    assert.equal(await count('exam_attempt_answers'), 10); assert.equal(await count('gamification_log'), 0);
+    const r = await finish(s, 3); assert.equal(r.correct, 3); assert.equal(r.score, 60); assert.equal(r.passed, false); assert.equal(r.profile_xp, 0);
+    assert.equal(await count('exam_attempt_answers'), 5); assert.equal(await count('gamification_log'), 0);
   });
 
-  await t.test('8/10 KUIZ passes, canonical results persist and replay never duplicates rewards', async () => {
-    await bank(10); const s = await start(); const r = await finish(s, 8);
-    assert.equal(r.correct, 8); assert.equal(r.passed, true); assert.equal(r.score, 80); assert.equal(r.profile_xp, 1);
+  await t.test('4/5 KUIZ passes, canonical results persist and replay never duplicates rewards', async () => {
+    await bank(5); const s = await start(); const r = await finish(s, 4);
+    assert.equal(r.correct, 4); assert.equal(r.passed, true); assert.equal(r.score, 80); assert.equal(r.profile_xp, 1);
     assert.equal(r.inventory.water, 1); assert.equal(r.inventory.rice, 1); assert.equal(r.rewards.profile_xp, 1);
-    assert.equal(r.pet.xp, 0); assert.equal(r.pet.level, 0);
+    assert.equal(r.pet.xp, 1); assert.equal(r.rewards.pet_xp, 1); assert.equal(r.pet.level, 0);
     assert.deepEqual(await rows('SELECT activity,xp_score FROM gamification_log'), [{ activity: 'Nina menyelesaikan quiz bersama Milo2.', xp_score: 1 }]);
     const exam = (await db.query('SELECT * FROM exam_attempts WHERE id=$1', [s.attempt_id])).rows[0];
-    assert.equal(exam.attempt_type, 'GAMIFICATION'); assert.equal(exam.gamification_app, 'VIRTUALPET'); assert.equal(exam.attempt_status, 'SUBMITTED'); assert.equal(exam.correct_answers, 8); assert.equal(Number(exam.score), 80); assert.equal(exam.deadline_at, null);
+    assert.equal(exam.attempt_type, 'GAMIFICATION'); assert.equal(exam.gamification_app, 'VIRTUALPET'); assert.equal(exam.attempt_status, 'SUBMITTED'); assert.equal(exam.correct_answers, 4); assert.equal(Number(exam.score), 80); assert.equal(exam.deadline_at, null);
     await db.exec(migration); // Redeployment after persisted state must not reset it.
     const replay = await rpc('finish', { attempt_id: s.attempt_id });
     assert.deepEqual(replay.rewards, r.rewards); assert.deepEqual(replay.inventory, r.inventory); assert.equal(replay.profile_xp, 1); assert.equal(await count('gamification_log'), 1);
@@ -198,11 +200,11 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     await db.exec(`UPDATE questions SET difficulty='Sulit' WHERE id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' LIMIT 2);
       UPDATE question_versions SET estimate_minutes=6 WHERE question_id IN(SELECT id FROM questions WHERE question_status='PUBLISHED' AND difficulty<>'Sulit' LIMIT 2)`);
     const s = await start('HOTS');
-    assert.equal(s.total, 10);
+    assert.equal(s.total, 5);
     assert.equal(s.questions.filter(q => q.difficulty === 'Sulit' || Number(q.estimate_minutes) > 5).length, 4);
-    assert.equal(s.questions.filter(q => q.difficulty !== 'Sulit' && Number(q.estimate_minutes) <= 5).length, 6);
-    const before = (await rpc('bootstrap')).inventory; const r = await finish(s, 8);
-    assert.equal(r.passed, true); assert.equal(r.rewards.profile_xp, 5); assert.equal(r.snacks.length, 2);
+    assert.equal(s.questions.filter(q => q.difficulty !== 'Sulit' && Number(q.estimate_minutes) <= 5).length, 1);
+    const before = (await rpc('bootstrap')).inventory; const r = await finish(s, 4);
+    assert.equal(r.passed, true); assert.equal(r.pet.xp, 6); assert.equal(r.rewards.pet_xp, 5); assert.equal(r.rewards.profile_xp, 5); assert.equal(r.snacks.length, 2);
     const snackNames = ['apple', 'donut', 'cake', 'vitamin'];
     assert.ok(r.snacks.every(x => snackNames.includes(x)));
     assert.equal(snackNames.reduce((sum, key) => sum + r.rewards[key], 0), 2);
@@ -211,15 +213,31 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     const replay = await finish(s, 0); assert.deepEqual(replay.snacks, r.snacks); assert.deepEqual(replay.inventory, r.inventory); assert.equal(replay.profile_xp, 6);
   });
 
-  await t.test('rescue requires 12/15 and adds 50 capped at 100 with effective reward', async () => {
-    await bank(15); let s = await start('PENYELAMATAN'); let r = await finish(s, 11);
+  await t.test('rescue requires 8/10 and adds 50 capped at 100 with effective reward', async () => {
+    await bank(15);
+    await assert.rejects(start('PENYELAMATAN'), /Rescue requires a fainted pet/);
+    await db.query("UPDATE virtual_pets SET hunger=0 WHERE id=$1", [petId]);
+    let s = await start('PENYELAMATAN'); let r = await finish(s, 7);
     assert.equal(r.passed, false); assert.equal(r.rewards.profile_xp, 0);
-    await db.query("UPDATE virtual_pets SET hunger=80,hydration=20,last_updated_at=clock_timestamp() AT TIME ZONE 'UTC' WHERE id=$1", [petId]);
-    s = await start('PENYELAMATAN'); r = await finish(s, 12);
-    assert.equal(r.total, 15); assert.equal(r.correct, 12); assert.equal(r.score, 80); assert.equal(r.passed, true);
-    assert.equal(r.pet.hunger, 100); assert.equal(r.pet.hydration, 70); assert.equal(r.rewards.hunger, 20); assert.equal(r.rewards.hydration, 50); assert.equal(r.profile_xp, 8);
+    await db.query("UPDATE virtual_pets SET hunger=0,hydration=20,last_updated_at=clock_timestamp() AT TIME ZONE 'UTC' WHERE id=$1", [petId]);
+    s = await start('PENYELAMATAN'); r = await finish(s, 8);
+    assert.equal(r.total, 10); assert.equal(r.correct, 8); assert.equal(r.score, 80); assert.equal(r.passed, true);
+    assert.equal(r.pet.hunger, 50); assert.equal(r.pet.hydration, 70); assert.equal(r.rewards.hunger, 50); assert.equal(r.rewards.hydration, 50); assert.equal(r.profile_xp, 8); assert.equal(r.pet.xp, 8); assert.equal(r.rewards.pet_xp, 2);
     assert.equal((await rows('SELECT activity FROM gamification_log WHERE xp_score=2')).map(r => r.activity).join('|'), 'Nina menyelamatkan Milo2 dari kepingsanan.');
     const replay = await finish(s); assert.equal(replay.pet.hydration, 70); assert.equal(replay.profile_xp, 8); assert.equal(await count('gamification_log'), 3);
+  });
+
+  await t.test('pet level advances every 10 XP and bootstrap reconciles existing XP', async () => {
+    for (const [xp, level] of [[9, 0], [10, 1], [19, 1], [20, 2]]) {
+      await db.query('UPDATE virtual_pets SET xp_score=$1 WHERE id=$2', [xp, petId]);
+      assert.equal((await rpc('bootstrap')).pet.level, level);
+    }
+    await db.query('UPDATE virtual_pets SET xp_score=9 WHERE id=$1', [petId]);
+    const session = await start('KUIZ');
+    const result = await finish(session, 4);
+    assert.equal(result.pet.xp, 10);
+    assert.equal(result.pet.level, 1);
+    assert.equal((await finish(session)).pet.xp, 10);
   });
 
   await t.test('decay carries fractional points/minutes, feed clamps without resetting carry', async () => {
@@ -234,7 +252,8 @@ test('VirtualPet PostgreSQL integration: actual migrations, RPC, grading and gua
     assert.equal((await rpc('bootstrap')).pet.last_updated_at, timestamp);
     await db.query("UPDATE virtual_pets SET last_updated_at=last_updated_at-interval '14 minutes' WHERE id=$1", [petId]);
     b = await rpc('bootstrap'); assert.equal(b.pet.hunger, 99); assert.equal(b.pet.hydration, 99);
-    b = await rpc('feed', { item: 'water' }); assert.equal(b.pet.hydration, 100); assert.equal(b.inventory.water, 0);
+    const waterBefore = b.inventory.water;
+    b = await rpc('feed', { item: 'water' }); assert.equal(b.pet.hydration, 100); assert.equal(b.inventory.water, waterBefore - 1);
     d = (await db.query('SELECT * FROM private.virtualpet_decay WHERE pet_id=$1', [petId])).rows[0]; assert.equal(Number(d.hydration_carry), 0.5);
     await db.query("UPDATE virtual_pets SET last_updated_at=(clock_timestamp() AT TIME ZONE 'UTC')+interval '1 day' WHERE id=$1", [petId]);
     b = await rpc('bootstrap'); assert.equal(b.pet.hunger, 99);

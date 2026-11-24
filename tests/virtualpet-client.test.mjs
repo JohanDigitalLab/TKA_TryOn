@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createVirtualpetClient, buildAnswers, categoryLabels, mapPet, MODES, ITEM_IDS } from '../src/lib/student/virtualpet-client.js';
+import { createVirtualpetClient, buildAnswers, categoryLabels, gradeVirtualpetAnswer, mapPet, MODES, ITEM_IDS } from '../src/lib/student/virtualpet-client.js';
 const userId = '11111111-1111-4111-8111-111111111111';
 const browser = { data: { session: { user: { id: userId }, access_token: 'private-token' } } };
 function fixture(overrides = {}) {
@@ -88,8 +88,8 @@ test('mapping uses canonical SQL inventory, species/name/xp and exact mode count
   assert.equal(pet.species, 'bear'); assert.equal(pet.name, 'Madu'); assert.equal(pet.xp, 9);
   assert.deepEqual(Object.keys(pet.inventory), ITEM_IDS);
   assert.equal(pet.inventory.rice, 2); assert.equal(pet.inventory.water, 0);
-  assert.deepEqual(MODES.map(m => m.count), [10, 10, 15]);
-  assert.match(MODES[1].reward, /2 undian independen/);
+  assert.deepEqual(MODES.map(m => m.count), [5, 5, 10]);
+  assert.match(MODES[1].reward, /2 .*apel\/donat\/kue\/vitamin/);
   assert.match(MODES[2].reward, /maksimal 100/);
   assert.equal(mapPet({ pet: null }), null);
 });
@@ -111,6 +111,19 @@ test('exact finish answer forms support all types, empty MA and per-item slash c
   assert.throws(() => buildAnswers({ questions }, { single: drafts.single, category: { category_answers: { 1: 'Benar' } } }), /seluruh kategori/);
   drafts.single.option_codes.push('A'); assert.deepEqual(result[0].answer_payload.option_codes, ['B']);
 });
+test('immediate grading supports exact single/multi sets and case-insensitive categories', () => {
+  const single = { type: 'PG_TUNGGAL', answer_keys: { option_codes: ['B'] } };
+  assert.equal(gradeVirtualpetAnswer(single, { option_codes: ['B'] }), true);
+  assert.equal(gradeVirtualpetAnswer(single, { option_codes: ['A'] }), false);
+  const multi = { type: 'PGK_MA', answer_keys: { option_codes: ['B', 'C'] } };
+  assert.equal(gradeVirtualpetAnswer(multi, { option_codes: ['C', 'B'] }), true);
+  assert.equal(gradeVirtualpetAnswer(multi, { option_codes: ['B'] }), false);
+  assert.equal(gradeVirtualpetAnswer(multi, { option_codes: [] }), false);
+  const category = { ...questions[2], answer_keys: { category_answers: { 1: 'Benar', 2: 'Tidak' } } };
+  assert.equal(gradeVirtualpetAnswer(category, { category_answers: { 1: ' benar ', 2: 'TIDAK' } }), true);
+  assert.equal(gradeVirtualpetAnswer(category, { category_answers: { 1: 'Benar' } }), false);
+});
+
 test('UI source contract: server-only state/rewards, retry gate, ordered one-shot tips, resume/focus and frozen finish', () => {
   const source = name => readFileSync(new URL(`../src/components/student/virtualpet/${name}`, import.meta.url), 'utf8');
   const room = source('VirtualPetRoom.jsx'); const hook = source('useVirtualpetRoom.js'); const quiz = source('VirtualpetQuiz.jsx');
@@ -126,6 +139,29 @@ test('UI source contract: server-only state/rewards, retry gate, ordered one-sho
   assert.match(hook, /latest.current\?\.session/); assert.match(hook, /visibilitychange/); assert.match(hook, /"focus"/);
   for (const field of ['q.text', 'q.instruction', 'content_text', 'media_description', 'file_url', 'category_items', 'option_code']) assert.ok(quiz.includes(field), field);
   assert.match(quiz, /submitted \|\| \{ attempt_id: session.attempt_id/);
-  assert.doesNotMatch(quiz, /answer_keys|setInterval|remaining_seconds|score\s*[:=]/);
+  assert.doesNotMatch(quiz, /setInterval|remaining_seconds|score\s*[:=]/);
+  assert.match(quiz, /gradeVirtualpetAnswer/);
+  assert.match(quiz, /disabled=\{frozen\}/);
+  assert.match(quiz, /last \? <button/);
+  assert.match(quiz, /Konfirmasi Jawaban/);
+  assert.match(quiz, /className="sm:hidden">Jawab/);
+  assert.match(quiz, /className="sm:hidden">Selesai/);
+  assert.match(room, /aria-label="Reward yang didapat"/);
+  assert.match(room, /pet.hydration === 0 \|\| pet.hunger === 0/);
+  assert.match(room, /pingsan! Butuh penyelamatan\./);
+  assert.match(room, /const ill = status === "sick" \|\| fainted/);
+  assert.match(room, /data-pet-care="infus"/);
+  assert.match(room, /data-pet-care="kompres"/);
+  assert.doesNotMatch(room, /Zz|Sedang hibernasi|const asleep/);
+  assert.match(room, /onClick=\{\(\) => setRescueOpen\(true\)\}>Misi Penyelamatan/);
+  assert.match(room, /fainted && rescueOpen && !session && !tips && !result/);
+  assert.match(room, /\["hunger", "hydration", "rice", "water", "apple", "donut", "cake", "vitamin", "xp"\]/);
+  assert.doesNotMatch(room, /<span>\{label\}<\/span>/);
+  assert.match(room, /inline-flex items-center gap-2 rounded-full border/);
+  assert.match(quiz, /sm:hidden/);
+  assert.doesNotMatch(quiz, /<select/);
+  assert.match(room, /Total pertanyaan/);
+  assert.match(room, /Review jawaban/);
+  assert.match(hook, /reviewSession/);
   assert.match(quiz, /Tanpa batas waktu/); assert.match(room, /result.correct/); assert.match(room, /result.rewards/);
 });

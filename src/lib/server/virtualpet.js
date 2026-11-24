@@ -13,7 +13,8 @@ export function validPayload(action, payload) {
   if (action === "adopt") return keys(payload, ["pet_type", "pet_name"]) && text(payload.pet_type, 50) && text(payload.pet_name, 50);
   if (action === "feed") return keys(payload, ["item"]) && ITEMS.includes(payload.item);
   if (action === "start") return keys(payload, ["scenario"]) && ["KUIZ", "HOTS", "PENYELAMATAN"].includes(payload.scenario);
-  if (action !== "finish" || !keys(payload, ["attempt_id", "answers"]) || !UUID.test(payload.attempt_id) || !Array.isArray(payload.answers) || ![10, 15].includes(payload.answers.length)) return false;
+  // 15 remains accepted only for pre-migration sessions; SQL enforces frozen pool size.
+  if (action !== "finish" || !keys(payload, ["attempt_id", "answers"]) || !UUID.test(payload.attempt_id) || !Array.isArray(payload.answers) || ![5, 10, 15].includes(payload.answers.length)) return false;
   const ids = new Set();
   return payload.answers.every(answer => {
     if (!keys(answer, ["question_id", "answer_payload"]) || !UUID.test(answer.question_id) || ids.has(answer.question_id)) return false;
@@ -30,8 +31,9 @@ function safeError(error) {
   if (error?.code === "42501") return "Akses VirtualPet ditolak. Periksa akun dan sesi login.";
   if (error?.code === "22023" || error?.code === "22P02") return "Jawaban atau perintah tidak valid. Periksa semua jawaban lalu coba lagi.";
   if (error?.code === "P0001") {
-    const match = /^Soal published valid tidak cukup untuk (KUIZ|HOTS|PENYELAMATAN): dibutuhkan (10|15), tersedia (\d{1,2}) pada jenjang (sd|smp|sma)$/.exec(error.message || "");
+    const match = /^Soal published valid tidak cukup untuk (KUIZ|HOTS|PENYELAMATAN): dibutuhkan (5|10|15), tersedia (\d{1,2}) pada jenjang (sd|smp|sma)$/.exec(error.message || "");
     if (match) return `Soal belum cukup: diperlukan ${match[2]}, tersedia ${match[3]}. Silakan coba lagi nanti.`;
+    if (error.message === "Rescue requires a fainted pet") return "Misi penyelamatan hanya tersedia saat pet pingsan.";
     if (error.message === "Item inventory is empty") return "Stok item habis. Kerjakan kuis untuk mendapat perbekalan.";
     return "VirtualPet belum dapat menjalankan perintah ini. Coba lagi atau hubungi operator.";
   }

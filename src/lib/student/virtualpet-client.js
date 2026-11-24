@@ -1,8 +1,8 @@
 export const ITEM_IDS = ["water", "rice", "apple", "donut", "cake", "vitamin"];
 export const MODES = [
-  { id: "KUIZ", count: 10, label: "Kuis", reward: "Air +1, nasi +1, XP profil +1" },
-  { id: "HOTS", count: 10, label: "HOTS", reward: "2 undian independen apel/donat/kue/vitamin (boleh sama), XP profil +5" },
-  { id: "PENYELAMATAN", count: 15, label: "Penyelamatan", reward: "Kenyang dan hidrasi +50 (maksimal 100), XP profil +2" },
+  { id: "KUIZ", count: 5, label: "Kuis", reward: "Air +1, nasi +1, XP profil dan pet masing-masing +1" },
+  { id: "HOTS", count: 5, label: "HOTS", reward: "2 snek random (apel/donat/kue/vitamin), XP profil dan pet masing-masing +5" },
+  { id: "PENYELAMATAN", count: 10, label: "Penyelamatan", reward: "Kenyang dan hidrasi +50 (maksimal 100), XP profil dan pet masing-masing +2" },
 ];
 export function mapPet(state) {
   return state.pet ? { ...state.pet, species: state.pet.pet_type, name: state.pet.pet_name,
@@ -23,6 +23,17 @@ export function buildAnswers(session, drafts) {
     if (q.type === "PG_TUNGGAL" && codes.length !== 1) throw new Error("Jawab semua soal pilihan tunggal terlebih dahulu.");
     return { question_id: q.id, answer_payload: { option_codes: [...codes] } };
   });
+}
+
+// Feedback lokal memakai snapshot kunci; nilai dan reward akhir tetap dihitung SQL.
+export function gradeVirtualpetAnswer(question, answer) {
+  const normalize = value => String(value ?? "").trim().toUpperCase();
+  if (question.type === "PGK_KATEGORI") {
+    return question.category_items.every(item => normalize(answer.category_answers?.[item.item_number]) === normalize(question.answer_keys.category_answers[item.item_number]));
+  }
+  const selected = [...(answer.option_codes || [])].sort();
+  const expected = [...question.answer_keys.option_codes].sort();
+  return selected.length === expected.length && selected.every((code, i) => code === expected[i]);
 }
 
 export function createVirtualpetClient({ getSession, actions, fetcher = fetch, onIdentityChange = () => {} }) {

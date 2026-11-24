@@ -49,6 +49,7 @@ export default function useVirtualpetRoom() {
     return new Promise(resolve => {
       startTransition(async () => {
         try {
+          const reviewSession = action === "finish" ? latest.current?.session : null;
           const data = await client.current(action, payload);
           if (!mounted.current || generation.current !== version) return resolve(null);
           latest.current = data;
@@ -58,7 +59,7 @@ export default function useVirtualpetRoom() {
             tipsSeen.current = true;
             if (data.settings.SHOW_TIPS === "1" && data.tip?.message) setTips(data.tip);
           }
-          if (action === "finish") setResult(data);
+          if (action === "finish") setResult({ ...data, review: reviewSession ? { session: reviewSession, answers: payload.answers } : null });
           resolve(data);
         } catch (failure) {
           if (mounted.current) setError(failure.code === "ACCOUNT_CHANGED" ? "Akun berubah. Tekan Coba lagi untuk memuat data akun saat ini." : "" + failure.message);
