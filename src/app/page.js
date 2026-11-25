@@ -50,6 +50,9 @@ const paths = [
   },
 ];
 
+// Section "Pilih jenjangmu" sedang disembunyikan dari halaman utama.
+const SHOW_JENJANG = false;
+
 export default function HomeNewPage() {
   const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
@@ -262,6 +265,44 @@ export default function HomeNewPage() {
         </div>
       </section>
 
+      <section id="games" aria-labelledby="play-learn-title" className="relative z-10 mx-auto max-w-7xl px-5 py-16 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className={`text-xs font-black tracking-[.25em] ${theme === "light" ? "text-violet-700" : "text-lime-300"}`}>LESS SCROLLING, MORE LEVELING UP</p>
+            <h2 id="play-learn-title" className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
+              Bermain sambil belajar?<br />
+              <span className={theme === "light" ? "text-violet-600" : "text-lime-300"}>Kenapa nggak.</span>
+            </h2>
+          </div>
+          <span className="-rotate-6 rounded-full border-2 border-current px-4 py-2 text-sm font-black">✦ Belajar, tapi seru.</span>
+        </div>
+        <div className="mt-12 grid gap-8 px-1 md:grid-cols-3 md:gap-6 md:py-5">
+          {[
+            { title: "Boss Fight", tag: "MAIN CHARACTER ENERGY", emoji: "🐲", accent: "⚔️", label: "Kalahkan boss. Menangkan progres.", text: "Ubah soal jadi jurus andalan. Jawab tantangan, hadapi boss, dan buktikan skill-mu!", color: "bg-[#ffc4e6]", shape: "rounded-[3rem_1.5rem_4rem_1.5rem] md:-rotate-2", scene: "bg-[#bda6ff]", badge: "BOSS LEVEL", meter: "w-2/3", route: "/student/fightboss" },
+            { title: "Sahabat Virtual", tag: "YOUR NEW STUDY BESTIE", emoji: "🐣", accent: "💖", label: "Rawat bestie. Upgrade diri.", text: "Teman kecil, motivasi besar. Belajar bareng pet kesayangan dan temani dia tumbuh!", color: "bg-[#d9ff83]", shape: "rounded-[4rem_4rem_1.5rem_3rem] md:translate-y-6 md:rotate-2", scene: "bg-[#a9e7b7]", badge: "BESTIE MODE", meter: "w-4/5", route: "/student/virtualpet" },
+            { title: "Petualangan Peta Materi", tag: "GO EXPLORE, GO GROW", emoji: "🏝️", accent: "🧭", label: "Buka peta. Temukan potensimu.", text: "Jelajahi pulau, tuntaskan misi, dan kumpulkan bintang. Tiap langkah punya cerita baru!", color: "bg-[#a6eaff]", shape: "rounded-[1.5rem_4rem_2rem_4rem] md:-rotate-1", scene: "bg-[#76ccdf]", badge: "KOTAK MISTERI", meter: "w-1/2", route: "/student/mapadventure" },
+          ].map((game) => (
+            <Link key={game.title} href={game.route} className={`group relative flex flex-col border-2 border-[#17152e] p-6 text-[#17152e] shadow-[6px_7px_0_#17152e] transition-transform duration-200 hover:-translate-y-2 focus-visible:outline-4 focus-visible:outline-offset-8 focus-visible:outline-violet-500 motion-reduce:transform-none ${game.color} ${game.shape}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black tracking-wider">{game.tag}</span>
+                <span aria-hidden="true" className="text-2xl">✦</span>
+              </div>
+              <div aria-hidden="true" className={`relative mt-5 flex h-44 items-center justify-center overflow-hidden rounded-[2rem_3rem_2rem_4rem] border-2 border-[#17152e]/15 ${game.scene}`}>
+                <div className="absolute h-32 w-32 rounded-full border-2 border-dashed border-white/70" />
+                <span className="relative text-8xl drop-shadow-lg transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6 motion-reduce:transform-none">{game.emoji}</span>
+                <span className="absolute right-4 top-4 rotate-12 text-3xl">{game.accent}</span>
+                <span className="absolute bottom-3 left-3 -rotate-6 rounded-lg border-2 border-[#17152e] bg-white px-2 py-1 text-[9px] font-black shadow-[2px_2px_0_#17152e]">{game.badge}</span>
+                <span className="absolute bottom-4 right-4 text-xl">✧</span>
+              </div>
+              <h3 className="mt-6 text-3xl font-black tracking-tight">{game.title}</h3>
+              <p className="mt-2 text-sm font-extrabold">{game.label}</p>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[#17152e]/80">{game.text}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {SHOW_JENJANG && (
       <section
         id="jenjang"
         className="relative z-10 mx-auto max-w-7xl px-5 py-16 lg:px-8"
@@ -296,6 +337,7 @@ export default function HomeNewPage() {
           ))}
         </div>
       </section>
+      )}
 
       {showLogin && (
         <div
