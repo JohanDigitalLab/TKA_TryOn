@@ -2,6 +2,7 @@
 "use client";
 
 import BrandLogo from "@/components/brand-logo";
+import ThemeToggle from "@/components/theme-toggle";
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -311,16 +312,16 @@ export default function AdminDashboard() {
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 className="text-2xl font-bold text-slate-900">
+              <h3 className="text-2xl font-bold text-ink">
                 Selamat datang, Admin!
               </h3>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-ink-muted">
                 Pusat kendali konten akademik dan operasional TKA TryOn.
               </p>
             </div>
 
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-ink-muted">
               Data statistik belum terhubung
             </span>
           </div>
@@ -330,23 +331,23 @@ export default function AdminDashboard() {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              className="rounded-2xl border border-line bg-surface p-5 shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-500">
+                <p className="text-sm font-medium text-ink-muted">
                   {stat.label}
                 </p>
 
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-xl text-blue-700">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-xl text-accent-ink">
                   {stat.icon}
                 </span>
               </div>
 
-              <p className="mt-4 text-3xl font-bold text-slate-900">
+              <p className="mt-4 text-3xl font-bold text-ink">
                 {stat.value}
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-ink-muted">
                 {stat.note}
               </p>
             </div>
@@ -354,8 +355,8 @@ export default function AdminDashboard() {
         </section>
 
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="rounded-2xl bg-gradient-to-br from-blue-700 to-indigo-800 p-6 text-white shadow-sm lg:col-span-2">
-            <p className="text-xs font-semibold tracking-widest text-blue-200">
+          <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary p-6 text-on-primary shadow-sm lg:col-span-2">
+            <p className="text-xs font-semibold tracking-widest text-on-primary">
               ACADEMIC CONTENT MANAGEMENT
             </p>
 
@@ -363,7 +364,7 @@ export default function AdminDashboard() {
               Bangun bank soal berkualitas bersama AI dan Guru.
             </h3>
 
-            <p className="mt-3 max-w-xl text-sm leading-6 text-blue-100">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-on-primary">
               Kelola soal, stimulus, kunci jawaban, pembahasan, dan proses
               telaah akademik dalam satu ekosistem terintegrasi.
             </p>
@@ -373,45 +374,45 @@ export default function AdminDashboard() {
                 onClick={() => {
                   router.push("/admin/import");
                 }}
-                className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+                className="rounded-lg bg-surface px-4 py-2.5 text-sm font-semibold text-accent-strong hover:bg-accent-soft"
               >
                 Buka Import Center →
               </button>
 
               <button
                 onClick={() => setActiveMenu("AI Question Factory")}
-                className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+                className="rounded-lg border border-on-primary/30 px-4 py-2.5 text-sm font-semibold text-on-primary hover:bg-surface/10"
               >
                 AI Question Factory
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-800">
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+            <p className="text-sm font-semibold text-ink-body">
               Status Pengembangan
             </p>
 
             <div className="mt-5 space-y-4">
               {[
-                ["Database Foundation", "Selesai", "bg-emerald-500"],
-                ["Question Bank Engine", "Selesai", "bg-emerald-500"],
-                ["Import Center", "Dalam pengembangan", "bg-amber-500"],
-                ["Moderasi Guru", "Direncanakan", "bg-slate-300"],
-                ["Simulasi Terintegrasi", "Direncanakan", "bg-slate-300"],
+                ["Database Foundation", "Selesai", "bg-success"],
+                ["Question Bank Engine", "Selesai", "bg-success"],
+                ["Import Center", "Dalam pengembangan", "bg-warning"],
+                ["Moderasi Guru", "Direncanakan", "bg-surface-strong"],
+                ["Simulasi Terintegrasi", "Direncanakan", "bg-surface-strong"],
               ].map(([name, status, color]) => (
                 <div key={name}>
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-medium text-slate-600">
+                    <span className="font-medium text-ink-secondary">
                       {name}
                     </span>
 
-                    <span className="text-slate-400">
+                    <span className="text-ink-muted">
                       {status}
                     </span>
                   </div>
 
-                  <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+                  <div className="mt-2 h-1.5 rounded-full bg-surface-raised">
                     <div className={`h-1.5 w-full rounded-full ${color}`} />
                   </div>
                 </div>
@@ -422,11 +423,11 @@ export default function AdminDashboard() {
 
         <section>
           <div className="mb-4">
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-ink">
               Akses Cepat
             </h3>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-ink-muted">
               Pilih area kerja yang ingin dikelola.
             </p>
           </div>
@@ -453,21 +454,21 @@ export default function AdminDashboard() {
 
                   selectMenu(title);
                 }}
-                className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                className="rounded-2xl border border-line bg-surface p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-accent hover:shadow-md"
               >
-                <span className="text-2xl text-blue-700">
+                <span className="text-2xl text-accent-ink">
                   {icon}
                 </span>
 
-                <h4 className="mt-3 font-bold text-slate-800">
+                <h4 className="mt-3 font-bold text-ink-body">
                   {title}
                 </h4>
 
-                <p className="mt-1 text-xs leading-5 text-slate-500">
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
                   {desc}
                 </p>
 
-                <p className="mt-4 text-xs font-semibold text-blue-700">
+                <p className="mt-4 text-xs font-semibold text-accent-ink">
                   Buka area →
                 </p>
               </button>
@@ -475,19 +476,19 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-bold text-slate-800">
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+          <h3 className="font-bold text-ink-body">
             Workspace Aktif
           </h3>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-muted">
             Menu terpilih:{" "}
-            <span className="font-semibold text-blue-700">
+            <span className="font-semibold text-accent-ink">
               {activeMenu}
             </span>
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-ink-muted">
             Modul ini akan dihubungkan ke halaman dan layanan database pada
             tahap pengembangan berikutnya.
           </p>
@@ -504,28 +505,28 @@ export default function AdminDashboard() {
     return (
       <div className="space-y-6">
         <section>
-          <p className="text-xs font-bold tracking-widest text-blue-700">
+          <p className="text-xs font-bold tracking-widest text-accent-ink">
             SYSTEM MANAGEMENT
           </p>
 
-          <h3 className="mt-2 text-2xl font-bold text-slate-950">
+          <h3 className="mt-2 text-2xl font-bold text-ink">
             Manajemen Admin
           </h3>
 
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
             Pilih akun pengguna yang sudah terdaftar, aktifkan sebagai Admin
             Operator, dan atur kewenangan berdasarkan kebutuhan pekerjaan.
           </p>
         </section>
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-xl border border-danger-line bg-danger-soft p-4 text-sm text-danger-ink">
             <strong>Terjadi kesalahan:</strong> {error}
           </div>
         )}
 
         {success && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+          <div className="rounded-xl border border-success-line bg-success-soft p-4 text-sm text-success-ink">
             {success}
           </div>
         )}
@@ -533,22 +534,22 @@ export default function AdminDashboard() {
         <section className="grid gap-5 xl:grid-cols-5">
           {/* DAFTAR AKUN */}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm xl:col-span-2">
             <div className="flex items-center justify-between gap-2">
-              <h4 className="font-bold text-slate-900">
+              <h4 className="font-bold text-ink">
                 Akun Terdaftar
               </h4>
 
               <button
                 onClick={loadCandidates}
                 disabled={loadingCandidates || saving}
-                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-line px-3 py-2 text-xs font-semibold text-ink-secondary hover:bg-surface-muted disabled:opacity-50"
               >
                 {loadingCandidates ? "Memuat..." : "↻ Muat ulang"}
               </button>
             </div>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-ink-muted">
               Daftar ini hanya dapat diakses oleh Super Admin.
             </p>
 
@@ -557,16 +558,16 @@ export default function AdminDashboard() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Cari nama atau ID akun..."
-              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-4 w-full rounded-lg border border-line px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-line"
             />
 
             <div className="mt-4 max-h-[620px] space-y-2 overflow-y-auto">
               {loadingCandidates ? (
-                <p className="py-8 text-center text-sm text-slate-400">
+                <p className="py-8 text-center text-sm text-ink-muted">
                   Memuat daftar akun...
                 </p>
               ) : filteredCandidates.length === 0 ? (
-                <p className="rounded-lg bg-slate-50 p-5 text-center text-sm text-slate-500">
+                <p className="rounded-lg bg-surface-muted p-5 text-center text-sm text-ink-muted">
                   Tidak ada akun yang ditemukan.
                 </p>
               ) : (
@@ -580,17 +581,17 @@ export default function AdminDashboard() {
                       onClick={() => selectOperator(user)}
                       className={`w-full rounded-xl border p-3 text-left transition ${
                         selected
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
+                          ? "border-accent bg-accent-soft"
+                          : "border-line hover:border-accent hover:bg-surface-muted"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-slate-800">
+                          <p className="truncate text-sm font-bold text-ink-body">
                             {user.full_name || "Tanpa nama"}
                           </p>
 
-                          <p className="mt-1 truncate text-[10px] text-slate-400">
+                          <p className="mt-1 truncate text-[10px] text-ink-muted">
                             {user.user_id}
                           </p>
                         </div>
@@ -598,10 +599,10 @@ export default function AdminDashboard() {
                         <span
                           className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold ${
                             user.is_active
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-success-tint text-success-ink"
                               : user.is_operator
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-slate-100 text-slate-500"
+                              ? "bg-warning-tint text-warning-ink"
+                              : "bg-surface-raised text-ink-muted"
                           }`}
                         >
                           {user.is_active
@@ -612,7 +613,7 @@ export default function AdminDashboard() {
                         </span>
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-500">
+                      <p className="mt-2 text-xs text-ink-muted">
                         Status akun: {user.account_status || "Tidak tersedia"}
                       </p>
                     </button>
@@ -624,35 +625,35 @@ export default function AdminDashboard() {
 
           {/* PENGATURAN PERMISSION */}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
+          <div className="rounded-2xl border border-line bg-surface p-5 shadow-sm xl:col-span-3">
             {!selectedUser ? (
               <div className="flex min-h-[350px] flex-col items-center justify-center text-center">
-                <span className="text-4xl text-slate-300">
+                <span className="text-4xl text-inverse-muted">
                   ♙
                 </span>
 
-                <h4 className="mt-4 font-bold text-slate-700">
+                <h4 className="mt-4 font-bold text-ink-body">
                   Pilih akun pengguna
                 </h4>
 
-                <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                <p className="mt-2 max-w-sm text-sm leading-6 text-ink-muted">
                   Pilih akun dari daftar di sebelah kiri untuk mengatur status
                   Admin Operator dan hak aksesnya.
                 </p>
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-5">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line-subtle pb-5">
                   <div>
-                    <p className="text-xs font-bold tracking-widest text-blue-700">
+                    <p className="text-xs font-bold tracking-widest text-accent-ink">
                       PENGATURAN AKUN
                     </p>
 
-                    <h4 className="mt-2 text-xl font-bold text-slate-900">
+                    <h4 className="mt-2 text-xl font-bold text-ink">
                       {selectedUser.full_name || "Tanpa nama"}
                     </h4>
 
-                    <p className="mt-1 break-all text-xs text-slate-400">
+                    <p className="mt-1 break-all text-xs text-ink-muted">
                       {selectedUser.user_id}
                     </p>
                   </div>
@@ -660,8 +661,8 @@ export default function AdminDashboard() {
                   <span
                     className={`rounded-lg px-3 py-2 text-xs font-bold ${
                       selectedUser.is_active
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-600"
+                        ? "bg-success-soft text-success-ink"
+                        : "bg-surface-raised text-ink-secondary"
                     }`}
                   >
                     {selectedUser.is_active
@@ -671,18 +672,18 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-5">
-                  <h5 className="font-bold text-slate-800">
+                  <h5 className="font-bold text-ink-body">
                     Hak Akses Admin Operator
                   </h5>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-1 text-xs leading-5 text-ink-muted">
                     Centang kewenangan yang akan diberikan kepada akun ini.
                     Super Admin tetap memiliki seluruh hak akses secara
                     otomatis dan tidak diatur melalui daftar ini.
                   </p>
                 </div>
 
-                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                <div className="mt-4 rounded-xl border border-accent-line bg-accent-soft p-4 text-sm text-accent-strong">
                   Untuk alur impor sampai terbit, berikan seluruh izin Bank Soal:
                   melihat, telaah, edit, moderasi, publikasi, dan impor.
                   Setiap izin tetap dapat diberikan terpisah sesuai tanggung jawab operator.
@@ -691,7 +692,7 @@ export default function AdminDashboard() {
 
                 {permissionGroups.map((group) => (
                   <div key={group.title} className="mt-5">
-                    <h6 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <h6 className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-muted">
                       {group.title}
                     </h6>
 
@@ -699,7 +700,7 @@ export default function AdminDashboard() {
                       {group.items.map((permission) => (
                         <label
                           key={permission.code}
-                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50/50"
+                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 transition hover:border-accent hover:bg-accent-soft/50"
                         >
                           <input
                             type="checkbox"
@@ -709,19 +710,19 @@ export default function AdminDashboard() {
                             onChange={() =>
                               togglePermission(permission.code)
                             }
-                            className="mt-1 h-4 w-4 accent-blue-700"
+                            className="mt-1 h-4 w-4 accent-accent"
                           />
 
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-slate-800">
+                            <span className="block text-sm font-semibold text-ink-body">
                               {permission.label}
                             </span>
 
-                            <span className="mt-1 block text-xs text-slate-500">
+                            <span className="mt-1 block text-xs text-ink-muted">
                               {permission.description}
                             </span>
 
-                            <span className="mt-1 block text-[10px] text-slate-400">
+                            <span className="mt-1 block text-[10px] text-ink-muted">
                               {permission.code}
                             </span>
                           </span>
@@ -731,8 +732,8 @@ export default function AdminDashboard() {
                   </div>
                 ))}
 
-                <div className="mt-6 rounded-xl bg-blue-50 p-4">
-                  <p className="text-xs leading-5 text-blue-800">
+                <div className="mt-6 rounded-xl bg-accent-soft p-4">
+                  <p className="text-xs leading-5 text-accent-strong">
                     <strong>Catatan:</strong> Menyimpan pengaturan akan
                     mengaktifkan akun sebagai Admin Operator. Jika operator
                     dinonaktifkan, seluruh permission akan dicabut.
@@ -743,7 +744,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={saveOperator}
                     disabled={saving}
-                    className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving
                       ? "Menyimpan..."
@@ -754,7 +755,7 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => disableOperator(selectedUser)}
                       disabled={saving}
-                      className="rounded-lg border border-red-200 px-5 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                      className="rounded-lg border border-danger-line px-5 py-3 text-sm font-bold text-danger-ink transition hover:bg-danger-soft disabled:opacity-50"
                     >
                       Nonaktifkan Operator
                     </button>
@@ -767,8 +768,8 @@ export default function AdminDashboard() {
 
         {/* PRINSIP KEAMANAN */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h4 className="font-bold text-slate-900">
+        <section className="rounded-2xl border border-line bg-surface p-5 shadow-sm">
+          <h4 className="font-bold text-ink">
             Prinsip Keamanan Manajemen Admin
           </h4>
 
@@ -787,12 +788,12 @@ export default function AdminDashboard() {
                 "Perubahan status dan permission dicatat dalam database.",
               ],
             ].map(([title, description]) => (
-              <div key={title} className="rounded-xl bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-800">
+              <div key={title} className="rounded-xl bg-surface-muted p-4">
+                <p className="text-sm font-bold text-ink-body">
                   {title}
                 </p>
 
-                <p className="mt-2 text-xs leading-5 text-slate-500">
+                <p className="mt-2 text-xs leading-5 text-ink-muted">
                   {description}
                 </p>
               </div>
@@ -808,10 +809,10 @@ export default function AdminDashboard() {
   // ====================================================
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 lg:flex">
+    <div className="min-h-screen bg-surface-muted text-ink-body lg:flex">
       {/* SIDEBAR */}
 
-      <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:block lg:min-h-screen">
+      <aside className="hidden w-64 shrink-0 bg-inverse-deep text-on-inverse lg:block lg:min-h-screen">
         <div className="border-b border-white/10 px-6 py-6">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-12 w-14" />
@@ -821,7 +822,7 @@ export default function AdminDashboard() {
                 TKA TryOn
               </h1>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 SKILL ON • CONFIDENCE ON
               </p>
             </div>
@@ -829,8 +830,8 @@ export default function AdminDashboard() {
         </div>
 
         <div className="px-4 py-5">
-          <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="text-xs text-slate-400">
+          <div className="mb-5 rounded-xl border border-white/10 bg-surface/5 p-3">
+            <p className="text-xs text-ink-muted">
               AREA KERJA
             </p>
 
@@ -838,7 +839,7 @@ export default function AdminDashboard() {
               Super Admin
             </p>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-ink-muted">
               TKA TryOn Platform
             </p>
           </div>
@@ -847,7 +848,7 @@ export default function AdminDashboard() {
             {menu.map((item) => (
               <div key={item.label}>
                 {item.section && (
-                  <p className="mb-2 mt-5 px-3 text-[10px] font-bold tracking-widest text-slate-500">
+                  <p className="mb-2 mt-5 px-3 text-[10px] font-bold tracking-widest text-ink-muted">
                     {item.section}
                   </p>
                 )}
@@ -868,8 +869,8 @@ export default function AdminDashboard() {
                   }}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
                     activeMenu === item.label
-                      ? "bg-blue-600 font-semibold text-white"
-                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      ? "bg-primary font-semibold text-on-primary"
+                      : "text-inverse-muted hover:bg-surface/10 hover:text-on-inverse"
                   }`}
                 >
                   <span className="w-5 text-center text-lg">
@@ -879,7 +880,7 @@ export default function AdminDashboard() {
                   {item.label}
 
                   {item.label === "Moderasi Guru" && (
-                    <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">
+                    <span className="ml-auto rounded-full bg-warning/20 px-2 py-0.5 text-[10px] text-warning-ink">
                       Review
                     </span>
                   )}
@@ -890,11 +891,11 @@ export default function AdminDashboard() {
         </div>
 
         <div className="border-t border-white/10 px-6 py-5">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-muted">
             TKA TryOn Administration
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-ink-muted">
             Platform v1.0
           </p>
         </div>
@@ -903,9 +904,9 @@ export default function AdminDashboard() {
       {/* MAIN CONTENT */}
 
       <main className="min-w-0 flex-1">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 md:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-5 py-4 md:px-8">
           <div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-ink-muted">
               ADMINISTRATION / {activeMenu.toUpperCase()}
             </p>
 
@@ -917,38 +918,39 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+            <ThemeToggle />
+            <span className="rounded-full bg-success-soft px-3 py-1.5 text-xs font-semibold text-success-ink">
               ● Platform Workspace
             </span>
 
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint font-bold text-accent-ink">
               A
             </div>
           </div>
         </header>
 
-        <nav aria-label="Navigasi admin layar kecil" className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+        <nav aria-label="Navigasi admin layar kecil" className="flex flex-wrap gap-2 border-b border-line bg-surface px-5 py-3 lg:hidden">
           <button
             type="button"
             onClick={() => selectMenu("Dashboard")}
             aria-pressed={activeMenu === "Dashboard"}
-            className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+            className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft"
           >
             Dashboard
           </button>
-          <button type="button" onClick={() => router.push("/admin/schools")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Review sekolah</button>
-          <button type="button" onClick={() => router.push("/school")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Portal sekolah</button>
-          <button type="button" onClick={() => router.push("/admin/questions")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
+          <button type="button" onClick={() => router.push("/admin/schools")} className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft">Review sekolah</button>
+          <button type="button" onClick={() => router.push("/school")} className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft">Portal sekolah</button>
+          <button type="button" onClick={() => router.push("/admin/questions")} className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft">
             Bank Soal
           </button>
-          <button type="button" onClick={() => router.push("/admin/import")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
+          <button type="button" onClick={() => router.push("/admin/import")} className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft">
             Import Center
           </button>
           <button
             type="button"
             onClick={() => selectMenu("Manajemen Admin")}
             aria-pressed={activeMenu === "Manajemen Admin"}
-            className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+            className="min-h-11 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink-body hover:bg-accent-soft"
           >
             Manajemen Admin
           </button>
@@ -960,19 +962,19 @@ export default function AdminDashboard() {
           ) : activeMenu === "Manajemen Admin" ? (
             renderAdminManagement()
           ) : (
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-slate-900">
+            <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-ink">
                 {activeMenu}
               </h3>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
                 Modul ini akan dihubungkan ke halaman dan layanan database
                 pada tahap pengembangan berikutnya.
               </p>
             </section>
           )}
 
-          <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
+          <footer className="border-t border-line pt-5 text-center text-xs text-ink-muted">
             © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
           </footer>
         </div>

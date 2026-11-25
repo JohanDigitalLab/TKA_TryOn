@@ -18,9 +18,9 @@ export default function LearningAccess() {
     void load();
     return () => { alive = false; };
   }, []);
-  if (state.loading) return <p role="status" className="text-sm text-slate-600">Memeriksa sesi…</p>;
-  if (state.guest) return <p className="text-sm text-slate-600">Masuk untuk memulai kegiatan belajar.</p>;
-  return <section aria-label="Akses belajar" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+  if (state.loading) return <p role="status" className="text-sm text-ink-secondary">Memeriksa sesi…</p>;
+  if (state.guest) return <p className="text-sm text-ink-secondary">Masuk untuk memulai kegiatan belajar.</p>;
+  return <section aria-label="Akses belajar" className="rounded-lg border border-accent-line bg-accent-soft p-4 text-sm leading-6 text-accent-strong">
     <p className="font-bold">Akses belajar tersedia</p>
     <p>Kamu dapat memulai simulasi TKA dan latihan soal tanpa batas percobaan. Setiap sesi tetap mengikuti durasi pengerjaan dan paket mapel yang dipilih.</p>
     <p className="mt-1">Sesi yang sudah dimulai dan riwayat hasil tetap dapat diakses.</p>

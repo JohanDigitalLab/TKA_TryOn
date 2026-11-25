@@ -47,20 +47,20 @@ function LoginForm() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-10">
-      <div className="mx-auto max-w-md space-y-6 rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
-        <Link href="/" className="inline-flex items-center gap-3 font-bold text-blue-800"><BrandLogo className="h-14 w-14" />Beranda TKA TryOn</Link>
+    <main className="min-h-screen bg-surface-muted px-5 py-10">
+      <div className="mx-auto max-w-md space-y-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
+        <Link href="/" className="inline-flex items-center gap-3 font-bold text-accent-strong"><BrandLogo className="h-14 w-14" />Beranda TKA TryOn</Link>
         <h1 className="text-3xl font-black">Masuk</h1>
-        <p className="text-sm text-slate-600">Gunakan akun siswa, guru, staf sekolah, atau admin yang sudah terdaftar.</p>
-        {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
+        <p className="text-sm text-ink-secondary">Gunakan akun siswa, guru, staf sekolah, atau admin yang sudah terdaftar.</p>
+        {error && <p role="alert" className="rounded border border-danger-line bg-danger-soft p-4 text-danger-ink">{error}</p>}
         <form onSubmit={login} aria-busy={busy}>
           <fieldset disabled={busy} className="space-y-4">
-            <label className="block text-sm font-semibold">Email<input name="email" type="email" autoComplete="username" required className="mt-1 block min-h-11 w-full rounded border border-slate-300 px-3 py-2" /></label>
-            <label className="block text-sm font-semibold">Password<input name="password" type="password" autoComplete="current-password" required className="mt-1 block min-h-11 w-full rounded border border-slate-300 px-3 py-2" /></label>
-            <button type="submit" className="min-h-11 w-full rounded bg-blue-700 px-4 py-3 font-bold text-white disabled:opacity-60">{busy ? "Memproses…" : "Masuk"}</button>
+            <label className="block text-sm font-semibold">Email<input name="email" type="email" autoComplete="username" required className="mt-1 block min-h-11 w-full rounded border border-line-strong px-3 py-2" /></label>
+            <label className="block text-sm font-semibold">Password<input name="password" type="password" autoComplete="current-password" required className="mt-1 block min-h-11 w-full rounded border border-line-strong px-3 py-2" /></label>
+            <button type="submit" className="min-h-11 w-full rounded bg-primary px-4 py-3 font-bold text-on-primary disabled:opacity-60">{busy ? "Memproses…" : "Masuk"}</button>
           </fieldset>
         </form>
-        <p className="text-sm">Belum punya akun? <Link href={authLink("register", next)} className="font-bold text-blue-700 underline">Daftar siswa</Link> · <Link href={authLink("school/register", next)} className="font-bold text-blue-700 underline">Daftar staf / sekolah</Link></p>
+        <p className="text-sm">Belum punya akun? <Link href={authLink("register", next)} className="font-bold text-accent-ink underline">Daftar siswa</Link> · <Link href={authLink("school/register", next)} className="font-bold text-accent-ink underline">Daftar staf / sekolah</Link></p>
       </div>
     </main>
   );

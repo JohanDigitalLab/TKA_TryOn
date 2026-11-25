@@ -906,7 +906,7 @@ export default function ImportCenterPage() {
 
   if (!authReady) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 text-slate-600">
+      <main className="grid min-h-screen place-items-center bg-surface-muted text-ink-secondary">
         Memeriksa sesi Supabase…
       </main>
     );
@@ -914,28 +914,28 @@ export default function ImportCenterPage() {
 
   if (!session) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
+      <main className="grid min-h-screen place-items-center bg-surface-muted p-5">
         <form
           onSubmit={handleLogin}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
+          className="w-full max-w-md rounded-2xl border border-line bg-surface p-7 shadow-sm"
         >
           <div className="mb-5 flex items-center gap-3">
             <BrandLogo className="h-14 w-14" />
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold text-ink">
                 TKA TryOn
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Smart Import Center
               </p>
             </div>
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink">
             Masuk ke Import Center
           </h2>
 
-          <label className="mt-5 block text-sm font-semibold text-slate-700">
+          <label className="mt-5 block text-sm font-semibold text-ink-body">
             Email
           </label>
           <input
@@ -943,10 +943,10 @@ export default function ImportCenterPage() {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900"
+            className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2.5 text-ink"
           />
 
-          <label className="mt-4 block text-sm font-semibold text-slate-700">
+          <label className="mt-4 block text-sm font-semibold text-ink-body">
             Password
           </label>
           <input
@@ -954,18 +954,18 @@ export default function ImportCenterPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-slate-900"
+            className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2.5 text-ink"
           />
 
           {authError && (
-            <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p className="mt-3 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">
               {authError}
             </p>
           )}
 
           <button
             disabled={authLoading}
-            className="mt-5 w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white disabled:opacity-50"
+            className="mt-5 w-full rounded-lg bg-primary px-4 py-3 font-semibold text-on-primary disabled:opacity-50"
           >
             {authLoading ? "Memeriksa…" : "Masuk"}
           </button>
@@ -976,18 +976,18 @@ export default function ImportCenterPage() {
 
   if (!isAdmin) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
-        <section className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-7">
-          <h1 className="text-xl font-bold text-slate-900">
+      <main className="grid min-h-screen place-items-center bg-surface-muted p-5">
+        <section className="w-full max-w-lg rounded-2xl border border-warning-line bg-surface p-7">
+          <h1 className="text-xl font-bold text-ink">
             Izin Import Soal diperlukan
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-ink-secondary">
             Akunmu belum memiliki izin Import Soal. Superadmin dapat
             memberikan izin ini melalui Manajemen Admin.
           </p>
           <button
             onClick={handleLogout}
-            className="mt-5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold"
+            className="mt-5 rounded-lg border border-line-strong px-4 py-2 text-sm font-semibold"
           >
             Keluar
           </button>
@@ -1001,7 +1001,7 @@ export default function ImportCenterPage() {
   ======================================================= */
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-800 md:p-8">
+    <main className="min-h-screen bg-surface-muted p-4 text-ink-body md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
 
         {/* HEADER */}
@@ -1011,37 +1011,37 @@ export default function ImportCenterPage() {
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 font-semibold text-ink-body transition hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
               >
                 <span>⌂</span>
                 Dashboard
               </Link>
               <Link
                 href="/admin/questions"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 font-semibold text-ink-body transition hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
               >
                 <span>▤</span>
                 Bank Soal
               </Link>
             </div>
-            <p className="text-xs font-bold tracking-[0.18em] text-blue-700">
+            <p className="text-xs font-bold tracking-[0.18em] text-accent-ink">
               TKA TRYON / ACADEMIC CONTENT
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+            <h1 className="mt-2 text-3xl font-bold text-ink">
               Smart Import Center
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-ink-secondary">
               Satu pintu masuk untuk seluruh sumber Bank Soal TKA TryOn.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+            <span className="rounded-full bg-success-soft px-3 py-2 text-xs font-semibold text-success-ink">
               Izin impor terverifikasi
             </span>
             <button
               onClick={handleLogout}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
+              className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-semibold"
             >
               Keluar
             </button>
@@ -1050,8 +1050,8 @@ export default function ImportCenterPage() {
 
         {/* PIPELINE */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="font-bold text-slate-900">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="font-bold text-ink">
             Alur Smart Import
           </h2>
 
@@ -1068,14 +1068,14 @@ export default function ImportCenterPage() {
                 key={number}
                 className={`rounded-xl border p-3 ${
                   index === 0
-                    ? "border-blue-300 bg-blue-50"
-                    : "border-slate-200 bg-slate-50"
+                    ? "border-accent bg-accent-soft"
+                    : "border-line bg-surface-muted"
                 }`}
               >
-                <p className="text-xs font-bold text-slate-500">
+                <p className="text-xs font-bold text-ink-muted">
                   {number}
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-800">
+                <p className="mt-1 text-sm font-bold text-ink-body">
                   {label}
                 </p>
               </div>
@@ -1085,25 +1085,25 @@ export default function ImportCenterPage() {
 
         {/* FORMAT SUMBER */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <section className="rounded-2xl border border-line bg-surface p-5">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-ink">
               1. Unggah Sumber Bank Soal
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-ink-secondary">
               Pilih sumber soal yang akan dimasukkan ke Bank Soal TKA TryOn.
             </p>
           </div>
 
-          <label className="mt-5 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50">
+          <label className="mt-5 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line-strong bg-surface-muted p-6 text-center transition hover:border-accent hover:bg-accent-soft">
             <span className="text-4xl">📚</span>
-            <span className="mt-3 font-bold text-slate-900">
+            <span className="mt-3 font-bold text-ink">
               {loading ? "Sedang memproses file…" : "Pilih atau jatuhkan file di sini"}
             </span>
-            <span className="mt-2 text-sm text-slate-500">
+            <span className="mt-2 text-sm text-ink-muted">
               XLSX · XLS · CSV · DOCX · PDF · JPG · JPEG · PNG
             </span>
-            <span className="mt-1 text-xs text-slate-400">
+            <span className="mt-1 text-xs text-ink-muted">
               Maksimal 20 MB per file
             </span>
 
@@ -1120,18 +1120,18 @@ export default function ImportCenterPage() {
           </label>
 
           {fileInfo && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
               <div className="min-w-0">
-                <p className="break-all text-sm font-bold text-slate-900">
+                <p className="break-all text-sm font-bold text-ink">
                   {fileInfo.name}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-ink-muted">
                   {fileInfo.extension.toUpperCase()} · {fileInfo.size}
                 </p>
               </div>
               <button
                 onClick={resetImport}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
+                className="rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink-body"
               >
                 Hapus file
               </button>
@@ -1142,21 +1142,21 @@ export default function ImportCenterPage() {
         {/* METADATA */}
 
         {(documentResult || workbookResult) && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-bold text-slate-900">
+          <section className="rounded-2xl border border-line bg-surface p-5">
+            <h2 className="text-lg font-bold text-ink">
               2. Identitas Akademik Sumber
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-ink-secondary">
               Lengkapi informasi ini agar hasil impor masuk ke jenjang dan mata pelajaran yang tepat.
             </p>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-ink-body">
                 Jenjang
                 <select
                   value={metadata.jenjang}
                   onChange={(event) => updateMetadata("jenjang", event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5"
+                  className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5"
                 >
                   <option value="">Pilih jenjang</option>
                   <option value="SD">SD / MI</option>
@@ -1166,12 +1166,12 @@ export default function ImportCenterPage() {
                 </select>
               </label>
 
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-ink-body">
                 Kelas
                 <select
                   value={metadata.kelas}
                   onChange={(event) => updateMetadata("kelas", event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5"
+                  className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5"
                 >
                   <option value="">Pilih kelas</option>
                   {["6", "9", "12"].map((grade) => (
@@ -1182,32 +1182,32 @@ export default function ImportCenterPage() {
                 </select>
               </label>
 
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-ink-body">
                 Satuan Pendidikan
                 <input
                   value={metadata.satuan_pendidikan}
                   onChange={(event) => updateMetadata("satuan_pendidikan", event.target.value)}
                   placeholder="Contoh: SD, MI, SMP, MTs, SMA, MA, SMK"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                  className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2.5"
                 />
               </label>
 
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-ink-body">
                 Mata Pelajaran
                 <input
                   value={metadata.mata_pelajaran}
                   onChange={(event) => updateMetadata("mata_pelajaran", event.target.value)}
                   placeholder="Contoh: Matematika"
-                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"
+                  className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2.5"
                 />
               </label>
 
-              <label className="text-sm font-semibold text-slate-700">
+              <label className="text-sm font-semibold text-ink-body">
                 Hak Penggunaan
                 <select
                   value={metadata.hak_penggunaan}
                   onChange={(event) => updateMetadata("hak_penggunaan", event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5"
+                  className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5"
                 >
                   <option value="ORISINAL">Orisinal</option>
                   <option value="BERLISENSI">Berlisensi</option>
@@ -1222,35 +1222,35 @@ export default function ImportCenterPage() {
         {/* STATUS DAN ERROR */}
 
         {loading && (
-          <section className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-            <p className="font-semibold text-blue-900">
+          <section className="rounded-xl border border-accent-line bg-accent-soft p-4">
+            <p className="font-semibold text-accent-strong">
               Sedang membaca dan memproses sumber…
             </p>
-            <p className="mt-1 text-sm text-blue-800">
+            <p className="mt-1 text-sm text-accent-strong">
               Proses dapat membutuhkan waktu, khususnya untuk dokumen hasil scan.
             </p>
           </section>
         )}
 
         {structuring && (
-          <section className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-            <p className="font-semibold text-violet-900">
+          <section className="rounded-xl border border-secondary-line bg-secondary-soft p-4">
+            <p className="font-semibold text-secondary-ink">
               AI sedang menyusun struktur soal…
             </p>
-            <p className="mt-1 text-sm text-violet-800">
+            <p className="mt-1 text-sm text-secondary-ink">
               AI mengekstrak pertanyaan, pilihan jawaban, stimulus, pembahasan, dan metadata. Kunci yang tidak meyakinkan harus ditandai untuk verifikasi manusia.
             </p>
           </section>
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="rounded-xl border border-danger-line bg-danger-soft p-4 text-sm text-danger-ink">
             {error}
           </div>
         )}
 
         {notice && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <div className="rounded-xl border border-success-line bg-success-soft p-4 text-sm text-success-ink">
             {notice}
           </div>
         )}
@@ -1258,33 +1258,33 @@ export default function ImportCenterPage() {
         {/* HASIL EKSTRAKSI DOKUMEN */}
 
         {documentResult && (
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+          <section className="space-y-4 rounded-2xl border border-line bg-surface p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold tracking-widest text-blue-700">
+                <p className="text-xs font-bold tracking-widest text-accent-ink">
                   EXTRACTION RESULT
                 </p>
-                <h2 className="mt-2 break-all text-lg font-bold text-slate-900">
+                <h2 className="mt-2 break-all text-lg font-bold text-ink">
                   {documentResult.fileName || fileInfo?.name}
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-ink-secondary">
                   Metode: {documentResult.extractionMethod || "Document Parser"}
                   {" · "}
                   {documentResult.pageCount || 1} halaman/lembar
                 </p>
               </div>
 
-              <span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+              <span className="rounded-full bg-warning-soft px-3 py-2 text-xs font-bold text-warning-ink">
                 HASIL EKSTRAKSI
               </span>
             </div>
 
             {documentResult.warnings?.length > 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <h3 className="text-sm font-bold text-amber-900">
+              <div className="rounded-xl border border-warning-line bg-warning-soft p-4">
+                <h3 className="text-sm font-bold text-warning-ink">
                   Catatan proses ekstraksi
                 </h3>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-warning-ink">
                   {documentResult.warnings.map((warning, index) => (
                     <li key={index}>{warning}</li>
                   ))}
@@ -1294,35 +1294,35 @@ export default function ImportCenterPage() {
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <h3 className="font-bold text-slate-900">
+                <h3 className="font-bold text-ink">
                   Teks sumber
                 </h3>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-ink-muted">
                   {(documentResult.extractedText || "").length.toLocaleString("id-ID")} karakter
                 </span>
               </div>
 
-              <pre className="max-h-[500px] overflow-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-800">
+              <pre className="max-h-[500px] overflow-auto whitespace-pre-wrap rounded-xl border border-line bg-surface-muted p-4 text-sm leading-7 text-ink-body">
                 {documentResult.extractedText ||
                   "Tidak ditemukan teks yang dapat ditampilkan."}
               </pre>
             </div>
 
             {documentResult.pageResults?.length > 0 && (
-              <details className="rounded-xl border border-slate-200 p-4">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+              <details className="rounded-xl border border-line p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-ink-body">
                   Lihat hasil ekstraksi per halaman
                 </summary>
                 <div className="mt-3 space-y-3">
                   {documentResult.pageResults.map((page, index) => (
                     <div
                       key={page.pageNumber || index}
-                      className="rounded-lg bg-slate-50 p-3"
+                      className="rounded-lg bg-surface-muted p-3"
                     >
-                      <p className="mb-1 text-xs font-bold text-slate-500">
+                      <p className="mb-1 text-xs font-bold text-ink-muted">
                         HALAMAN {page.pageNumber || index + 1}
                       </p>
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-ink-body">
                         {page.text || page.extractedText || "Tidak ada teks."}
                       </p>
                     </div>
@@ -1331,11 +1331,11 @@ export default function ImportCenterPage() {
               </details>
             )}
 
-            <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap gap-3 border-t border-line-subtle pt-4">
               <button
                 onClick={handleAIProcess}
                 disabled={structuring || !documentResult.extractedText}
-                className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {structuring ? "Menyusun soal…" : "Susun Soal dengan AI"}
               </button>
@@ -1346,7 +1346,7 @@ export default function ImportCenterPage() {
                   setQuestions([]);
                   setNotice("");
                 }}
-                className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+                className="rounded-lg border border-line-strong bg-surface px-5 py-3 text-sm font-semibold text-ink-body"
               >
                 Tutup hasil ekstraksi
               </button>
@@ -1357,15 +1357,15 @@ export default function ImportCenterPage() {
         {/* HASIL WORKBOOK TQBS */}
 
         {workbookResult && (
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+          <section className="space-y-4 rounded-2xl border border-line bg-surface p-5">
             <div>
-              <p className="text-xs font-bold tracking-widest text-blue-700">
+              <p className="text-xs font-bold tracking-widest text-accent-ink">
                 {workbookResult.format === "TRYON_V8_1" ? "WORKBOOK v8.1 VALIDATION" : "TQBS VALIDATION"}
               </p>
-              <h2 className="mt-2 break-all text-lg font-bold text-slate-900">
+              <h2 className="mt-2 break-all text-lg font-bold text-ink">
                 {workbookResult.fileName}
               </h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-ink-secondary">
                 {workbookResult.totalRows} baris operasional ·{" "}
                 {workbookResult.questionCount} soal
               </p>
@@ -1373,15 +1373,15 @@ export default function ImportCenterPage() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                ["VALID", workbookResult.counts.VALID, "text-emerald-700"],
-                ["WARNING", workbookResult.counts.WARNING, "text-amber-700"],
-                ["ERROR", workbookResult.counts.ERROR, "text-red-700"],
+                ["VALID", workbookResult.counts.VALID, "text-success-ink"],
+                ["WARNING", workbookResult.counts.WARNING, "text-warning-ink"],
+                ["ERROR", workbookResult.counts.ERROR, "text-danger-ink"],
               ].map(([label, value, color]) => (
                 <div
                   key={label}
-                  className="rounded-xl border border-slate-200 p-4"
+                  className="rounded-xl border border-line p-4"
                 >
-                  <p className="text-xs font-semibold text-slate-500">
+                  <p className="text-xs font-semibold text-ink-muted">
                     {label}
                   </p>
                   <p className={`mt-2 text-3xl font-bold ${color}`}>
@@ -1392,7 +1392,7 @@ export default function ImportCenterPage() {
             </div>
 
             {workbookResult.format === "TRYON_V8_1" && (
-              <div className="space-y-4 text-sm text-slate-700">
+              <div className="space-y-4 text-sm text-ink-body">
                 <p>{workbookResult.totalSheets} sheet total · {workbookResult.recognizedSheets.length} sumber dikenali · {workbookResult.ignoredSheets.length} diabaikan</p>
                 <details><summary>Sheet yang diabaikan</summary><p>{workbookResult.ignoredSheets.join(", ")}</p></details>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1403,7 +1403,7 @@ export default function ImportCenterPage() {
                     </div>
                   ))}
                 </div>
-                <p className="rounded-lg bg-amber-50 p-3">Kandidat → PENDING_REVIEW; rekonstruksi → NEEDS_REVISION. Semua versi tidak aktif. Hak penggunaan belum diverifikasi; tidak otomatis dianggap ORISINAL.</p>
+                <p className="rounded-lg bg-warning-soft p-3">Kandidat → PENDING_REVIEW; rekonstruksi → NEEDS_REVISION. Semua versi tidak aktif. Hak penggunaan belum diverifikasi; tidak otomatis dianggap ORISINAL.</p>
                 <details>
                   <summary>Pratinjau seluruh soal dan metadata sumber</summary>
                   <div className="max-h-96 space-y-2 overflow-auto">
@@ -1422,19 +1422,19 @@ export default function ImportCenterPage() {
                 {databasePreview && <p>Database: {databasePreview.existing_count} ID sudah ada; {databasePreview.new_count} baru. {databasePreview.existing_ids?.join(", ")}</p>}
                 <div className="flex flex-wrap gap-3">
                   <button className="rounded-lg border px-4 py-2 disabled:opacity-50" disabled={savingDraft || workbookResult.counts.ERROR > 0} onClick={() => handleV81Import(true)}>Cek ID di database</button>
-                  <button className="rounded-lg bg-blue-700 px-4 py-2 text-white disabled:opacity-50" disabled={savingDraft || workbookResult.counts.ERROR > 0 || !databasePreview} onClick={() => handleV81Import(false)}>{savingDraft ? "Memproses…" : "Simpan 474 soal untuk review"}</button>
+                  <button className="rounded-lg bg-primary px-4 py-2 text-on-primary disabled:opacity-50" disabled={savingDraft || workbookResult.counts.ERROR > 0 || !databasePreview} onClick={() => handleV81Import(false)}>{savingDraft ? "Memproses…" : "Simpan 474 soal untuk review"}</button>
                 </div>
               </div>
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-bold text-slate-900">
+              <h3 className="font-bold text-ink">
                 Rincian validasi
               </h3>
               <select
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
               >
                 <option value="ALL">Semua</option>
                 <option value="ERROR">Error</option>
@@ -1450,24 +1450,24 @@ export default function ImportCenterPage() {
                 .map((issue, index) => (
                   <div
                     key={`${issue.sheet}-${issue.row}-${issue.field}-${index}`}
-                    className="rounded-lg border border-slate-200 p-3"
+                    className="rounded-lg border border-line p-3"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2 py-1 text-xs font-bold ${
                         issue.severity === "ERROR"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-amber-100 text-amber-800"
+                          ? "bg-danger-tint text-danger-ink"
+                          : "bg-warning-tint text-warning-ink"
                       }`}>
                         {issue.severity}
                       </span>
-                      <span className="text-xs font-semibold text-slate-700">
+                      <span className="text-xs font-semibold text-ink-body">
                         {issue.sheet} · Baris {issue.row}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-ink-muted">
                         {issue.field}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-700">
+                    <p className="mt-2 text-sm text-ink-body">
                       {issue.message}
                     </p>
                   </div>
@@ -1476,17 +1476,17 @@ export default function ImportCenterPage() {
               {workbookResult.issues.filter((issue) =>
                 filter === "ALL" || issue.severity === filter
               ).length === 0 && (
-                <p className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
+                <p className="rounded-lg bg-success-soft p-4 text-sm text-success-ink">
                   Tidak ditemukan masalah pada kategori ini.
                 </p>
               )}
             </div>
 
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-900">
+            <div className="rounded-xl border border-warning-line bg-warning-soft p-4">
+              <p className="text-sm font-semibold text-warning-ink">
                 Workbook lolos validasi bukan berarti soal otomatis diterbitkan.
               </p>
-              <p className="mt-1 text-sm text-amber-800">
+              <p className="mt-1 text-sm text-warning-ink">
                 Soal tetap harus melewati penyimpanan DRAFT dan telaah akademik.
               </p>
             </div>
@@ -1496,21 +1496,21 @@ export default function ImportCenterPage() {
         {/* EDITOR SOAL HASIL AI */}
 
         {questions.length > 0 && (
-          <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
+          <section className="space-y-5 rounded-2xl border border-line bg-surface p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold tracking-widest text-blue-700">
+                <p className="text-xs font-bold tracking-widest text-accent-ink">
                   NORMALIZED QUESTION EDITOR
                 </p>
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                <h2 className="mt-2 text-xl font-bold text-ink">
                   3. Editor dan Telaah Awal Soal
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-ink-secondary">
                   Periksa dan koreksi struktur soal sebelum diajukan ke telaah akademik.
                 </p>
               </div>
 
-              <span className="rounded-full bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+              <span className="rounded-full bg-accent-soft px-3 py-2 text-sm font-bold text-accent-ink">
                 {questions.length} soal
               </span>
             </div>
@@ -1519,7 +1519,7 @@ export default function ImportCenterPage() {
               {/* DAFTAR SOAL */}
 
               <aside className="space-y-2">
-                <h3 className="mb-3 text-sm font-bold text-slate-700">
+                <h3 className="mb-3 text-sm font-bold text-ink-body">
                   Daftar soal
                 </h3>
 
@@ -1529,19 +1529,19 @@ export default function ImportCenterPage() {
                     onClick={() => setActiveQuestion(index)}
                     className={`w-full rounded-xl border p-3 text-left ${
                       activeQuestion === index
-                        ? "border-blue-400 bg-blue-50"
-                        : "border-slate-200 bg-white"
+                        ? "border-accent bg-accent-soft"
+                        : "border-line bg-surface"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold text-slate-800">
+                      <span className="text-sm font-bold text-ink-body">
                         Soal {index + 1}
                       </span>
-                      <span className="text-[10px] font-bold text-amber-700">
+                      <span className="text-[10px] font-bold text-warning-ink">
                         PERLU TELAAH
                       </span>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+                    <p className="mt-1 line-clamp-2 text-xs text-ink-muted">
                       {question.pertanyaan || "Pertanyaan belum tersedia"}
                     </p>
                   </button>
@@ -1557,21 +1557,21 @@ export default function ImportCenterPage() {
                 return (
                   <div className="min-w-0 space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="font-bold text-slate-900">
+                      <h3 className="font-bold text-ink">
                         Edit Soal {index + 1}
                       </h3>
-                      <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800">
+                      <span className="rounded-full bg-warning-soft px-3 py-1.5 text-xs font-bold text-warning-ink">
                         {question.review_status}
                       </span>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="text-sm font-semibold text-slate-700">
+                      <label className="text-sm font-semibold text-ink-body">
                         Jenjang
                         <select
                           value={question.jenjang}
                           onChange={(event) => updateQuestion(index, "jenjang", event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                          className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2"
                         >
                           <option value="SD">SD / MI</option>
                           <option value="SMP">SMP / MTs</option>
@@ -1580,30 +1580,30 @@ export default function ImportCenterPage() {
                         </select>
                       </label>
 
-                      <label className="text-sm font-semibold text-slate-700">
+                      <label className="text-sm font-semibold text-ink-body">
                         Kelas
                         <input
                           value={question.kelas}
                           onChange={(event) => updateQuestion(index, "kelas", event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                          className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2"
                         />
                       </label>
 
-                      <label className="text-sm font-semibold text-slate-700">
+                      <label className="text-sm font-semibold text-ink-body">
                         Mata Pelajaran
                         <input
                           value={question.mata_pelajaran}
                           onChange={(event) => updateQuestion(index, "mata_pelajaran", event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                          className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2"
                         />
                       </label>
 
-                      <label className="text-sm font-semibold text-slate-700">
+                      <label className="text-sm font-semibold text-ink-body">
                         Jenis Soal
                         <select
                           value={question.jenis_soal}
                           onChange={(event) => updateQuestion(index, "jenis_soal", event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                          className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2"
                         >
                           <option value="PG_TUNGGAL">Pilihan Ganda Tunggal</option>
                           <option value="PGK_MA">Pilihan Ganda Kompleks</option>
@@ -1612,24 +1612,24 @@ export default function ImportCenterPage() {
                       </label>
                     </div>
 
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-ink-body">
                       Stimulus
                       <textarea
                         rows={3}
                         value={question.stimulus}
                         onChange={(event) => updateQuestion(index, "stimulus", event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"
+                        className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2 font-normal"
                         placeholder="Teks stimulus jika ada…"
                       />
                     </label>
 
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-ink-body">
                       Pertanyaan
                       <textarea
                         rows={5}
                         value={question.pertanyaan}
                         onChange={(event) => updateQuestion(index, "pertanyaan", event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"
+                        className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2 font-normal"
                         placeholder="Teks pertanyaan…"
                       />
                     </label>
@@ -1637,12 +1637,12 @@ export default function ImportCenterPage() {
                     {question.jenis_soal !== "PGK_KATEGORI" && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
-                          <h4 className="text-sm font-bold text-slate-800">
+                          <h4 className="text-sm font-bold text-ink-body">
                             Pilihan jawaban
                           </h4>
                           <button
                             onClick={() => addOption(index)}
-                            className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-bold text-blue-700"
+                            className="rounded-lg border border-accent px-3 py-2 text-xs font-bold text-accent-ink"
                           >
                             + Tambah opsi
                           </button>
@@ -1651,13 +1651,13 @@ export default function ImportCenterPage() {
                         {question.options.map((option, optionIndex) => (
                           <div
                             key={`${question.id}-option-${optionIndex}`}
-                            className="flex items-start gap-2 rounded-xl border border-slate-200 p-3"
+                            className="flex items-start gap-2 rounded-xl border border-line p-3"
                           >
                             <div className="w-12 shrink-0">
                               <input
                                 value={option.kode_respon}
                                 onChange={(event) => updateOption(index, optionIndex, "kode_respon", event.target.value)}
-                                className="w-full rounded-lg border border-slate-300 px-2 py-2 text-center text-sm font-bold"
+                                className="w-full rounded-lg border border-line-strong px-2 py-2 text-center text-sm font-bold"
                               />
                             </div>
 
@@ -1665,11 +1665,11 @@ export default function ImportCenterPage() {
                               rows={2}
                               value={option.teks_respon}
                               onChange={(event) => updateOption(index, optionIndex, "teks_respon", event.target.value)}
-                              className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              className="min-w-0 flex-1 rounded-lg border border-line-strong px-3 py-2 text-sm"
                               placeholder="Teks pilihan jawaban"
                             />
 
-                            <label className="flex shrink-0 flex-col items-center gap-1 text-xs text-slate-600">
+                            <label className="flex shrink-0 flex-col items-center gap-1 text-xs text-ink-secondary">
                               <input
                                 type="checkbox"
                                 checked={option.is_correct}
@@ -1682,7 +1682,7 @@ export default function ImportCenterPage() {
                             <button
                               onClick={() => removeOption(index, optionIndex)}
                               title="Hapus opsi"
-                              className="rounded-lg px-2 py-1 text-sm font-bold text-red-600"
+                              className="rounded-lg px-2 py-1 text-sm font-bold text-danger-ink"
                             >
                               ×
                             </button>
@@ -1694,12 +1694,12 @@ export default function ImportCenterPage() {
                     {question.jenis_soal === "PGK_KATEGORI" && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3">
-                          <h4 className="text-sm font-bold text-slate-800">
+                          <h4 className="text-sm font-bold text-ink-body">
                             Pernyataan dan kategori
                           </h4>
                           <button
                             onClick={() => addCategoryItem(index)}
-                            className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-bold text-blue-700"
+                            className="rounded-lg border border-accent px-3 py-2 text-xs font-bold text-accent-ink"
                           >
                             + Tambah pernyataan
                           </button>
@@ -1708,29 +1708,29 @@ export default function ImportCenterPage() {
                         {question.category_items.map((item, itemIndex) => (
                           <div
                             key={`${question.id}-category-${itemIndex}`}
-                            className="space-y-2 rounded-xl border border-slate-200 p-3"
+                            className="space-y-2 rounded-xl border border-line p-3"
                           >
-                            <p className="text-xs font-bold text-slate-500">
+                            <p className="text-xs font-bold text-ink-muted">
                               PERNYATAAN {itemIndex + 1}
                             </p>
                             <textarea
                               rows={2}
                               value={item.teks_respon}
                               onChange={(event) => updateCategoryItem(index, itemIndex, "teks_respon", event.target.value)}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                               placeholder="Tulis pernyataan…"
                             />
                             <div className="grid gap-2 sm:grid-cols-2">
                               <input
                                 value={item.kategori_respon}
                                 onChange={(event) => updateCategoryItem(index, itemIndex, "kategori_respon", event.target.value)}
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                className="rounded-lg border border-line-strong px-3 py-2 text-sm"
                                 placeholder="Kategori, contoh BENAR/SALAH"
                               />
                               <input
                                 value={item.kunci_kategori}
                                 onChange={(event) => updateCategoryItem(index, itemIndex, "kunci_kategori", event.target.value)}
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                className="rounded-lg border border-line-strong px-3 py-2 text-sm"
                                 placeholder="Kunci kategori"
                               />
                             </div>
@@ -1739,33 +1739,33 @@ export default function ImportCenterPage() {
                       </div>
                     )}
 
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-ink-body">
                       Pembahasan
                       <textarea
                         rows={4}
                         value={question.pembahasan}
                         onChange={(event) => updateQuestion(index, "pembahasan", event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"
+                        className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2 font-normal"
                         placeholder="Penjelasan jawaban…"
                       />
                     </label>
 
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-ink-body">
                       Referensi sumber
                       <input
                         value={question.sumber_referensi}
                         onChange={(event) => updateQuestion(index, "sumber_referensi", event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"
+                        className="mt-1 w-full rounded-lg border border-line-strong px-3 py-2 font-normal"
                         placeholder="Sumber atau referensi soal"
                       />
                     </label>
 
-                    <label className="block text-sm font-semibold text-slate-700">
+                    <label className="block text-sm font-semibold text-ink-body">
                       Hak penggunaan
                       <select
                         value={question.hak_penggunaan}
                         onChange={(event) => updateQuestion(index, "hak_penggunaan", event.target.value)}
-                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+                        className="mt-1 w-full rounded-lg border border-line-strong bg-surface px-3 py-2"
                       >
                         <option value="">Pilih hak penggunaan</option>
                         <option value="ORISINAL">Orisinal</option>
@@ -1775,7 +1775,7 @@ export default function ImportCenterPage() {
                       </select>
                     </label>
 
-                    <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    <label className="flex items-start gap-2 rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning-ink">
                       <input
                         type="checkbox"
                         checked={question.perlu_verifikasi_kunci}
@@ -1787,18 +1787,18 @@ export default function ImportCenterPage() {
                       </span>
                     </label>
 
-                    <div className="flex flex-wrap justify-between gap-2 border-t border-slate-100 pt-4">
+                    <div className="flex flex-wrap justify-between gap-2 border-t border-line-subtle pt-4">
                       <button
                         disabled={index === 0}
                         onClick={() => setActiveQuestion(index - 1)}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                        className="rounded-lg border border-line-strong px-4 py-2 text-sm font-semibold disabled:opacity-40"
                       >
                         ← Soal sebelumnya
                       </button>
                       <button
                         disabled={index === questions.length - 1}
                         onClick={() => setActiveQuestion(index + 1)}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                        className="rounded-lg border border-line-strong px-4 py-2 text-sm font-semibold disabled:opacity-40"
                       >
                         Soal berikutnya →
                       </button>
@@ -1813,20 +1813,20 @@ export default function ImportCenterPage() {
         {/* VALIDASI NORMALISASI */}
 
         {questions.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <section className="rounded-2xl border border-line bg-surface p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-ink">
                   4. Validasi Hasil Normalisasi
                 </h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-ink-secondary">
                   Pemeriksaan teknis sebelum proses penyimpanan.
                 </p>
               </div>
               <span className={`rounded-full px-3 py-2 text-xs font-bold ${
                 questionIssues.length
-                  ? "bg-amber-50 text-amber-800"
-                  : "bg-emerald-50 text-emerald-800"
+                  ? "bg-warning-soft text-warning-ink"
+                  : "bg-success-soft text-success-ink"
               }`}>
                 {questionIssues.length
                   ? `${questionIssues.length} catatan`
@@ -1839,30 +1839,30 @@ export default function ImportCenterPage() {
                 {questionIssues.map((issue, index) => (
                   <li
                     key={index}
-                    className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                    className="rounded-lg border border-warning-line bg-warning-soft p-3 text-sm text-warning-ink"
                   >
                     {issue}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-4 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
+              <p className="mt-4 rounded-lg bg-success-soft p-4 text-sm text-success-ink">
                 Tidak ditemukan kekurangan teknis pada struktur soal. Validasi akademik tetap menjadi kewenangan Guru/Moderator.
               </p>
             )}
 
-            <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-sm font-bold text-blue-950">
+            <div className="mt-5 rounded-xl border border-accent-line bg-accent-soft p-4">
+              <p className="text-sm font-bold text-accent-strong">
                 Status penyimpanan: siap disimpan sebagai DRAFT
               </p>
-              <p className="mt-1 text-sm leading-6 text-blue-900">
+              <p className="mt-1 text-sm leading-6 text-accent-strong">
                 Soal akan disimpan ke database TKA TryOn dalam status DRAFT.
                 Kunci jawaban yang masih perlu diverifikasi tetap ditandai untuk
                 telaah Guru/Moderator. Soal tidak otomatis dipublikasikan.
               </p>
 
               {questionIssues.length > 0 && (
-                <p className="mt-2 text-xs leading-5 text-blue-900">
+                <p className="mt-2 text-xs leading-5 text-accent-strong">
                   Catatan verifikasi kunci jawaban tidak menghalangi penyimpanan
                   DRAFT. Kekurangan teknis lainnya tetap harus diperbaiki.
                 </p>
@@ -1881,23 +1881,23 @@ export default function ImportCenterPage() {
                   ) ||
                   !questions.length
                 }
-                className="mt-4 rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+                className="mt-4 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-surface-strong disabled:text-ink-secondary"
               >
                 {savingDraft ? "Menyimpan Draft..." : "Simpan sebagai DRAFT"}
               </button>
 
               {savedBatch && (
-                <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="font-bold text-emerald-800">
+                <div className="mt-4 rounded-lg border border-success-line bg-success-soft p-4">
+                  <p className="font-bold text-success-ink">
                     Draft berhasil disimpan!
                   </p>
-                  <p className="mt-2 text-sm text-emerald-800">
+                  <p className="mt-2 text-sm text-success-ink">
                     Kode Batch: {savedBatch.batch_code}
                   </p>
-                  <p className="text-sm text-emerald-800">
+                  <p className="text-sm text-success-ink">
                     Jumlah soal: {savedBatch.questions_saved}
                   </p>
-                  <p className="text-sm text-emerald-800">
+                  <p className="text-sm text-success-ink">
                     Status publikasi: DRAFT
                   </p>
                 </div>
@@ -1908,7 +1908,7 @@ export default function ImportCenterPage() {
 
         {/* FOOTER */}
 
-        <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
+        <footer className="border-t border-line pt-5 text-center text-xs text-ink-muted">
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>

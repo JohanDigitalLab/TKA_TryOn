@@ -77,51 +77,51 @@ function Register({ context }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-10">
-      <div className="mx-auto max-w-xl space-y-6 rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
-        <Link href="/" className="inline-flex items-center gap-3 font-bold text-blue-800">
+    <main className="min-h-screen bg-surface-muted px-5 py-10">
+      <div className="mx-auto max-w-xl space-y-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
+        <Link href="/" className="inline-flex items-center gap-3 font-bold text-accent-strong">
           <BrandLogo className="h-14 w-14" />
           <span>← Beranda TKA TryOn</span>
         </Link>
         <h1 className="text-3xl font-black">{context.method ? school ? "Daftar siswa sekolah" : "Daftar siswa mandiri" : "Daftar akun siswa"}</h1>
-        <p>{school ? "Gunakan undangan dari admin sekolah untuk bergabung. Pendaftaran akun tidak langsung mengaktifkan keanggotaan sekolah." : "Belajar secara mandiri tanpa perlu bergabung ke sekolah."} Untuk guru atau staf sekolah, <Link href="/school/register" className="font-bold text-blue-800 underline">daftar akun staf / sekolah di sini</Link>.</p>
+        <p>{school ? "Gunakan undangan dari admin sekolah untuk bergabung. Pendaftaran akun tidak langsung mengaktifkan keanggotaan sekolah." : "Belajar secara mandiri tanpa perlu bergabung ke sekolah."} Untuk guru atau staf sekolah, <Link href="/school/register" className="font-bold text-accent-strong underline">daftar akun staf / sekolah di sini</Link>.</p>
         {context.method ? (
-          school && <section aria-label="Pilihan pendaftaran" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+          school && <section aria-label="Pilihan pendaftaran" className="rounded-lg border border-accent-line bg-accent-soft p-4 text-sm text-accent-strong">
             <p>Jenis pendaftaran: <strong>{school ? "Siswa undangan sekolah" : "Siswa mandiri"}</strong></p>
             <p className="mt-1">Pilihan dari halaman sebelumnya sudah diterapkan.</p>
           </section>
         ) : (
           <div className="flex flex-wrap gap-3" aria-label="Jenis pendaftaran siswa">
-            <button type="button" disabled={busy} aria-pressed={!school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-blue-100" onClick={() => setSelectedMethod("independent")}>Siswa mandiri</button>
-            <button type="button" disabled={busy} aria-pressed={school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-blue-100" onClick={() => setSelectedMethod("school")}>Siswa undangan sekolah</button>
+            <button type="button" disabled={busy} aria-pressed={!school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-accent-tint" onClick={() => setSelectedMethod("independent")}>Siswa mandiri</button>
+            <button type="button" disabled={busy} aria-pressed={school} className="min-h-11 rounded border px-4 py-2 font-bold aria-pressed:bg-accent-tint" onClick={() => setSelectedMethod("school")}>Siswa undangan sekolah</button>
           </div>
         )}
-        {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800">{error}</p>}
-        {notice && <div role="status" className="space-y-2 rounded border border-green-200 bg-green-50 p-4 text-green-900"><p>{notice}</p><Link href={authLink("login", destination)} className="font-bold underline">Masuk dan lanjutkan →</Link></div>}
+        {error && <p role="alert" className="rounded border border-danger-line bg-danger-soft p-4 text-danger-ink">{error}</p>}
+        {notice && <div role="status" className="space-y-2 rounded border border-success-line bg-success-soft p-4 text-success-ink"><p>{notice}</p><Link href={authLink("login", destination)} className="font-bold underline">Masuk dan lanjutkan →</Link></div>}
         <form onSubmit={register} aria-busy={busy}>
           <fieldset disabled={busy} className="space-y-4">
             <Field name="full_name" label="Nama lengkap" autoComplete="name" minLength={2} maxLength={160} required />
             <Field name="email" label="Email" type="email" autoComplete="email" required />
             {level ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+              <div className="rounded-lg border border-line bg-surface-muted p-4 text-sm">
                 <p>Jenjang pendidikan siswa: <strong>{level.label}</strong></p>
-                <p className="mt-1 text-slate-600">Sesuai jenjang yang kamu pilih sebelumnya. <Link href="/#jenjang" className="font-bold text-blue-800 underline">Pilih jenjang lain</Link></p>
+                <p className="mt-1 text-ink-secondary">Sesuai jenjang yang kamu pilih sebelumnya. <Link href="/#jenjang" className="font-bold text-accent-strong underline">Pilih jenjang lain</Link></p>
               </div>
             ) : <Field name="education_level" label="Jenjang pendidikan siswa" required options={educationLevels} />}
             {school && <>
               <Field name="code" label="Kode undangan (opsional bila akan dimasukkan setelah login)" minLength={64} maxLength={64} defaultValue={next.startsWith("/school/join") ? new URL(next, "https://local.invalid").searchParams.get("code") || "" : ""} />
-              <p className="text-sm text-slate-600">Setelah mengonfirmasi email dan masuk, kamu perlu memeriksa serta mengonfirmasi undangan di portal sekolah. Keanggotaanmu baru aktif setelah disetujui admin sekolah.</p>
+              <p className="text-sm text-ink-secondary">Setelah mengonfirmasi email dan masuk, kamu perlu memeriksa serta mengonfirmasi undangan di portal sekolah. Keanggotaanmu baru aktif setelah disetujui admin sekolah.</p>
             </>}
             <Field name="password" label="Password (minimal 8 karakter)" type="password" autoComplete="new-password" minLength={8} required />
             <button className={`${buttonClass} w-full`} type="submit">{busy ? "Memproses…" : school ? "Buat akun siswa sekolah" : "Buat akun siswa mandiri"}</button>
           </fieldset>
         </form>
-        <section className="space-y-3 border-t border-slate-200 pt-5">
+        <section className="space-y-3 border-t border-line pt-5">
           <h2 className="font-bold">Kirim ulang verifikasi email</h2>
           <label className="block text-sm font-semibold">Email pendaftaran<input className={inputClass} type="email" value={resendEmail} disabled={busy} onChange={e => setResendEmail(e.target.value)} /></label>
           <button type="button" className={buttonClass} disabled={busy} onClick={resend}>Kirim ulang</button>
         </section>
-        <p>Sudah punya akun? <Link href={authLink("login", school && !next.startsWith("/school/join") ? "/school/join" : next)} className="font-bold text-blue-800 underline">Masuk</Link> · <Link href="/school/join" className="font-bold text-blue-800 underline">Gabung sekolah</Link></p>
+        <p>Sudah punya akun? <Link href={authLink("login", school && !next.startsWith("/school/join") ? "/school/join" : next)} className="font-bold text-accent-strong underline">Masuk</Link> · <Link href="/school/join" className="font-bold text-accent-strong underline">Gabung sekolah</Link></p>
       </div>
     </main>
   );

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteFooter from "@/components/site-footer";
 import { Suspense } from "react";
+import ThemeToggle, { ThemeSync } from "@/components/theme-toggle";
+import { themeInitScript } from "@/lib/theme.mjs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,12 +64,16 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="id"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head><script dangerouslySetInnerHTML={{ __html: themeInitScript }} /></head>
       <body
         className="min-h-full flex flex-col"
         suppressHydrationWarning
       >
+        <ThemeSync />
+        <ThemeToggle floating />
         {children}
         <Suspense fallback={null}><SiteFooter /></Suspense>
       </body>

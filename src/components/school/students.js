@@ -48,15 +48,15 @@ export default function SchoolDashboard({ userId }) {
 
   if (loading) return <p role="status">Memuat dashboard sekolah…</p>;
   return <div className="space-y-6">
-    {error && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">{error}</p>}
+    {error && <p role="alert" className="rounded-xl border border-warning-line bg-warning-soft p-4 text-warning-ink">{error}</p>}
     {school && <>
-      <section id="greeting" className="scroll-mt-28"><h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">{greeting}, {school.name}!</h2></section>
+      <section id="greeting" className="scroll-mt-28"><h2 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{greeting}, {school.name}!</h2></section>
 
         <section id="action" className="mb-10 scroll-mt-28">
            <div className="flex flex-wrap gap-3 mt-4">
-          <Link className="font-bold text-blue-800 underline" href={`/school/manage?school=${encodeURIComponent(school.id)}`}>Kelola kelas dan membership</Link>
-          <Link className="font-bold text-blue-800 underline" href="/teacher">Status akses tugas guru</Link>
-          <p className="text-sm text-slate-600">Penjadwalan, review lintas siswa, dan reset sandi belum diaktifkan melalui kontrak terotorisasi.</p>
+          <Link className="font-bold text-accent-strong underline" href={`/school/manage?school=${encodeURIComponent(school.id)}`}>Kelola kelas dan membership</Link>
+          <Link className="font-bold text-accent-strong underline" href="/teacher">Status akses tugas guru</Link>
+          <p className="text-sm text-ink-secondary">Penjadwalan, review lintas siswa, dan reset sandi belum diaktifkan melalui kontrak terotorisasi.</p>
             </div>
          </section>
 
@@ -64,11 +64,11 @@ export default function SchoolDashboard({ userId }) {
         <p>Daftar ini bukan membership kelas dan tidak memberikan akses manajemen. Profil belum dipetakan harus direkonsiliasi oleh koordinator/platform.</p>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-y border-slate-200 bg-slate-50 text-slate-500"><tr><th scope="col" className="px-4 py-3">#</th><th scope="col" className="px-4 py-3">NISN</th><th scope="col" className="px-4 py-3">Nama Siswa</th><th scope="col" className="px-4 py-3 text-right">Aksi</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{students.length ? students.map((student, index) => <tr key={student.id}>
+            <thead className="border-y border-line bg-surface-muted text-ink-muted"><tr><th scope="col" className="px-4 py-3">#</th><th scope="col" className="px-4 py-3">NISN</th><th scope="col" className="px-4 py-3">Nama Siswa</th><th scope="col" className="px-4 py-3 text-right">Aksi</th></tr></thead>
+            <tbody className="divide-y divide-line-subtle">{students.length ? students.map((student, index) => <tr key={student.id}>
               <td className="px-4 py-3">{index + 1}</td><td className="px-4 py-3">{student.nisn || "-"}</td><td className="px-4 py-3">{student.full_name || "-"}</td>
-              <td className="px-4 py-3"><details><summary className="cursor-pointer font-bold text-blue-700">Detail profil baca-saja</summary><p>{student.full_name || "—"} · NISN {student.nisn || "—"} · {school.name}</p><p>Membership dan kelas tidak disimpulkan dari profil legacy.</p></details></td>
-            </tr>) : <tr><td colSpan="4" className="px-4 py-8 text-center text-slate-500">Belum ada siswa yang dikelola sekolah.</td></tr>}</tbody>
+              <td className="px-4 py-3"><details><summary className="cursor-pointer font-bold text-accent-ink">Detail profil baca-saja</summary><p>{student.full_name || "—"} · NISN {student.nisn || "—"} · {school.name}</p><p>Membership dan kelas tidak disimpulkan dari profil legacy.</p></details></td>
+            </tr>) : <tr><td colSpan="4" className="px-4 py-8 text-center text-ink-muted">Belum ada siswa yang dikelola sekolah.</td></tr>}</tbody>
           </table>
         </div>
       </Panel>

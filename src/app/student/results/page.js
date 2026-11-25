@@ -40,20 +40,20 @@ function performanceLabel(score) {
   if (score >= 80) {
     return {
       label: "Kuat",
-      tone: "text-emerald-700 bg-emerald-50 border-emerald-200",
+      tone: "text-success-ink bg-success-soft border-success-line",
     };
   }
 
   if (score >= 60) {
     return {
       label: "Cukup",
-      tone: "text-amber-700 bg-amber-50 border-amber-200",
+      tone: "text-warning-ink bg-warning-soft border-warning-line",
     };
   }
 
   return {
     label: "Perlu Pendalaman",
-    tone: "text-rose-700 bg-rose-50 border-rose-200",
+    tone: "text-danger-ink bg-danger-soft border-danger-line",
   };
 }
 
@@ -215,18 +215,18 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
             return (
               <div
                 key={number}
-                className="rounded-lg border border-slate-200 p-3"
+                className="rounded-lg border border-line p-3"
               >
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-ink-body">
                   {category.item_number}. {category.item_text}
                 </p>
 
-                <p className="mt-2 text-sm text-slate-700">
+                <p className="mt-2 text-sm text-ink-body">
                   Jawaban siswa:{" "}
                   <strong>{studentAnswer}</strong>
                 </p>
 
-                <p className="mt-1 text-sm text-green-700">
+                <p className="mt-1 text-sm text-success-ink">
                   Kunci:{" "}
                   <strong>{category.correct_category || "-"}</strong>
                 </p>
@@ -249,10 +249,10 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
               key={option.option_code}
               className={`rounded-lg border p-3 text-sm ${
                 option.is_correct
-                  ? "border-green-300 bg-green-50"
+                  ? "border-success-line bg-success-soft"
                   : selected
-                  ? "border-red-300 bg-red-50"
-                  : "border-slate-200 bg-white"
+                  ? "border-danger-line bg-danger-soft"
+                  : "border-line bg-surface"
               }`}
             >
               <div className="flex flex-wrap items-start gap-2 break-words">
@@ -269,7 +269,7 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
                 )}
 
                 {option.is_correct && (
-                  <span className="text-xs font-bold text-green-700">
+                  <span className="text-xs font-bold text-success-ink">
                     Kunci
                   </span>
                 )}
@@ -282,24 +282,24 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={reviewId}
         onClick={() => setExpanded((value) => !value)}
-        className="flex w-full flex-wrap items-center justify-between gap-4 p-5 text-left hover:bg-slate-50"
+        className="flex w-full flex-wrap items-center justify-between gap-4 p-5 text-left hover:bg-surface-muted"
       >
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent-ink">
             Sesi {session.subjectIndex + 1}
           </p>
 
-          <h3 className="mt-1 text-lg font-extrabold text-slate-900">
+          <h3 className="mt-1 text-lg font-extrabold text-ink">
             {session.subject}
           </h3>
 
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-ink-muted">
             {session.correctAnswers} benar dari{" "}
             {session.totalQuestions} soal
           </p>
@@ -307,44 +307,44 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
 
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-xs text-slate-500">Nilai</p>
-            <p className="text-2xl font-black text-blue-700">
+            <p className="text-xs text-ink-muted">Nilai</p>
+            <p className="text-2xl font-black text-accent-ink">
               {Number(session.score || 0).toFixed(2)}
             </p>
           </div>
 
-          <span className="text-xl text-slate-400">
+          <span className="text-xl text-ink-muted">
             {expanded ? "−" : "+"}
           </span>
         </div>
       </button>
 
       {expanded && (
-        <div id={reviewId} className="border-t border-slate-200 p-4 sm:p-5">
+        <div id={reviewId} className="border-t border-line p-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Total Soal</p>
+            <div className="rounded-lg bg-surface-muted p-3">
+              <p className="text-xs text-ink-muted">Total Soal</p>
               <p className="mt-1 text-xl font-bold">
                 {session.totalQuestions}
               </p>
             </div>
 
-            <div className="rounded-lg bg-green-50 p-3">
-              <p className="text-xs text-green-700">Benar</p>
-              <p className="mt-1 text-xl font-bold text-green-700">
+            <div className="rounded-lg bg-success-soft p-3">
+              <p className="text-xs text-success-ink">Benar</p>
+              <p className="mt-1 text-xl font-bold text-success-ink">
                 {session.correctAnswers}
               </p>
             </div>
 
-            <div className="rounded-lg bg-red-50 p-3">
-              <p className="text-xs text-red-700">Salah</p>
-              <p className="mt-1 text-xl font-bold text-red-700">
+            <div className="rounded-lg bg-danger-soft p-3">
+              <p className="text-xs text-danger-ink">Salah</p>
+              <p className="mt-1 text-xl font-bold text-danger-ink">
                 {session.incorrectOrUnanswered}
               </p>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Terjawab</p>
+            <div className="rounded-lg bg-surface-muted p-3">
+              <p className="text-xs text-ink-muted">Terjawab</p>
               <p className="mt-1 text-xl font-bold">
                 {session.answeredCount ?? "—"}
               </p>
@@ -352,30 +352,30 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
           </div>
 
           {!session.review && (
-            <p className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="mt-4 rounded-lg bg-warning-soft p-4 text-sm text-warning-ink">
               Data rincian review belum tersedia untuk sesi ini.
             </p>
           )}
 
           {session.review && questions.length === 0 && (
-            <p className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+            <p className="mt-4 rounded-lg bg-surface-muted p-4 text-sm text-ink-secondary">
               Belum ada rincian soal yang dapat ditampilkan.
             </p>
           )}
 
           {questions.length > 0 && (
             <div className="mt-6 space-y-4">
-              <h4 className="font-bold text-slate-900">
+              <h4 className="font-bold text-ink">
                 Review Jawaban
               </h4>
 
               {questions.map((item, index) => (
                 <article
                   key={item.question_id || index}
-                  className="rounded-xl border border-slate-200 p-4"
+                  className="rounded-xl border border-line p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h5 className="font-bold text-slate-900">
+                    <h5 className="font-bold text-ink">
                       Soal Nomor{" "}
                       {item.question_order || index + 1}
                     </h5>
@@ -383,10 +383,10 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
                         item.is_correct === true
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-success-tint text-success-ink"
                           : item.is_correct === false
-                          ? "bg-red-100 text-red-700"
-                          : "bg-slate-100 text-slate-600"
+                          ? "bg-danger-tint text-danger-ink"
+                          : "bg-surface-raised text-ink-secondary"
                       }`}
                     >
                       {item.is_correct === true
@@ -397,29 +397,29 @@ export function ReviewSession({ session, initiallyExpanded = false }) {
                     </span>
                   </div>
 
-                  <p className="mt-2 text-xs font-semibold text-blue-700">
+                  <p className="mt-2 text-xs font-semibold text-accent-ink">
                     {getTypeLabel(item.question_type)}
                   </p>
 
                   {item.stimulus?.content_text && (
-                    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                    <div className="mt-3 rounded-lg bg-surface-muted p-3 text-sm leading-6 text-ink-body">
                       {item.stimulus.content_text}
                     </div>
                   )}
 
-                  <p className="mt-3 text-sm font-medium leading-7 text-slate-900">
+                  <p className="mt-3 text-sm font-medium leading-7 text-ink">
                     {item.question_text}
                   </p>
 
                   {renderAnswer(item)}
 
                   {item.explanation && (
-                    <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
-                      <p className="text-xs font-bold uppercase text-blue-700">
+                    <div className="mt-4 rounded-lg border border-accent-line bg-accent-soft p-4">
+                      <p className="text-xs font-bold uppercase text-accent-ink">
                         Pembahasan
                       </p>
 
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                      <p className="mt-2 text-sm leading-6 text-ink-body">
                         {item.explanation}
                       </p>
                     </div>
@@ -659,8 +659,8 @@ export default function StudentResultsPage() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-100">
-        <p className="font-semibold text-slate-600">
+      <main className="grid min-h-screen place-items-center bg-surface-raised">
+        <p className="font-semibold text-ink-secondary">
           Memuat rekap hasil…
         </p>
       </main>
@@ -669,25 +669,25 @@ export default function StudentResultsPage() {
 
   if (!historyLoading && displayResults.length === 0) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-100 p-5 text-slate-800">
-        <section className="w-full max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm">
+      <main className="grid min-h-screen place-items-center bg-surface-raised p-5 text-ink-body">
+        <section className="w-full max-w-xl rounded-2xl bg-surface p-8 text-center shadow-sm">
           <div aria-hidden="true" className="text-5xl">📊</div>
 
-          <h1 className="mt-4 text-2xl font-extrabold text-slate-900">
+          <h1 className="mt-4 text-2xl font-extrabold text-ink">
             {historyError ? "Hasil belum dapat dimuat" : "Belum Ada Hasil Ujian"}
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
             {historyError || "Hasil latihan dan simulasi akan muncul di sini setelah kamu menyelesaikan sesi mata pelajaran."}
           </p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             {historyError ? (
-              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="min-h-11 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800">Coba kembali</button>
+              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="min-h-11 rounded-lg bg-primary px-6 py-3 font-bold text-on-primary hover:bg-primary-hover">Coba kembali</button>
             ) : (
-              <Link href="/student/subjects?activityType=latihan" className="min-h-11 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800">Mulai latihan pertama</Link>
+              <Link href="/student/subjects?activityType=latihan" className="min-h-11 rounded-lg bg-primary px-6 py-3 font-bold text-on-primary hover:bg-primary-hover">Mulai latihan pertama</Link>
             )}
-            <Link href="/student" className="min-h-11 rounded-lg border border-slate-300 px-6 py-3 font-bold text-slate-700">Dashboard</Link>
+            <Link href="/student" className="min-h-11 rounded-lg border border-line-strong px-6 py-3 font-bold text-ink-body">Dashboard</Link>
           </div>
         </section>
       </main>
@@ -695,27 +695,27 @@ export default function StudentResultsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-800">
+    <main className="min-h-screen bg-surface-raised px-4 py-8 text-ink-body">
       <div className="mx-auto max-w-5xl">
         <nav aria-label="Navigasi hasil" className="mb-5 flex flex-wrap gap-3 print:hidden">
-          <Link href="/student" className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700">← Dashboard</Link>
-          <Link href="/student/subjects?activityType=latihan" className="inline-flex min-h-11 items-center rounded-lg bg-blue-700 px-4 text-sm font-bold text-white">Mulai latihan</Link>
+          <Link href="/student" className="inline-flex min-h-11 items-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-bold text-ink-body">← Dashboard</Link>
+          <Link href="/student/subjects?activityType=latihan" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-bold text-on-primary">Mulai latihan</Link>
         </nav>
 
-        <header className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+        <header className="rounded-2xl bg-surface p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <BrandLogo className="h-14 w-14" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">
+                <p className="text-xs font-bold uppercase tracking-wider text-accent-ink">
                   TKA TryOn · Hasil dan Evaluasi
                 </p>
 
-                <h1 className="mt-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">
+                <h1 className="mt-2 text-2xl font-extrabold text-ink sm:text-3xl">
                   Rekap Hasil Simulasi
                 </h1>
 
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-ink-muted">
                   Kelas {config.grade || config.level || "-"} ·{" "}
                   {config.activityType === "simulasi"
                     ? "Simulasi TKA"
@@ -727,8 +727,8 @@ export default function StudentResultsPage() {
             <span
               className={`rounded-full px-4 py-2 text-xs font-bold ${
                 summary.isComplete
-                  ? "bg-green-100 text-green-700"
-                  : "bg-amber-100 text-amber-700"
+                  ? "bg-success-tint text-success-ink"
+                  : "bg-warning-tint text-warning-ink"
               }`}
             >
               {summary.isComplete
@@ -737,18 +737,18 @@ export default function StudentResultsPage() {
             </span>
           </div>
 
-          <div className="mt-5 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">
+          <div className="mt-5 rounded-lg bg-surface-muted p-3">
+            <p className="text-xs text-ink-muted">
               ID Simulasi
             </p>
-            <p className="mt-1 break-all font-mono text-xs text-slate-700">
+            <p className="mt-1 break-all font-mono text-xs text-ink-body">
               {simulationId}
             </p>
           </div>
         </header>
 
         {historyError && (
-          <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div role="alert" className="mt-5 rounded-xl border border-warning-line bg-warning-soft p-4 text-sm text-warning-ink">
             {historyError}
             {isUsingLocalFallback && " Menampilkan cache perangkat sementara; hasil server tetap menjadi sumber kebenaran."}
           </div>
@@ -756,8 +756,8 @@ export default function StudentResultsPage() {
 
         {/* NILAI RATA-RATA */}
 
-        <section className="mt-5 rounded-2xl bg-blue-700 p-6 text-white shadow-sm sm:p-8">
-          <p className="text-sm font-semibold text-blue-100">
+        <section className="mt-5 rounded-2xl bg-primary p-6 text-on-primary shadow-sm sm:p-8">
+          <p className="text-sm font-semibold text-on-primary">
             NILAI RATA-RATA SELURUH MATA PELAJARAN
           </p>
 
@@ -766,15 +766,15 @@ export default function StudentResultsPage() {
               {summary.averageScore.toFixed(2)}
             </p>
 
-            <p className="text-sm text-blue-100">
+            <p className="text-sm text-on-primary">
               {summary.completedSubjects} dari{" "}
               {summary.totalSubjects} mata pelajaran selesai
             </p>
           </div>
 
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-blue-900/40">
+          <div className="mt-5 h-3 overflow-hidden rounded-full bg-accent-deep/40">
             <div
-              className="h-full rounded-full bg-white transition-all"
+              className="h-full rounded-full bg-surface transition-all"
               style={{
                 width: `${
                   summary.totalSubjects > 0
@@ -792,22 +792,22 @@ export default function StudentResultsPage() {
         </section>
 
         {weakestSubject && (
-          <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-700">REKOMENDASI BELAJAR</p>
-            <h2 className="mt-2 text-lg font-extrabold text-amber-950">Fokus latihan berikutnya: {weakestSubject.subject}</h2>
-            <p className="mt-2 text-sm leading-6 text-amber-900">Nilai terakhirmu di mata pelajaran ini adalah {Number(weakestSubject.score || 0).toFixed(2)}. Ulangi latihan dan tinjau pembahasan soal yang masih salah atau kosong.</p>
-            <button type="button" onClick={() => router.push(`/student/subjects?activityType=latihan&subject=${encodeURIComponent(weakestSubject.subject)}`)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">Mulai latihan {weakestSubject.subject}</button>
+          <section className="mt-5 rounded-2xl border border-warning-line bg-warning-soft p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-warning-ink">REKOMENDASI BELAJAR</p>
+            <h2 className="mt-2 text-lg font-extrabold text-warning-ink">Fokus latihan berikutnya: {weakestSubject.subject}</h2>
+            <p className="mt-2 text-sm leading-6 text-warning-ink">Nilai terakhirmu di mata pelajaran ini adalah {Number(weakestSubject.score || 0).toFixed(2)}. Ulangi latihan dan tinjau pembahasan soal yang masih salah atau kosong.</p>
+            <button type="button" onClick={() => router.push(`/student/subjects?activityType=latihan&subject=${encodeURIComponent(weakestSubject.subject)}`)} className="mt-4 rounded-lg bg-warning px-4 py-2.5 text-sm font-bold text-on-inverse hover:bg-warning">Mulai latihan {weakestSubject.subject}</button>
           </section>
         )}
 
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="mt-8 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Paket evaluasi</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Perkembangan sesuai paket</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent-ink">Paket evaluasi</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-ink">Perkembangan sesuai paket</h2>
             </div>
-            <label className="text-sm font-semibold text-slate-700">Pilih paket
-              <select value={selectedPackage} onChange={(event) => setSelectedPackage(event.target.value)} className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold">
+            <label className="text-sm font-semibold text-ink-body">Pilih paket
+              <select value={selectedPackage} onChange={(event) => setSelectedPackage(event.target.value)} className="ml-2 rounded-lg border border-line-strong bg-surface px-3 py-2 font-semibold">
                 <option value="all">Semua sesi</option>
                 {packageOptions.map((option) => <option key={option.key} value={option.key}>{option.label} ({option.count})</option>)}
               </select>
@@ -816,67 +816,67 @@ export default function StudentResultsPage() {
           <ScoreLineChart sessions={trend} />
         </section>
 
-        <section className="mt-8 border-y border-slate-300 py-7">
+        <section className="mt-8 border-y border-line-strong py-7">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Evaluasi kemampuan</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Peta topik yang sudah terukur</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent-ink">Evaluasi kemampuan</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-ink">Peta topik yang sudah terukur</h2>
             </div>
-            <p className="max-w-sm text-right text-xs leading-5 text-slate-500">Klasifikasi hanya dihitung dari metadata topik yang dikirim oleh review server. Tidak ada topik yang ditebak dari urutan soal.</p>
+            <p className="max-w-sm text-right text-xs leading-5 text-ink-muted">Klasifikasi hanya dihitung dari metadata topik yang dikirim oleh review server. Tidak ada topik yang ditebak dari urutan soal.</p>
           </div>
           {reviewError && (
-            <div role="alert" className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <div role="alert" className="mt-5 rounded-lg border border-warning-line bg-warning-soft p-4 text-sm text-warning-ink">
               <p>Review tema dan topik belum berhasil dimuat. Riwayat dan nilai tetap tersedia.</p>
               <p className="mt-1 text-xs">{reviewError}</p>
-              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="mt-3 rounded-lg border border-amber-400 px-4 py-2 font-bold">Coba muat ulang review</button>
+              <button type="button" onClick={() => setReloadHistory((value) => value + 1)} className="mt-3 rounded-lg border border-warning-line px-4 py-2 font-bold">Coba muat ulang review</button>
             </div>
           )}
           {themeAnalysis.length ? <>
-            <h3 className="mt-6 text-lg font-extrabold text-slate-900">Hasil per Tema</h3>
+            <h3 className="mt-6 text-lg font-extrabold text-ink">Hasil per Tema</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {themeAnalysis.map((item) => { const status = performanceLabel(item.score); return <article key={item.label} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h4 className="font-bold text-slate-900">{item.label}</h4><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-emerald-600" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>; })}
+              {themeAnalysis.map((item) => { const status = performanceLabel(item.score); return <article key={item.label} className="border border-line bg-surface p-4"><div className="flex items-start justify-between gap-3"><h4 className="font-bold text-ink">{item.label}</h4><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-ink">{item.score.toFixed(0)}%</strong><span className="text-xs text-ink-muted">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-surface-raised"><div className="h-full bg-success" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>; })}
             </div>
-            <h3 className="mt-6 text-lg font-extrabold text-slate-900">Hasil per Topik</h3>
+            <h3 className="mt-6 text-lg font-extrabold text-ink">Hasil per Topik</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {topicAnalysis.map((item) => {
                 const status = performanceLabel(item.score);
-                return <article key={item.label} className="border border-slate-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-bold text-slate-900">{item.topic}</h3><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-slate-950">{item.score.toFixed(0)}%</strong><span className="text-xs text-slate-500">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-slate-100"><div className="h-full bg-blue-700" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>;
+                return <article key={item.label} className="border border-line bg-surface p-4"><div className="flex items-start justify-between gap-3"><h3 className="font-bold text-ink">{item.topic}</h3><span className={`shrink-0 border px-2 py-1 text-[11px] font-bold ${status.tone}`}>{status.label}</span></div><div className="mt-4 flex items-end justify-between"><strong className="text-2xl font-black text-ink">{item.score.toFixed(0)}%</strong><span className="text-xs text-ink-muted">{item.correct}/{item.total} benar</span></div><div className="mt-3 h-1.5 bg-surface-raised"><div className="h-full bg-primary" style={{ width: `${Math.min(100, item.score)}%` }} /></div></article>;
               })}
             </div>
-          </> : <div className="mt-5 border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600">Analisis tema dan topik akan tampil setelah review server menyediakan metadata klasifikasi.</div>}
+          </> : <div className="mt-5 border border-dashed border-line-strong bg-surface-muted p-5 text-sm leading-6 text-ink-secondary">Analisis tema dan topik akan tampil setelah review server menyediakan metadata klasifikasi.</div>}
         </section>
 
         {/* RINGKASAN STATISTIK */}
 
         <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">
+          <div className="rounded-xl bg-surface p-4 shadow-sm">
+            <p className="text-xs text-ink-muted">
               Mata Pelajaran
             </p>
-            <p className="mt-2 text-2xl font-extrabold text-slate-900">
+            <p className="mt-2 text-2xl font-extrabold text-ink">
               {summary.completedSubjects}/{summary.totalSubjects}
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Total Soal</p>
-            <p className="mt-2 text-2xl font-extrabold text-slate-900">
+          <div className="rounded-xl bg-surface p-4 shadow-sm">
+            <p className="text-xs text-ink-muted">Total Soal</p>
+            <p className="mt-2 text-2xl font-extrabold text-ink">
               {summary.totalQuestions}
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">Jawaban Benar</p>
-            <p className="mt-2 text-2xl font-extrabold text-green-700">
+          <div className="rounded-xl bg-surface p-4 shadow-sm">
+            <p className="text-xs text-ink-muted">Jawaban Benar</p>
+            <p className="mt-2 text-2xl font-extrabold text-success-ink">
               {summary.correctAnswers}
             </p>
           </div>
 
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">
+          <div className="rounded-xl bg-surface p-4 shadow-sm">
+            <p className="text-xs text-ink-muted">
               Salah / Kosong
             </p>
-            <p className="mt-2 text-2xl font-extrabold text-red-700">
+            <p className="mt-2 text-2xl font-extrabold text-danger-ink">
               {summary.incorrectAnswers}
             </p>
           </div>
@@ -886,11 +886,11 @@ export default function StudentResultsPage() {
 
         <section className="mt-8">
           <div className="mb-4">
-            <h2 className="text-xl font-extrabold text-slate-900">
+            <h2 className="text-xl font-extrabold text-ink">
               Hasil per Mata Pelajaran
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-ink-muted">
               Tekan setiap mata pelajaran untuk melihat rincian
               jawaban dan pembahasannya.
             </p>
@@ -907,7 +907,7 @@ export default function StudentResultsPage() {
                     <button
                       type="button"
                       onClick={() => openReview(session.attemptId)}
-                      className="mt-2 w-full rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                      className="mt-2 w-full rounded-lg border border-accent-line bg-surface px-4 py-3 text-sm font-bold text-accent-ink hover:bg-accent-soft"
                     >
                       {reviewAttemptId === session.attemptId
                         ? "Tutup review jawaban"
@@ -915,7 +915,7 @@ export default function StudentResultsPage() {
                     </button>
                   )}
                   {reviewAttemptId === session.attemptId && reviewLoading && (
-                    <p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">Memuat review jawaban…</p>
+                    <p className="mt-2 rounded-lg bg-surface-muted p-3 text-sm text-ink-secondary">Memuat review jawaban…</p>
                   )}
                   {reviewAttemptId === session.attemptId && session.review && (
                     <ReviewSession session={{ ...session, review: session.review }} initiallyExpanded />
@@ -928,12 +928,12 @@ export default function StudentResultsPage() {
         {/* CATATAN */}
 
         {!summary.isComplete && (
-          <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <h3 className="font-bold text-amber-900">
+          <section className="mt-6 rounded-xl border border-warning-line bg-warning-soft p-5">
+            <h3 className="font-bold text-warning-ink">
               Simulasi Belum Lengkap
             </h3>
 
-            <p className="mt-2 text-sm leading-6 text-amber-800">
+            <p className="mt-2 text-sm leading-6 text-warning-ink">
               Masih ada mata pelajaran yang belum diselesaikan.
               Nilai rata-rata di atas hanya dihitung dari sesi
               yang sudah selesai.
@@ -946,20 +946,20 @@ export default function StudentResultsPage() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <button
             onClick={() => router.push("/student")}
-            className="flex-1 rounded-lg border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:bg-slate-50"
+            className="flex-1 rounded-lg border border-line-strong bg-surface px-6 py-3 font-bold text-ink-body hover:bg-surface-muted"
           >
             Kembali ke Dashboard
           </button>
 
           <button
             onClick={() => window.print()}
-            className="flex-1 rounded-lg bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800"
+            className="flex-1 rounded-lg bg-primary px-6 py-3 font-bold text-on-primary hover:bg-primary-hover"
           >
             Cetak Rekap Hasil
           </button>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
+        <p className="mt-6 text-center text-xs text-ink-muted">
           TKA TryOn · Hasil evaluasi berdasarkan sesi ujian yang
           telah diselesaikan.
         </p>

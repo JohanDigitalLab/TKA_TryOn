@@ -85,11 +85,11 @@ export default function AdminLayout({ children }) {
 
   if (!authReady) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50">
+      <main className="grid min-h-screen place-items-center bg-surface-muted">
         <div className="text-center">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-accent-line border-t-accent" />
 
-          <p className="mt-4 text-sm font-medium text-slate-500">
+          <p className="mt-4 text-sm font-medium text-ink-muted">
             Memeriksa sesi TKA TryOn...
           </p>
         </div>
@@ -103,35 +103,35 @@ export default function AdminLayout({ children }) {
 
   if (!session) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
+      <main className="grid min-h-screen place-items-center bg-surface-muted p-5">
         <form
           onSubmit={handleLogin}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm"
         >
           <div className="mb-7 flex items-center gap-4">
             <BrandLogo className="h-16 w-16" />
 
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900">
+              <h1 className="text-2xl font-extrabold text-ink">
                 TKA TryOn
               </h1>
 
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-muted">
                 Academic Content Management
               </p>
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-ink">
             Masuk ke Area Admin
           </h2>
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
             Gunakan akun TKA TryOn yang telah terdaftar. Hak akses setiap
             modul akan ditentukan berdasarkan role dan permission akun.
           </p>
 
-          <label className="mt-6 block text-sm font-semibold text-slate-700">
+          <label className="mt-6 block text-sm font-semibold text-ink-body">
             Email
           </label>
 
@@ -142,11 +142,11 @@ export default function AdminLayout({ children }) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="nama@email.com"
-            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="mt-2 w-full rounded-lg border border-line-strong px-4 py-3 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-line"
           />
 
 
-          <label className="mt-5 block text-sm font-semibold text-slate-700">
+          <label className="mt-5 block text-sm font-semibold text-ink-body">
             Password
           </label>
 
@@ -158,15 +158,15 @@ export default function AdminLayout({ children }) {
   onChange={(event) => setPassword(event.target.value)}
   placeholder="Masukkan password"
   style={{
-    color: "#0f172a",
-    WebkitTextFillColor: "#0f172a",
+    color: "var(--ink)",
+    WebkitTextFillColor: "var(--ink)",
   }}
-  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm font-medium text-ink placeholder:text-ink-muted outline-none transition focus:border-accent focus:ring-2 focus:ring-accent-line"
 />
 
 
           {authError && (
-            <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mt-5 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm text-danger-ink">
               {authError}
             </div>
           )}
@@ -174,12 +174,12 @@ export default function AdminLayout({ children }) {
           <button
             type="submit"
             disabled={authLoading}
-            className="mt-6 w-full rounded-lg bg-blue-700 px-4 py-3 font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-6 w-full rounded-lg bg-primary px-4 py-3 font-bold text-on-primary transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {authLoading ? "Memeriksa akun..." : "Masuk"}
           </button>
 
-          <p className="mt-6 text-center text-xs text-slate-400">
+          <p className="mt-6 text-center text-xs text-ink-muted">
             TKA TryOn · SKILL ON • CONFIDENCE ON
           </p>
         </form>

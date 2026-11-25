@@ -106,8 +106,8 @@ export default function SchoolPage() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50">
-        <p className="font-semibold text-slate-600">
+      <main className="grid min-h-screen place-items-center bg-surface-muted">
+        <p className="font-semibold text-ink-secondary">
           Memuat dashboard sekolah…
         </p>
       </main>
@@ -138,7 +138,7 @@ export default function SchoolPage() {
   const subjectIds = Object.keys(subjectGroups);
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800">
+    <main className="min-h-screen bg-surface-muted text-ink-body">
       <PortalHeader
         displayName={displayName}
         signingOut={signingOut}
@@ -150,26 +150,26 @@ export default function SchoolPage() {
           <div
             role="alert"
             aria-live="assertive"
-            className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+            className="mb-6 rounded-xl border border-warning-line bg-warning-soft p-4 text-sm text-warning-ink"
           >
             {error}
           </div>
         )}
 
           <section id="greeting" className="mb-10 scroll-mt-28">
-            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+            <h2 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
               {greeting}, {profile?.full_name || "Sekolah"} 👋
             </h2>
             <p
               id="quote"
-              className="mt-2 text-sm leading-6 text-slate-600 sm:text-base"
+              className="mt-2 text-sm leading-6 text-ink-secondary sm:text-base"
             >
               {school?.name || "Sekolah"} - {school?.city || "-"} - {school?.province || "-"}
             </p>
           </section>
 
           {context && <SchoolOverview context={context} />}
-          {!context && <Panel title="Konteks sekolah belum tersedia"><p>Pastikan email terverifikasi dan akun aktif, lalu masuk kembali atau hubungi koordinator/platform untuk memeriksa membership. Akses tidak diberikan dari profil saja.</p><Link className="text-blue-800 underline" href="/school/register">Periksa pengajuan sekolah</Link></Panel>}
+          {!context && <Panel title="Konteks sekolah belum tersedia"><p>Pastikan email terverifikasi dan akun aktif, lalu masuk kembali atau hubungi koordinator/platform untuk memeriksa membership. Akses tidak diberikan dari profil saja.</p><Link className="text-accent-strong underline" href="/school/register">Periksa pengajuan sekolah</Link></Panel>}
           <section id="action" className="mb-10 scroll-mt-28">
             <div className="flex flex-wrap gap-3 mt-4">
               {school?.id && (
@@ -184,7 +184,7 @@ export default function SchoolPage() {
                 Tugas guru (capability gated)
               </Link>
               <Link className={buttonClass} href="/school/agenda">Agenda sekolah SET</Link>
-              <p className="text-sm text-slate-600">Tugas dan agenda hanya aktif setelah capability sekolah terverifikasi server. Review lintas siswa dan reset sandi tidak tersedia di sini.</p>
+              <p className="text-sm text-ink-secondary">Tugas dan agenda hanya aktif setelah capability sekolah terverifikasi server. Review lintas siswa dan reset sandi tidak tersedia di sini.</p>
             </div>
           </section>
 
@@ -192,15 +192,15 @@ export default function SchoolPage() {
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <h2
                 id="label-riwayat"
-                className="text-2xl font-extrabold tracking-tight text-slate-950"
+                className="text-2xl font-extrabold tracking-tight text-ink"
               >
                 Daftar Siswa — Profil Terkelola Legacy (Baca-saja)
               </h2>
             </div>
-            <p className="mb-4 text-sm text-slate-600">Daftar ini bukan membership kelas. Penempatan kelas dan akses siswa dikelola pada Kelola sekolah. Profil yang belum dipetakan tidak diberi hak otomatis.</p>
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <p className="mb-4 text-sm text-ink-secondary">Daftar ini bukan membership kelas. Penempatan kelas dan akses siswa dikelola pada Kelola sekolah. Profil yang belum dipetakan tidak diberi hak otomatis.</p>
+            <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
               <table id="student-list" className="min-w-full text-left text-sm">
-                <thead className="border-y border-slate-200 bg-slate-50 text-slate-500">
+                <thead className="border-y border-line bg-surface-muted text-ink-muted">
                   <tr>
                     <th scope="col" className="px-4 py-3">
                       #
@@ -216,7 +216,7 @@ export default function SchoolPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-line-subtle">
                   {visibleStudents.length ? (
                     visibleStudents.map((student, index) => (
                       <tr key={student.id}>
@@ -229,7 +229,7 @@ export default function SchoolPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
-                            <details className="max-w-sm"><summary className="cursor-pointer font-bold text-blue-700">Detail profil baca-saja</summary><dl className="space-y-2 py-3"><dt className="font-bold">Nama</dt><dd>{student.full_name || "—"}</dd><dt className="font-bold">NISN</dt><dd>{student.nisn || "—"}</dd><dt className="font-bold">Sekolah profil legacy</dt><dd>{school?.name || "—"}</dd></dl><p className="text-xs text-slate-600">Membership dan kelas tidak disimpulkan dari afiliasi profil ini.</p></details>
+                            <details className="max-w-sm"><summary className="cursor-pointer font-bold text-accent-ink">Detail profil baca-saja</summary><dl className="space-y-2 py-3"><dt className="font-bold">Nama</dt><dd>{student.full_name || "—"}</dd><dt className="font-bold">NISN</dt><dd>{student.nisn || "—"}</dd><dt className="font-bold">Sekolah profil legacy</dt><dd>{school?.name || "—"}</dd></dl><p className="text-xs text-ink-secondary">Membership dan kelas tidak disimpulkan dari afiliasi profil ini.</p></details>
                           </div>
                         </td>
                       </tr>
@@ -238,7 +238,7 @@ export default function SchoolPage() {
                     <tr>
                       <td
                         colSpan="4"
-                        className="px-4 py-8 text-center text-slate-500"
+                        className="px-4 py-8 text-center text-ink-muted"
                       >
                         {school ? "Belum ada profil siswa terkelola pada sekolah ini." : "Daftar legacy belum tersedia: diperlukan akun SCHOOL dan membership admin aktif pada sekolah yang sama. Gunakan manajemen membership untuk daftar siswa kelas."}
                       </td>
@@ -253,7 +253,7 @@ export default function SchoolPage() {
                   type="button"
                   disabled={studentPage === 1}
                   onClick={() => setStudentPage((page) => page - 1)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 font-bold disabled:opacity-40"
+                  className="rounded-lg border border-line-strong px-3 py-2 font-bold disabled:opacity-40"
                 >
                   Sebelumnya
                 </button>
@@ -264,7 +264,7 @@ export default function SchoolPage() {
                   type="button"
                   disabled={studentPage === totalStudentPages}
                   onClick={() => setStudentPage((page) => page + 1)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 font-bold disabled:opacity-40"
+                  className="rounded-lg border border-line-strong px-3 py-2 font-bold disabled:opacity-40"
                 >
                   Berikutnya
                 </button>
@@ -273,16 +273,16 @@ export default function SchoolPage() {
           </section>
 
           <section id="competency" className="mb-10 scroll-mt-28">
-            <h2 className="mb-5 text-2xl font-extrabold tracking-tight text-slate-950">
+            <h2 className="mb-5 text-2xl font-extrabold tracking-tight text-ink">
               Kompetensi
             </h2>
-            <div id="subject-list" className="grid w-full grid-cols-1 gap-2 border-b border-slate-200 pb-3 sm:grid-cols-2">
+            <div id="subject-list" className="grid w-full grid-cols-1 gap-2 border-b border-line pb-3 sm:grid-cols-2">
               {subjectIds.map((subjectId) => (
                 <button
                   key={subjectId}
                   type="button"
                   onClick={() => setActiveSubject(subjectId)}
-                  className={`w-full rounded-lg px-4 py-2 text-sm font-bold ${activeSubject === subjectId ? "bg-blue-700 text-white" : "bg-white text-blue-700 ring-1 ring-blue-200"}`}
+                  className={`w-full rounded-lg px-4 py-2 text-sm font-bold ${activeSubject === subjectId ? "bg-primary text-on-primary" : "bg-surface text-accent-ink ring-1 ring-accent-line"}`}
                 >
                   {subjectGroups[subjectId].label}
                 </button>
@@ -293,8 +293,8 @@ export default function SchoolPage() {
                   {Object.entries(subjectGroups[activeSubject].themes).map(
                     ([theme, topicList]) => (
                       <div key={theme}>
-                        <h4 className="font-bold text-slate-900">{theme}</h4>
-                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                        <h4 className="font-bold text-ink">{theme}</h4>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-secondary">
                           {topicList.map((topic) => (
                             <li key={topic}>{topic}</li>
                           ))}
@@ -304,7 +304,7 @@ export default function SchoolPage() {
                   )}
                 </div>
             ) : (
-              <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-500">
+              <p className="rounded-xl border border-line bg-surface p-5 text-sm text-ink-muted">
                 Belum ada data kompetensi untuk jenjang ini.
               </p>
             )}

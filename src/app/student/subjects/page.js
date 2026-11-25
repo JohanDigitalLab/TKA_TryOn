@@ -194,13 +194,13 @@ function SubjectsConfiguration() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5">
-        <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-700" />
-          <h2 className="mt-5 text-lg font-bold text-slate-900">
+      <main className="flex min-h-screen items-center justify-center bg-surface-muted px-5">
+        <div className="w-full max-w-md rounded-xl border border-line bg-surface p-8 text-center shadow-sm">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-line border-t-accent" />
+          <h2 className="mt-5 text-lg font-bold text-ink">
             Memuat Profil Siswa
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-muted">
             Sedang memeriksa data jenjang pendidikanmu.
           </p>
         </div>
@@ -210,17 +210,17 @@ function SubjectsConfiguration() {
 
   if (error || !level) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 py-10 text-slate-800">
-        <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-2xl">
+      <main className="flex min-h-screen items-center justify-center bg-surface-muted px-5 py-10 text-ink-body">
+        <div className="w-full max-w-lg rounded-xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning-soft text-2xl">
             !
           </div>
 
-          <h1 className="mt-5 text-xl font-extrabold text-slate-900">
+          <h1 className="mt-5 text-xl font-extrabold text-ink">
             Jenjang Pendidikan Belum Tersedia
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
             {error ||
               "Jenjang pendidikan belum ditetapkan pada profilmu."}
           </p>
@@ -233,7 +233,7 @@ function SubjectsConfiguration() {
                 setError("");
                 void loadStudentProfile();
               }}
-              className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800"
+              className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary hover:bg-primary-hover"
             >
               Coba Kembali
             </button>
@@ -241,7 +241,7 @@ function SubjectsConfiguration() {
             <button
               type="button"
               onClick={() => router.push("/student")}
-              className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-line px-5 py-3 text-sm font-semibold text-ink-secondary hover:bg-surface-muted"
             >
               Kembali ke Dashboard
             </button>
@@ -254,19 +254,19 @@ function SubjectsConfiguration() {
   const currentLevel = levelOptions[level];
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800">
+    <main className="min-h-screen bg-surface-muted text-ink-body">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
             <BrandLogo className="h-12 w-14" />
 
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-                TKA <span className="text-blue-700">TryOn</span>
+              <h1 className="text-xl font-extrabold tracking-tight text-ink">
+                TKA <span className="text-accent-ink">TryOn</span>
               </h1>
 
-              <p className="text-[10px] font-semibold tracking-widest text-slate-500">
+              <p className="text-[10px] font-semibold tracking-widest text-ink-muted">
                 SKILL ON • CONFIDENCE ON
               </p>
             </div>
@@ -274,7 +274,7 @@ function SubjectsConfiguration() {
 
           <Link
             href="/student"
-            className="min-h-11 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:bg-surface-muted"
           >
             Kembali ke Dashboard
           </Link>
@@ -284,52 +284,52 @@ function SubjectsConfiguration() {
       <div className="mx-auto max-w-6xl px-5 py-8 sm:py-10 lg:px-8">
         {/* JUDUL */}
         <section className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent-ink">
             PERSIAPAN UJIAN
           </p>
 
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
             Pilih Mata Pelajaran TKA
           </h2>
 
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary sm:text-base">
             Kamu memilih {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}.
             Pilih mata pelajaran yang akan digunakan sesuai jenjang pendidikanmu.
           </p>
         </section>
 
         {/* JENJANG PENDIDIKAN DARI PROFIL */}
-        <section className="mb-8 rounded-xl border border-blue-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="mb-8 rounded-xl border border-accent-line bg-surface p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-ink">
                 Jenjang Pendidikan
               </h3>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-ink-muted">
                 Jenjang mengikuti identitas akademik yang tercatat pada profil
                 siswa.
               </p>
             </div>
 
-            <div className="rounded-xl border border-blue-100 bg-blue-50 px-5 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+            <div className="rounded-xl border border-accent-line bg-accent-soft px-5 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-accent-ink">
                 {currentLevel.grade}
               </p>
 
-              <p className="mt-1 text-lg font-extrabold text-slate-900">
+              <p className="mt-1 text-lg font-extrabold text-ink">
                 {currentLevel.label}
               </p>
 
-              <p className="mt-1 text-xs font-semibold text-blue-700">
+              <p className="mt-1 text-xs font-semibold text-accent-ink">
                 <span aria-hidden="true">✓ </span>
                 Jenjang terverifikasi
               </p>
             </div>
           </div>
 
-          <div className="mt-4 flex items-start gap-2 border-t border-slate-100 pt-4">
-            <span className="text-slate-400" aria-hidden="true">
+          <div className="mt-4 flex items-start gap-2 border-t border-line-subtle pt-4">
+            <span className="text-ink-muted" aria-hidden="true">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"
@@ -343,7 +343,7 @@ function SubjectsConfiguration() {
               </svg>
             </span>
 
-            <p className="text-xs leading-5 text-slate-500">
+            <p className="text-xs leading-5 text-ink-muted">
               Jenjang pendidikan terkunci sebagai identitas akademik. Jika
               terdapat kesalahan, pengajuan perubahan dilakukan melalui
               mekanisme resmi dan persetujuan administrator.
@@ -351,10 +351,10 @@ function SubjectsConfiguration() {
           </div>
 
           {isHighSchool && (
-            <div className="mt-6 border-t border-slate-100 pt-5">
+            <div className="mt-6 border-t border-line-subtle pt-5">
               <label
                 htmlFor="schoolType"
-                className="mb-2 block text-sm font-bold text-slate-800"
+                className="mb-2 block text-sm font-bold text-ink-body"
               >
                 Jenis Satuan Pendidikan
               </label>
@@ -366,7 +366,7 @@ function SubjectsConfiguration() {
                   setSchoolType(event.target.value);
                   setSelectedElectives([]);
                 }}
-                className="w-full max-w-md rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="w-full max-w-md rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent-line"
               >
                 <option value="sma">SMA</option>
                 <option value="ma">MA</option>
@@ -377,19 +377,19 @@ function SubjectsConfiguration() {
         </section>
 
         {/* MATA PELAJARAN WAJIB */}
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="mb-8 rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
           <div className="mb-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 className="text-lg font-bold text-ink">
                 1. Mata Pelajaran Wajib
               </h3>
 
-              <span className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+              <span className="rounded-md bg-accent-soft px-3 py-1.5 text-xs font-bold text-accent-ink">
                 {mandatorySubjects.length} MATA PELAJARAN
               </span>
             </div>
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
               Mata pelajaran wajib otomatis disertakan dalam paket latihan
               sesuai jenjang pendidikan.
             </p>
@@ -399,15 +399,15 @@ function SubjectsConfiguration() {
             {mandatorySubjects.map((subject, index) => (
               <div
                 key={subject}
-                className="flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4"
+                className="flex items-center gap-3 rounded-lg border border-accent-line bg-accent-soft p-4"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-700 text-sm font-bold text-white">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-on-primary">
                   {index + 1}
                 </div>
 
                 <div>
-                  <p className="font-bold text-slate-900">{subject}</p>
-                  <p className="mt-0.5 text-xs font-semibold text-blue-700">
+                  <p className="font-bold text-ink">{subject}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-accent-ink">
                     WAJIB
                   </p>
                 </div>
@@ -418,31 +418,31 @@ function SubjectsConfiguration() {
 
         {/* MATA PELAJARAN PILIHAN */}
         {isHighSchool && (
-          <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section className="mb-8 rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
             <div className="mb-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-ink">
                   2. Mata Pelajaran Pilihan
                 </h3>
 
-                <span className="rounded-md bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
+                <span className="rounded-md bg-warning-soft px-3 py-1.5 text-xs font-bold text-warning-ink">
                   PILIH TEPAT 2
                 </span>
               </div>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
                 Pilih dua mata pelajaran yang pernah ditempuh dan tercantum
                 dalam rapor. Pilihan dapat disesuaikan dengan minat dan
                 rencana studi lanjutan.
               </p>
             </div>
 
-            <div className="mb-5 flex items-center justify-between rounded-lg bg-slate-50 p-4">
-              <span className="text-sm font-semibold text-slate-700">
+            <div className="mb-5 flex items-center justify-between rounded-lg bg-surface-muted p-4">
+              <span className="text-sm font-semibold text-ink-body">
                 Pilihanmu
               </span>
 
-              <span className="text-lg font-extrabold text-blue-700">
+              <span className="text-lg font-extrabold text-accent-ink">
                 {selectedElectives.length} / 2
               </span>
             </div>
@@ -461,10 +461,10 @@ function SubjectsConfiguration() {
                     onClick={() => toggleElective(subject)}
                     className={`flex min-h-16 items-center justify-between gap-3 rounded-lg border p-4 text-left text-sm font-semibold transition ${
                       selected
-                        ? "border-blue-600 bg-blue-50 text-blue-800"
+                        ? "border-accent bg-accent-soft text-accent-strong"
                         : limitReached
-                          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                          ? "cursor-not-allowed border-line-subtle bg-surface-muted text-ink-muted"
+                          : "border-line bg-surface text-ink-body hover:border-accent hover:bg-accent-soft"
                     }`}
                   >
                     <span>{subject}</span>
@@ -472,8 +472,8 @@ function SubjectsConfiguration() {
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs ${
                         selected
-                          ? "border-blue-700 bg-blue-700 text-white"
-                          : "border-slate-300 bg-white"
+                          ? "border-accent bg-primary text-on-primary"
+                          : "border-line-strong bg-surface"
                       }`}
                     >
                       {selected ? "✓" : ""}
@@ -483,19 +483,19 @@ function SubjectsConfiguration() {
               })}
             </div>
 
-            <p className="mt-4 text-xs leading-5 text-slate-500">
+            <p className="mt-4 text-xs leading-5 text-ink-muted">
               Pastikan pilihan sesuai mata pelajaran yang tercatat dalam rapor.
             </p>
           </section>
         )}
 
         {/* RINGKASAN */}
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-900">
+        <section className="rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="text-lg font-bold text-ink">
             Ringkasan Mata Pelajaran
           </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Berikut mata pelajaran yang akan dimasukkan ke persiapan ujian.
           </p>
 
@@ -503,13 +503,13 @@ function SubjectsConfiguration() {
             {mandatorySubjects.map((subject) => (
               <div
                 key={subject}
-                className="flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3"
+                className="flex items-center justify-between rounded-lg bg-accent-soft px-4 py-3"
               >
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-semibold text-ink-body">
                   {subject}
                 </span>
 
-                <span className="text-xs font-bold text-blue-700">
+                <span className="text-xs font-bold text-accent-ink">
                   WAJIB
                 </span>
               </div>
@@ -518,35 +518,35 @@ function SubjectsConfiguration() {
             {selectedElectives.map((subject) => (
               <div
                 key={subject}
-                className="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3"
+                className="flex items-center justify-between rounded-lg bg-warning-soft px-4 py-3"
               >
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-semibold text-ink-body">
                   {subject}
                 </span>
 
-                <span className="text-xs font-bold text-amber-700">
+                <span className="text-xs font-bold text-warning-ink">
                   PILIHAN
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-6 flex flex-col gap-3 border-t border-line-subtle pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-bold text-slate-900">
+              <p className="text-sm font-bold text-ink">
                 Total{" "}
                 {mandatorySubjects.length + selectedElectives.length} mata
                 pelajaran
               </p>
 
               {isHighSchool && selectedElectives.length !== 2 && (
-                <p className="mt-1 text-xs text-amber-700">
+                <p className="mt-1 text-xs text-warning-ink">
                   Silakan pilih {2 - selectedElectives.length} mata pelajaran
                   pilihan lagi.
                 </p>
               )}
               {validationMessage && (
-                <p id="subjects-validation" role="alert" aria-live="assertive" className="mt-2 text-xs font-semibold text-red-700">
+                <p id="subjects-validation" role="alert" aria-live="assertive" className="mt-2 text-xs font-semibold text-danger-ink">
                   {validationMessage}
                 </p>
               )}
@@ -556,14 +556,14 @@ function SubjectsConfiguration() {
               type="button"
               onClick={handleContinue}
               aria-describedby={validationMessage ? "subjects-validation" : undefined}
-              className="min-h-12 rounded-lg bg-blue-700 px-7 py-3 text-sm font-bold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+              className="min-h-12 rounded-lg bg-primary px-7 py-3 text-sm font-bold text-on-primary transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               Lanjut ke Persiapan Ujian →
             </button>
           </div>
         </section>
 
-        <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <footer className="mt-10 border-t border-line py-6 text-center text-xs text-ink-muted">
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>

@@ -114,14 +114,14 @@ function labelType(type) {
 function statusStyle(status) {
   const value = String(status || "").toUpperCase();
 
-  if (value === "PUBLISHED") return "bg-green-100 text-green-700";
-  if (value === "DRAFT") return "bg-amber-100 text-amber-700";
+  if (value === "PUBLISHED") return "bg-success-tint text-success-ink";
+  if (value === "DRAFT") return "bg-warning-tint text-warning-ink";
   if (value === "REVIEW" || value === "PENDING_REVIEW")
-    return "bg-blue-100 text-blue-700";
+    return "bg-accent-tint text-accent-ink";
   if (value === "REJECTED" || value === "NEEDS_REVISION")
-    return "bg-red-100 text-red-700";
+    return "bg-danger-tint text-danger-ink";
 
-  return "bg-slate-100 text-slate-600";
+  return "bg-surface-raised text-ink-secondary";
 }
 
 function currentVersion(question) {
@@ -1001,10 +1001,10 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
   if (!authReady) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50">
+      <main className="grid min-h-screen place-items-center bg-surface-muted">
         <div className="text-center">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
-          <p className="mt-4 text-sm text-slate-500">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-accent-line border-t-accent" />
+          <p className="mt-4 text-sm text-ink-muted">
             Memeriksa sesi pengguna...
           </p>
         </div>
@@ -1018,29 +1018,29 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
   if (!session) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
+      <main className="grid min-h-screen place-items-center bg-surface-muted p-5">
         <form
           onSubmit={handleLogin}
-          className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 shadow-sm"
         >
           <div className="mb-7 flex items-center gap-4">
             <BrandLogo className="h-16 w-16" />
 
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900">
+              <h1 className="text-2xl font-extrabold text-ink">
                 TKA TryOn
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-muted">
                 Academic Content Management
               </p>
             </div>
           </div>
 
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-ink">
             Masuk ke Bank Soal
           </h2>
 
-          <label className="mt-6 block text-sm font-semibold text-slate-700">
+          <label className="mt-6 block text-sm font-semibold text-ink-body">
             Email
           </label>
 
@@ -1049,10 +1049,10 @@ export default function QuestionsWorkspace({ questionId = null }) {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
+            className="mt-2 w-full rounded-lg border border-line-strong px-4 py-3 text-sm outline-none focus:border-accent"
           />
 
-          <label className="mt-5 block text-sm font-semibold text-slate-700">
+          <label className="mt-5 block text-sm font-semibold text-ink-body">
             Password
           </label>
 
@@ -1061,11 +1061,11 @@ export default function QuestionsWorkspace({ questionId = null }) {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
+            className="mt-2 w-full rounded-lg border border-line-strong px-4 py-3 text-sm outline-none focus:border-accent"
           />
 
           {authError && (
-            <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p className="mt-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">
               {authError}
             </p>
           )}
@@ -1073,7 +1073,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
           <button
             type="submit"
             disabled={authLoading}
-            className="mt-6 w-full rounded-lg bg-blue-700 px-4 py-3 font-bold text-white hover:bg-blue-800 disabled:opacity-50"
+            className="mt-6 w-full rounded-lg bg-primary px-4 py-3 font-bold text-on-primary hover:bg-primary-hover disabled:opacity-50"
           >
             {authLoading ? "Memeriksa..." : "Masuk"}
           </button>
@@ -1088,17 +1088,17 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
   if (!isAdmin) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
-        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-red-50 text-2xl text-red-600">
+      <main className="grid min-h-screen place-items-center bg-surface-muted p-5">
+        <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-8 text-center shadow-sm">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-danger-soft text-2xl text-danger-ink">
             !
           </div>
 
-          <h1 className="mt-5 text-xl font-bold text-slate-900">
+          <h1 className="mt-5 text-xl font-bold text-ink">
             Akses Bank Soal Ditolak
           </h1>
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
             Akun ini belum memiliki permission bank_soal.view. Silakan
             hubungi Super Admin untuk mendapatkan kewenangan.
           </p>
@@ -1106,14 +1106,14 @@ export default function QuestionsWorkspace({ questionId = null }) {
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
               href="/admin"
-              className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-line-strong px-4 py-2.5 text-sm font-semibold text-ink-body hover:bg-surface-muted"
             >
               Kembali ke Dashboard
             </Link>
 
             <button
               onClick={handleLogout}
-              className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary hover:bg-primary-hover"
             >
               Keluar
             </button>
@@ -1128,17 +1128,17 @@ export default function QuestionsWorkspace({ questionId = null }) {
   // =====================================================
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900 md:px-8">
+    <main className="min-h-screen bg-surface-muted px-5 py-8 text-ink md:px-8">
       <div className="mx-auto max-w-7xl space-y-7">
         {detailOnly && (
           <header className="space-y-3">
             <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{"Bank Soal >> Detail Soal"}</h1>
-            <p className="text-sm text-slate-500">Ruang telaah soal · {userRole}. Daftar Bank Soal tetap tersedia di tab asal.</p>
-            <a href="/admin/questions" target="tka-question-list" className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">← Kembali ke Bank Soal</a>
-            <button onClick={() => loadQuestions()} disabled={loading} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50">Muat Ulang Detail</button>
+            <p className="text-sm text-ink-muted">Ruang telaah soal · {userRole}. Daftar Bank Soal tetap tersedia di tab asal.</p>
+            <a href="/admin/questions" target="tka-question-list" className="inline-flex rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-accent-ink hover:bg-accent-soft">← Kembali ke Bank Soal</a>
+            <button onClick={() => loadQuestions()} disabled={loading} className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-semibold disabled:opacity-50">Muat Ulang Detail</button>
             <div role="status" aria-live="polite">
-              {loading && <p className="text-sm text-slate-500">Memuat detail soal...</p>}
-              {error && <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+              {loading && <p className="text-sm text-ink-muted">Memuat detail soal...</p>}
+              {error && <p className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{error}</p>}
             </div>
           </header>
         )}
@@ -1151,7 +1151,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 font-semibold text-ink-body transition hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
               >
                 <span>⌂</span>
                 Dashboard
@@ -1160,7 +1160,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
               {can(PERMISSIONS.import) && (
                 <Link
                   href="/admin/import"
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 font-semibold text-ink-body transition hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
                 >
                   <span>⇧</span>
                   Import Center
@@ -1169,13 +1169,13 @@ export default function QuestionsWorkspace({ questionId = null }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+              <span className="rounded-full bg-success-tint px-4 py-2 text-sm font-semibold text-success-ink">
                 {userRole}
               </span>
 
               <button
                 onClick={handleLogout}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                className="rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-semibold text-ink-body transition hover:bg-surface-raised"
               >
                 Keluar
               </button>
@@ -1183,15 +1183,15 @@ export default function QuestionsWorkspace({ questionId = null }) {
           </div>
 
           <div>
-            <p className="text-sm font-bold tracking-[0.18em] text-blue-700">
+            <p className="text-sm font-bold tracking-[0.18em] text-accent-ink">
               ACADEMIC CONTENT MANAGEMENT
             </p>
 
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">
               Bank Soal
             </h1>
 
-            <p className="mt-2 text-sm text-slate-500 md:text-base">
+            <p className="mt-2 text-sm text-ink-muted md:text-base">
               Pusat data soal dan telaah konten akademik TKA TryOn.
             </p>
           </div>
@@ -1200,16 +1200,16 @@ export default function QuestionsWorkspace({ questionId = null }) {
         {/* NOTIFIKASI ERROR */}
 
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-xl border border-danger-line bg-danger-soft p-4 text-sm text-danger-ink">
             {error}
           </div>
         )}
 
         {/* PENCARIAN DAN FILTER */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <section className="rounded-2xl border border-line bg-surface p-6">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-ink">
               Pencarian dan Filter
             </h2>
 
@@ -1222,7 +1222,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 setFilterStatus("ALL");
                 setPage(0);
               }}
-              className="text-sm font-semibold text-blue-700 hover:text-blue-900"
+              className="text-sm font-semibold text-accent-ink hover:text-accent-strong"
             >
               Reset Filter
             </button>
@@ -1235,7 +1235,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
               onChange={(event) => { setSearch(event.target.value); setPage(0); }}
               aria-label="Cari soal pada halaman ini"
               placeholder="Cari di halaman ini: kode, isi, materi..."
-              className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-line-strong px-4 py-3 text-sm outline-none focus:border-accent"
             />
 
             <select
@@ -1245,7 +1245,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 setFilterLevel(event.target.value);
                 setPage(0);
               }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
             >
               <option value="ALL">Semua Jenjang</option>
               {filterOptions.levels.map((level) => (
@@ -1262,7 +1262,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 setFilterGrade(event.target.value);
                 setPage(0);
               }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
             >
               <option value="ALL">Semua Kelas</option>
               {filterOptions.grades.map((grade) => (
@@ -1279,7 +1279,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 setFilterSubject(event.target.value);
                 setPage(0);
               }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
             >
               <option value="ALL">Semua Mata Pelajaran</option>
               {filterOptions.subjects.map((subject) => (
@@ -1296,7 +1296,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 setFilterStatus(event.target.value);
                 setPage(0);
               }}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
             >
               <option value="ALL">Semua Status</option>
               <option value="DRAFT">Draft</option>
@@ -1311,19 +1311,19 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
         {/* DAFTAR SOAL */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-6">
+        <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-6">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-ink">
                 Daftar Soal
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-ink-muted">
                 Pilih soal untuk membuka detail dan telaah.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink-secondary">
                 Soal per halaman
                 <select
                   value={pageSize}
@@ -1333,7 +1333,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                     setPageSize(size);
                     setPage(0);
                   }}
-                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  className="min-h-10 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-line"
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
                     <option key={size} value={size}>{size}</option>
@@ -1343,7 +1343,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
               <button
                 onClick={() => loadQuestions()}
                 disabled={loading}
-                className="min-h-10 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                className="min-h-10 rounded-lg border border-line-strong px-4 py-2.5 text-sm font-semibold text-ink-body transition hover:bg-surface-muted disabled:opacity-50"
               >
                 {loading ? "Memuat..." : "↻ Muat Ulang"}
               </button>
@@ -1351,7 +1351,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 <Link
                   href="/admin/import"
                   title="Tambahkan soal melalui Import Center"
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary transition hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   + Tambah Soal Baru
                 </Link>
@@ -1359,7 +1359,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 <button
                   disabled
                   title="Izin Import Soal diperlukan untuk menambahkan soal melalui Import Center."
-                  className="min-h-10 cursor-not-allowed rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400"
+                  className="min-h-10 cursor-not-allowed rounded-lg bg-surface-raised px-4 py-2.5 text-sm font-semibold text-ink-muted"
                 >
                   + Tambah Soal Baru
                 </button>
@@ -1369,7 +1369,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="bg-surface-muted text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-6 py-4">Kode Soal</th>
                   <th className="px-6 py-4">Jenjang / Kelas</th>
@@ -1381,12 +1381,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line-subtle">
                 {loading ? (
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-6 py-12 text-center text-slate-500"
+                      className="px-6 py-12 text-center text-ink-muted"
                     >
                       Memuat data soal...
                     </td>
@@ -1395,7 +1395,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-6 py-12 text-center text-slate-500"
+                      className="px-6 py-12 text-center text-ink-muted"
                     >
                       Tidak ada soal yang sesuai dengan pencarian.
                     </td>
@@ -1404,28 +1404,28 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   visibleQuestions.map((question) => (
                     <tr
                       key={question.id}
-                      className={`transition hover:bg-slate-50 ${
+                      className={`transition hover:bg-surface-muted ${
                         selectedQuestion?.id === question.id
-                          ? "bg-blue-50"
+                          ? "bg-accent-soft"
                           : ""
                       }`}
                     >
-                      <td className="px-6 py-4 font-semibold text-slate-900">
+                      <td className="px-6 py-4 font-semibold text-ink">
                         {question.question_code || "-"}
                       </td>
 
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-6 py-4 text-ink-secondary">
                         {question.education_level_id || "-"}
-                        <span className="block text-xs text-slate-400">
+                        <span className="block text-xs text-ink-muted">
                           Kelas {question.grade || "-"}
                         </span>
                       </td>
 
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-6 py-4 text-ink-secondary">
                         {question.subject_name || "-"}
                       </td>
 
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-6 py-4 text-ink-secondary">
                         {labelType(question.question_type)}
                       </td>
 
@@ -1439,9 +1439,9 @@ export default function QuestionsWorkspace({ questionId = null }) {
                         </span>
                       </td>
 
-                      <td className="max-w-64 px-6 py-4 text-slate-600">
+                      <td className="max-w-64 px-6 py-4 text-ink-secondary">
                         <span className="block break-words">{question.material?.trim() || "—"}</span>
-                        <span className="mt-1 block break-words text-xs text-slate-400">
+                        <span className="mt-1 block break-words text-xs text-ink-muted">
                           {question.sub_material?.trim() || "—"}
                         </span>
                       </td>
@@ -1452,7 +1452,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                             href={`/admin/questions/detail?id=${encodeURIComponent(question.id)}`}
                             target="tka-question-detail"
                             aria-label={`Detail / Telaah ${question.question_code || "soal"} (tab terpisah)`}
-                            className="min-h-9 whitespace-nowrap rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                            className="min-h-9 whitespace-nowrap rounded-lg bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink transition hover:bg-accent-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                           >
                             Detail / Telaah
                           </a>
@@ -1462,7 +1462,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                             aria-label={`Arsipkan ${question.question_code || "soal"}`}
                             aria-describedby="question-archive-help"
                             title={!can(PERMISSIONS.archive) ? "Izin arsip soal diperlukan." : "Arsipkan tanpa menghapus isi dan riwayat soal."}
-                            className="min-h-9 rounded-lg border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="min-h-9 rounded-lg border border-warning-line px-3 py-2 text-xs font-semibold text-warning-ink hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             {question.question_status === "ARCHIVED" ? "Diarsipkan" : "Arsipkan"}
                           </button>
@@ -1477,18 +1477,18 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
           {/* PAGINATION */}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-6 py-4">
-            <p className="text-sm text-slate-500" role="status" aria-live="polite">
-              {loading ? "Memuat soal..." : <><span className="font-semibold text-slate-900">{visibleQuestions.length}</span> soal pada halaman ini</>}
-              <span className="mx-2 text-slate-300" aria-hidden="true">·</span>
-              Halaman <span className="font-semibold text-slate-900">{page + 1}</span> dari {totalPages}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-4">
+            <p className="text-sm text-ink-muted" role="status" aria-live="polite">
+              {loading ? "Memuat soal..." : <><span className="font-semibold text-ink">{visibleQuestions.length}</span> soal pada halaman ini</>}
+              <span className="mx-2 text-inverse-muted" aria-hidden="true">·</span>
+              Halaman <span className="font-semibold text-ink">{page + 1}</span> dari {totalPages}
             </p>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((current) => Math.max(0, current - 1))}
                 disabled={page === 0 || loading}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
+                className="rounded-lg border border-line-strong px-4 py-2 text-sm font-semibold text-ink-body disabled:opacity-40"
               >
                 Sebelumnya
               </button>
@@ -1500,17 +1500,17 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   )
                 }
                 disabled={page >= totalPages - 1 || loading}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
+                className="rounded-lg border border-line-strong px-4 py-2 text-sm font-semibold text-ink-body disabled:opacity-40"
               >
                 Berikutnya
               </button>
             </div>
           </div>
-          <div className="space-y-1 border-t border-slate-100 bg-slate-50/70 px-6 py-3 text-xs leading-relaxed text-slate-500">
+          <div className="space-y-1 border-t border-line-subtle bg-surface-muted/70 px-6 py-3 text-xs leading-relaxed text-ink-muted">
             <p>Detail / Telaah dibuka pada satu tab terpisah yang digunakan kembali untuk soal berikutnya.</p>
             <p>Tambah Soal Baru menggunakan Import Center. Pencarian berlaku pada halaman yang sedang ditampilkan.</p>
             <p id="question-archive-help">Arsipkan memerlukan izin khusus dan alasan. Soal terkait attempt, jawaban, atau assignment akan ditolak. Isi serta riwayat tidak dihapus.</p>
-            {archiveMessage && <p role="status" className="font-semibold text-emerald-700">{archiveMessage}</p>}
+            {archiveMessage && <p role="status" className="font-semibold text-success-ink">{archiveMessage}</p>}
           </div>
         </section>
 
@@ -1518,10 +1518,10 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
         <dialog ref={archiveDialog} aria-labelledby="archive-title" aria-describedby="archive-description"
           onCancel={(event) => { if (archiveBusy) event.preventDefault(); }}
-          className="fixed inset-0 m-auto w-full max-w-lg rounded-2xl p-6 shadow-xl backdrop:bg-slate-900/50">
+          className="fixed inset-0 m-auto w-full max-w-lg rounded-2xl p-6 shadow-xl backdrop:bg-inverse/50">
           <form onSubmit={handleArchive}>
             <h2 id="archive-title" className="text-lg font-bold">Arsipkan {archiveTarget?.question_code || "soal"}?</h2>
-            <p id="archive-description" className="mt-3 text-sm text-slate-600">
+            <p id="archive-description" className="mt-3 text-sm text-ink-secondary">
               Soal tidak akan tersedia untuk penggunaan baru. Isi, versi, dan riwayat tetap tersimpan.
               Server menolak soal yang terkait attempt, jawaban, atau assignment. Tidak tersedia pemulihan melalui halaman ini.
             </p>
@@ -1529,14 +1529,14 @@ export default function QuestionsWorkspace({ questionId = null }) {
               Alasan pengarsipan (5–2000 karakter)
               <textarea autoFocus required minLength={5} maxLength={2000} rows={4} value={archiveReason}
                 onChange={(event) => setArchiveReason(event.target.value)} disabled={archiveBusy}
-                className="mt-2 w-full rounded-lg border border-slate-300 p-3 font-normal" />
+                className="mt-2 w-full rounded-lg border border-line-strong p-3 font-normal" />
             </label>
-            {archiveError && <p role="alert" className="mt-3 text-sm text-red-700">{archiveError}</p>}
+            {archiveError && <p role="alert" className="mt-3 text-sm text-danger-ink">{archiveError}</p>}
             <div className="mt-5 flex justify-end gap-3">
               <button type="button" disabled={archiveBusy} onClick={() => archiveDialog.current?.close()}
                 className="rounded-lg border px-4 py-2 disabled:opacity-50">Batal</button>
               <button type="submit" disabled={archiveBusy || archiveReason.trim().length < 5 || !can(PERMISSIONS.archive)}
-                className="rounded-lg bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                className="rounded-lg bg-warning px-4 py-2 font-semibold text-on-inverse disabled:opacity-50">
                 {archiveBusy ? "Mengarsipkan..." : "Ya, arsipkan soal"}
               </button>
             </div>
@@ -1548,19 +1548,19 @@ export default function QuestionsWorkspace({ questionId = null }) {
         {detailOnly && selectedQuestion && selectedVersion && (
           <section
             ref={reviewPanelRef}
-            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-6"
+            className="scroll-mt-6 rounded-2xl border border-line bg-surface p-6"
           >
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line-subtle pb-5">
               <div>
-                <p className="text-xs font-bold tracking-widest text-blue-700">
+                <p className="text-xs font-bold tracking-widest text-accent-ink">
                   DETAIL DAN TELAAH SOAL
                 </p>
 
-                <h2 className="mt-2 text-xl font-bold text-slate-900">
+                <h2 className="mt-2 text-xl font-bold text-ink">
                   {selectedQuestion.question_code || "Detail Soal"}
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-ink-muted">
                   {selectedQuestion.subject_name || "-"} · Kelas{" "}
                   {selectedQuestion.grade || "-"} ·{" "}
                   {labelType(selectedQuestion.question_type)}
@@ -1582,18 +1582,18 @@ export default function QuestionsWorkspace({ questionId = null }) {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="rounded-xl bg-slate-50 p-4"
+                  className="rounded-xl bg-surface-muted p-4"
                 >
-                  <p className="text-xs text-slate-400">{label}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
+                  <p className="text-xs text-ink-muted">{label}</p>
+                  <p className="mt-1 text-sm font-semibold text-ink-body">
                     {value || "—"}
                   </p>
                 </div>
               ))}
             </div>
 
-            <details className="mt-4 rounded-xl border border-slate-200 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-600">Informasi pendukung telaah</summary>
+            <details className="mt-4 rounded-xl border border-line p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-ink-secondary">Informasi pendukung telaah</summary>
               <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                 {[
                   ["Status Versi", selectedVersion.version_status],
@@ -1606,32 +1606,32 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   ["Kurikulum", selectedQuestion.curriculum_reference],
                   ["Sumber", selectedQuestion.source_reference],
                   ["Hak penggunaan", selectedQuestion.usage_rights],
-                ].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="whitespace-pre-wrap text-slate-800">{value || "—"}</dd></div>)}
+                ].map(([label, value]) => <div key={label}><dt className="text-ink-muted">{label}</dt><dd className="whitespace-pre-wrap text-ink-body">{value || "—"}</dd></div>)}
               </dl>
             </details>
 
             {/* STIMULUS */}
 
             {selectedStimulus && (
-              <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/50 p-5">
+              <div className="mt-6 rounded-xl border border-accent-line bg-accent-soft/50 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-bold text-slate-900">
+                  <h3 className="font-bold text-ink">
                     Stimulus
                   </h3>
 
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                  <span className="rounded-full bg-accent-tint px-3 py-1 text-xs font-semibold text-accent-ink">
                     {selectedStimulus.stimulus_type}
                   </span>
                 </div>
 
                 {selectedStimulus.title && (
-                  <h4 className="mt-3 font-semibold text-slate-800">
+                  <h4 className="mt-3 font-semibold text-ink-body">
                     {selectedStimulus.title}
                   </h4>
                 )}
 
                 {selectedStimulus.content_text && (
-                  <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                  <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-body">
                     {selectedStimulus.content_text}
                   </div>
                 )}
@@ -1641,14 +1641,14 @@ export default function QuestionsWorkspace({ questionId = null }) {
                     href={selectedStimulus.file_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 inline-block text-sm font-semibold text-blue-700 underline"
+                    className="mt-3 inline-block text-sm font-semibold text-accent-ink underline"
                   >
                     Buka berkas stimulus
                   </a>
                 )}
 
                 {selectedStimulus.media_description && (
-                  <p className="mt-3 text-sm text-slate-600">
+                  <p className="mt-3 text-sm text-ink-secondary">
                     Deskripsi media: {selectedStimulus.media_description}
                   </p>
                 )}
@@ -1658,17 +1658,17 @@ export default function QuestionsWorkspace({ questionId = null }) {
             {/* PERTANYAAN */}
 
             <div className="mt-6">
-              <h3 className="font-bold text-slate-900">
+              <h3 className="font-bold text-ink">
                 Pertanyaan
               </h3>
 
               {selectedVersion.instruction && (
-                <p className="mt-3 text-sm italic text-slate-500">
+                <p className="mt-3 text-sm italic text-ink-muted">
                   {selectedVersion.instruction}
                 </p>
               )}
 
-              <div className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-5 text-sm leading-7 text-slate-800">
+              <div className="mt-3 whitespace-pre-wrap rounded-xl bg-surface-muted p-5 text-sm leading-7 text-ink-body">
                 {getQuestionText(selectedQuestion)}
               </div>
             </div>
@@ -1677,7 +1677,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
             {selectedQuestion.question_type !== "PGK_KATEGORI" && (
               <div className="mt-6">
-                <h3 className="font-bold text-slate-900">
+                <h3 className="font-bold text-ink">
                   Pilihan Jawaban
                 </h3>
 
@@ -1687,28 +1687,28 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       key={option.id}
                       className={`rounded-xl border p-4 ${
                         showAnswerKey && option.is_correct
-                          ? "border-emerald-300 bg-emerald-50"
-                          : "border-slate-200 bg-white"
+                          ? "border-success-line bg-success-soft"
+                          : "border-line bg-surface"
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-sm font-bold text-slate-700">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface-raised text-sm font-bold text-ink-body">
                           {option.option_code}
                         </span>
 
                         <div className="min-w-0 flex-1">
-                          <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                          <p className="whitespace-pre-wrap text-sm leading-6 text-ink-body">
                             {option.option_text}
                           </p>
 
                           {showAnswerKey && option.is_correct && (
-                            <span className="mt-2 inline-block text-xs font-bold text-emerald-700">
+                            <span className="mt-2 inline-block text-xs font-bold text-success-ink">
                               ✓ Kunci jawaban
                             </span>
                           )}
 
                           {showAnswerKey && option.explanation && (
-                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                            <p className="mt-2 text-xs leading-5 text-ink-muted">
                               {option.explanation}
                             </p>
                           )}
@@ -1724,7 +1724,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
             {selectedQuestion.question_type === "PGK_KATEGORI" && (
               <div className="mt-6">
-                <h3 className="font-bold text-slate-900">
+                <h3 className="font-bold text-ink">
                   Pernyataan Kategori
                 </h3>
 
@@ -1732,20 +1732,20 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   {selectedCategoryItems.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-xl border border-slate-200 p-4"
+                      className="rounded-xl border border-line p-4"
                     >
-                      <p className="text-sm leading-6 text-slate-800">
+                      <p className="text-sm leading-6 text-ink-body">
                         {item.item_number}. {item.item_text}
                       </p>
 
                       {showAnswerKey && (
-                        <div className="mt-2 text-xs font-semibold text-emerald-700">
+                        <div className="mt-2 text-xs font-semibold text-success-ink">
                           Jawaban: {item.correct_category}
                         </div>
                       )}
 
                       {showAnswerKey && item.explanation && (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                        <p className="mt-2 text-xs leading-5 text-ink-muted">
                           {item.explanation}
                         </p>
                       )}
@@ -1758,12 +1758,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
             {/* PEMBAHASAN */}
 
             {showAnswerKey && selectedVersion.explanation && (
-              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
-                <h3 className="font-bold text-amber-900">
+              <div className="mt-6 rounded-xl border border-warning-line bg-warning-soft p-5">
+                <h3 className="font-bold text-warning-ink">
                   Pembahasan
                 </h3>
 
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-amber-900">
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-warning-ink">
                   {selectedVersion.explanation}
                 </p>
               </div>
@@ -1771,10 +1771,10 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
             {/* AKSI TELAAH */}
 
-            <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-5">
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-line-subtle pt-5">
               <button
                 onClick={() => setShowAnswerKey((value) => !value)}
-                className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-line-strong px-4 py-2.5 text-sm font-semibold text-ink-body hover:bg-surface-muted"
               >
                 {showAnswerKey
                   ? "Sembunyikan Kunci dan Pembahasan"
@@ -1784,24 +1784,24 @@ export default function QuestionsWorkspace({ questionId = null }) {
               {can(PERMISSIONS.edit) && selectedQuestion.question_status !== "ARCHIVED" && (
                 <button
                   onClick={openEditor}
-                  className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"
+                  className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary hover:bg-primary-hover"
                 >
                   Edit / Revisi Soal
                 </button>
               )}
             </div>
 
-            <div key={selectedVersion.id} className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="font-bold text-slate-900">Telaah, moderasi, dan publikasi</h3>
-              <p className="mt-2 text-sm text-slate-600">
+            <div key={selectedVersion.id} className="mt-6 rounded-xl border border-line bg-surface-muted p-5">
+              <h3 className="font-bold text-ink">Telaah, moderasi, dan publikasi</h3>
+              <p className="mt-2 text-sm text-ink-secondary">
                 Versi terbaru: {selectedVersion.version_number} · {selectedVersion.version_status}.
                 Versi harus ditelaah lalu disetujui sebelum diterbitkan. Revisi tidak otomatis mengganti versi terbit.
               </p>
-              <label className="mt-4 block text-sm font-semibold text-slate-700">
+              <label className="mt-4 block text-sm font-semibold text-ink-body">
                 Catatan pemeriksaan
                 <textarea value={workflowNotes} onChange={(event) => setWorkflowNotes(event.target.value)}
                   maxLength={4000} rows={3} disabled={workflowBusy}
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 font-normal" />
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface p-3 font-normal" />
               </label>
               <div className="mt-3 flex flex-wrap gap-3">
                 {[
@@ -1812,25 +1812,25 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 ].filter(([, , permission, statuses]) => selectedQuestion.question_status !== "ARCHIVED" && can(permission) && statuses.includes(selectedVersion.version_status))
                   .map(([action, label]) => (
                     <button key={action} onClick={() => handleWorkflow(action)} disabled={workflowBusy}
-                      className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                      className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:opacity-50">
                       {label}
                     </button>
                   ))}
               </div>
-              {workflowMessage && <p role="status" className="mt-3 text-sm text-slate-700">{workflowMessage}</p>}
+              {workflowMessage && <p role="status" className="mt-3 text-sm text-ink-body">{workflowMessage}</p>}
             </div>
 
             {/* EDITOR */}
 
             {editorOpen && editorForm && (
-              <div className="mt-7 rounded-2xl border border-blue-200 bg-blue-50/30 p-5">
+              <div className="mt-7 rounded-2xl border border-accent-line bg-accent-soft/30 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">
+                    <h3 className="text-lg font-bold text-ink">
                       Editor Revisi Soal
                     </h3>
 
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-muted">
                       Perubahan disimpan sebagai versi baru untuk ditelaah.
                     </p>
                   </div>
@@ -1842,27 +1842,27 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       setEditorError("");
                       setEditorSuccess("");
                     }}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink-secondary hover:bg-surface-muted"
                   >
                     Tutup Editor
                   </button>
                 </div>
 
                 {editorError && (
-                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <div className="mt-4 rounded-lg border border-danger-line bg-danger-soft p-3 text-sm text-danger-ink">
                     {editorError}
                   </div>
                 )}
 
                 {editorSuccess && (
-                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  <div className="mt-4 rounded-lg border border-success-line bg-success-soft p-3 text-sm text-success-ink">
                     {editorSuccess}
                   </div>
                 )}
 
                 {/* INSTRUKSI */}
 
-                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                <label className="mt-5 block text-sm font-semibold text-ink-body">
                   Instruksi
                 </label>
 
@@ -1872,12 +1872,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                     updateEditorField("instruction", event.target.value)
                   }
                   rows={2}
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
                 />
 
                 {/* PERTANYAAN */}
 
-                <label className="mt-5 block text-sm font-semibold text-slate-700">
+                <label className="mt-5 block text-sm font-semibold text-ink-body">
                   Teks Pertanyaan
                 </label>
 
@@ -1887,13 +1887,13 @@ export default function QuestionsWorkspace({ questionId = null }) {
                     updateEditorField("question_text", event.target.value)
                   }
                   rows={6}
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-blue-600"
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm leading-6 outline-none focus:border-accent"
                 />
 
                 {/* STIMULUS */}
 
-                <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
-                  <label className="flex items-center gap-3 text-sm font-bold text-slate-800">
+                <div className="mt-6 rounded-xl border border-line bg-surface p-4">
+                  <label className="flex items-center gap-3 text-sm font-bold text-ink-body">
                     <input
                       type="checkbox"
                       checked={editorForm.stimulus.enabled}
@@ -1903,7 +1903,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                           event.target.checked
                         )
                       }
-                      className="h-4 w-4 accent-blue-700"
+                      className="h-4 w-4 accent-accent"
                     />
                     Gunakan Stimulus
                   </label>
@@ -1911,7 +1911,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   {editorForm.stimulus.enabled && (
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Jenis Stimulus
                         </label>
 
@@ -1923,7 +1923,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               event.target.value
                             )
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm"
                         >
                           {STIMULUS_TYPES.map((type) => (
                             <option key={type} value={type}>
@@ -1934,7 +1934,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Judul Stimulus
                         </label>
 
@@ -1943,12 +1943,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                           onChange={(event) =>
                             updateStimulusField("title", event.target.value)
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm"
                         />
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Isi Stimulus
                         </label>
 
@@ -1961,12 +1961,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               event.target.value
                             )
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm leading-6"
+                          className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm leading-6"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           URL Berkas
                         </label>
 
@@ -1975,12 +1975,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                           onChange={(event) =>
                             updateStimulusField("file_url", event.target.value)
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Hak Penggunaan
                         </label>
 
@@ -1992,7 +1992,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               event.target.value
                             )
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm"
                         >
                           {USAGE_RIGHTS.map((right) => (
                             <option key={right} value={right}>
@@ -2003,7 +2003,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Deskripsi Media
                         </label>
 
@@ -2016,12 +2016,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               event.target.value
                             )
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm"
                         />
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-600">
+                        <label className="block text-xs font-semibold text-ink-secondary">
                           Referensi Sumber
                         </label>
 
@@ -2033,7 +2033,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               event.target.value
                             )
                           }
-                          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                          className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm"
                         />
                       </div>
                     </div>
@@ -2045,13 +2045,13 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 {selectedQuestion.question_type !== "PGK_KATEGORI" && (
                   <div className="mt-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h4 className="font-bold text-slate-800">
+                      <h4 className="font-bold text-ink-body">
                         Pilihan Jawaban
                       </h4>
 
                       <button
                         onClick={addOption}
-                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        className="rounded-lg border border-accent-line bg-surface px-3 py-2 text-xs font-semibold text-accent-ink hover:bg-accent-soft"
                       >
                         + Tambah Opsi
                       </button>
@@ -2061,11 +2061,11 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       {editorForm.options.map((option, index) => (
                         <div
                           key={index}
-                          className="rounded-xl border border-slate-200 bg-white p-4"
+                          className="rounded-xl border border-line bg-surface p-4"
                         >
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
                             <div className="md:col-span-2">
-                              <label className="text-xs font-semibold text-slate-500">
+                              <label className="text-xs font-semibold text-ink-muted">
                                 Kode
                               </label>
 
@@ -2078,12 +2078,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                     event.target.value
                                   )
                                 }
-                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                               />
                             </div>
 
                             <div className="md:col-span-8">
-                              <label className="text-xs font-semibold text-slate-500">
+                              <label className="text-xs font-semibold text-ink-muted">
                                 Teks Jawaban
                               </label>
 
@@ -2097,14 +2097,14 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                     event.target.value
                                   )
                                 }
-                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                               />
                             </div>
 
                             <div className="flex items-end md:col-span-2">
                               <button
                                 onClick={() => removeOption(index)}
-                                className="w-full rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                className="w-full rounded-lg border border-danger-line px-3 py-2 text-xs font-semibold text-danger-ink hover:bg-danger-soft"
                               >
                                 Hapus
                               </button>
@@ -2112,7 +2112,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                           </div>
 
                           <div className="mt-3 flex flex-wrap items-center gap-4">
-                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-ink-body">
                               <input
                                 type="checkbox"
                                 checked={option.is_correct}
@@ -2123,7 +2123,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                     event.target.checked
                                   )
                                 }
-                                className="h-4 w-4 accent-blue-700"
+                                className="h-4 w-4 accent-accent"
                               />
                               Kunci Jawaban
                             </label>
@@ -2139,7 +2139,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                   )
                                 }
                                 placeholder="Pembahasan opsi (opsional)"
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                                className="w-full rounded-lg border border-line-strong px-3 py-2 text-xs"
                               />
                             </div>
                           </div>
@@ -2154,13 +2154,13 @@ export default function QuestionsWorkspace({ questionId = null }) {
                 {selectedQuestion.question_type === "PGK_KATEGORI" && (
                   <div className="mt-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h4 className="font-bold text-slate-800">
+                      <h4 className="font-bold text-ink-body">
                         Pernyataan Kategori
                       </h4>
 
                       <button
                         onClick={addCategoryItem}
-                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        className="rounded-lg border border-accent-line bg-surface px-3 py-2 text-xs font-semibold text-accent-ink hover:bg-accent-soft"
                       >
                         + Tambah Pernyataan
                       </button>
@@ -2170,16 +2170,16 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       {editorForm.category_items.map((item, index) => (
                         <div
                           key={index}
-                          className="rounded-xl border border-slate-200 bg-white p-4"
+                          className="rounded-xl border border-line bg-surface p-4"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm font-bold text-slate-700">
+                            <p className="text-sm font-bold text-ink-body">
                               Pernyataan {index + 1}
                             </p>
 
                             <button
                               onClick={() => removeCategoryItem(index)}
-                              className="text-xs font-semibold text-red-600 hover:underline"
+                              className="text-xs font-semibold text-danger-ink hover:underline"
                             >
                               Hapus
                             </button>
@@ -2196,12 +2196,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               )
                             }
                             placeholder="Tulis pernyataan..."
-                            className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                            className="mt-3 w-full rounded-lg border border-line-strong px-3 py-2.5 text-sm"
                           />
 
                           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div>
-                              <label className="text-xs font-semibold text-slate-500">
+                              <label className="text-xs font-semibold text-ink-muted">
                                 Kategori Jawaban
                               </label>
 
@@ -2214,12 +2214,12 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                     event.target.value
                                   )
                                 }
-                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                className="mt-2 w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                               />
                             </div>
 
                             <div>
-                              <label className="text-xs font-semibold text-slate-500">
+                              <label className="text-xs font-semibold text-ink-muted">
                                 Kunci Jawaban
                               </label>
 
@@ -2232,7 +2232,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                                     event.target.value
                                   )
                                 }
-                                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                                className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
                               >
                                 <option value="BENAR">BENAR</option>
                                 <option value="SALAH">SALAH</option>
@@ -2250,7 +2250,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                               )
                             }
                             placeholder="Pembahasan pernyataan (opsional)"
-                            className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            className="mt-3 w-full rounded-lg border border-line-strong px-3 py-2 text-sm"
                           />
                         </div>
                       ))}
@@ -2260,7 +2260,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
                 {/* PEMBAHASAN UMUM */}
 
-                <label className="mt-6 block text-sm font-semibold text-slate-700">
+                <label className="mt-6 block text-sm font-semibold text-ink-body">
                   Pembahasan Umum
                 </label>
 
@@ -2270,7 +2270,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   onChange={(event) =>
                     updateEditorField("explanation", event.target.value)
                   }
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6"
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm leading-6"
                 />
 
                 {/* SIMPAN REVISI */}
@@ -2279,7 +2279,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                   <button
                     onClick={saveEditor}
                     disabled={editorSaving}
-                    className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
+                    className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary hover:bg-primary-hover disabled:opacity-50"
                   >
                     {editorSaving
                       ? "Menyimpan Revisi..."
@@ -2292,7 +2292,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
                       setEditorForm(null);
                     }}
                     disabled={editorSaving}
-                    className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-line-strong bg-surface px-5 py-3 text-sm font-semibold text-ink-body hover:bg-surface-muted"
                   >
                     Batal
                   </button>
@@ -2304,7 +2304,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
         {/* FOOTER */}
 
-        <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
+        <footer className="border-t border-line pt-5 text-center text-xs text-ink-muted">
           TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>

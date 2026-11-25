@@ -121,18 +121,18 @@ function MissionsForm({ params }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-800">
+    <main className="min-h-screen bg-surface-muted text-ink-body">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <Link href="/student" aria-label="Kembali ke dashboard TKA TryOn" className="flex items-center gap-3">
             <BrandLogo className="h-12 w-14" />
 
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900">
-                TKA <span className="text-blue-700">TryOn</span>
+              <h1 className="text-xl font-extrabold text-ink">
+                TKA <span className="text-accent-ink">TryOn</span>
               </h1>
-              <p className="text-[10px] font-semibold tracking-widest text-slate-500">
+              <p className="text-[10px] font-semibold tracking-widest text-ink-muted">
                 SKILL ON • CONFIDENCE ON
               </p>
             </div>
@@ -140,7 +140,7 @@ function MissionsForm({ params }) {
 
           <Link
             href="/student"
-            className="min-h-11 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            className="min-h-11 rounded-lg border border-line px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:bg-surface-muted"
           >
             Dashboard
           </Link>
@@ -150,15 +150,15 @@ function MissionsForm({ params }) {
       <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8">
         {/* PAGE TITLE */}
         <section className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent-ink">
             PERSIAPAN UJIAN
           </p>
 
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
             Persiapan {activityType === "simulasi" ? "Simulasi TKA" : "Latihan Akademik"}
           </h2>
 
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary sm:text-base">
             Pilih mata pelajaran dan atur sesi {activityType === "simulasi" ? "simulasi" : "latihan"}mu.
           </p>
         </section>
@@ -166,26 +166,26 @@ function MissionsForm({ params }) {
         <div className="mb-7"><LearningAccess mode={activityType === "latihan" ? "mission" : "simulation"} /></div>
 
         {/* INFORMASI UJIAN */}
-        <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-900">
+        <section className="mb-7 rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="text-lg font-bold text-ink">
             Informasi Ujian
           </h3>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs font-semibold text-slate-500">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs font-semibold text-ink-muted">
                 JENJANG PENDIDIKAN
               </p>
-              <p className="mt-2 font-bold text-slate-900">
+              <p className="mt-2 font-bold text-ink">
                 {levelLabels[level] || "Belum dipilih"}
               </p>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs font-semibold text-slate-500">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs font-semibold text-ink-muted">
                 SATUAN PENDIDIKAN
               </p>
-              <p className="mt-2 font-bold text-slate-900">
+              <p className="mt-2 font-bold text-ink">
                 {schoolType
                   ? schoolType.toUpperCase()
                   : level === "sd" || level === "smp"
@@ -198,15 +198,15 @@ function MissionsForm({ params }) {
           <div className="mt-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h4 className="font-bold text-slate-900">
+                <h4 className="font-bold text-ink">
                   Pilih Mata Pelajaran
                 </h4>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-ink-muted">
                   Centang mata pelajaran yang ingin kamu kerjakan.
                 </p>
               </div>
 
-              <span className="rounded-md bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+              <span className="rounded-md bg-accent-soft px-3 py-2 text-xs font-bold text-accent-ink">
                 {selectedSubjects.length} DIPILIH
               </span>
             </div>
@@ -221,27 +221,27 @@ function MissionsForm({ params }) {
                       key={subject}
                       className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition ${
                         checked
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-slate-200 bg-white hover:border-blue-300"
+                          ? "border-accent bg-accent-soft"
+                          : "border-line bg-surface hover:border-accent"
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleSubject(subject)}
-                        className="h-5 w-5 accent-blue-700"
+                        className="h-5 w-5 accent-accent"
                       />
 
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900">
+                        <p className="font-bold text-ink">
                           {subject}
                         </p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                        <p className="mt-1 text-xs font-semibold text-ink-muted">
                           {checked ? "DIPILIH" : "BELUM DIPILIH"}
                         </p>
                       </div>
 
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 font-bold text-blue-700">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-tint font-bold text-accent-ink">
                         {index + 1}
                       </span>
                     </label>
@@ -249,7 +249,7 @@ function MissionsForm({ params }) {
                 })}
               </div>
             ) : (
-              <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="mt-4 rounded-lg bg-warning-soft p-4 text-sm text-warning-ink">
                 Data mata pelajaran belum diterima.{" "}
                 <a
                   href={`/student/subjects?activityType=${activityType}`}
@@ -265,7 +265,7 @@ function MissionsForm({ params }) {
                 type="button"
                 onClick={() => setSelectedSubjects([...subjects])}
                 disabled={subjects.length === 0}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-blue-700 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:text-slate-400"
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-accent-ink hover:text-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:text-ink-muted"
               >
                 Pilih Semua
               </button>
@@ -274,7 +274,7 @@ function MissionsForm({ params }) {
                 type="button"
                 onClick={() => setSelectedSubjects([])}
                 disabled={selectedSubjects.length === 0}
-                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:text-slate-300"
+                className="min-h-11 rounded-lg px-2 text-sm font-semibold text-ink-muted hover:text-ink-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:text-inverse-muted"
               >
                 Hapus Semua Pilihan
               </button>
@@ -283,25 +283,25 @@ function MissionsForm({ params }) {
 
           <Link
             href={`/student/subjects?activityType=${activityType}`}
-            className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-blue-700 hover:text-blue-900"
+            className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-accent-ink hover:text-accent-strong"
           >
             ← Ubah pilihan mata pelajaran awal
           </Link>
         </section>
 
         {/* PENGATURAN */}
-        <section className="mb-7 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-900">
+        <section className="mb-7 rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="text-lg font-bold text-ink">
             Pengaturan Kegiatan
           </h3>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Pengaturan berlaku untuk setiap mata pelajaran yang dikerjakan dalam {activityType === "simulasi" ? "simulasi" : "latihan"} ini.
           </p>
 
           {activityType === "latihan" && (
             <div className="mt-6">
-              <label className="mb-3 block text-sm font-bold text-slate-800">
+              <label className="mb-3 block text-sm font-bold text-ink-body">
                 Tingkat Kesulitan
               </label>
 
@@ -316,10 +316,10 @@ function MissionsForm({ params }) {
                     type="button"
                     aria-pressed={difficulty === value}
                     onClick={() => setDifficulty(value)}
-                    className={`min-h-11 rounded-lg border-2 px-4 py-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                    className={`min-h-11 rounded-lg border-2 px-4 py-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                       difficulty === value
-                        ? "border-blue-600 bg-blue-50 text-blue-800"
-                        : "border-slate-200 text-slate-600 hover:border-blue-300"
+                        ? "border-accent bg-accent-soft text-accent-strong"
+                        : "border-line text-ink-secondary hover:border-accent"
                     }`}
                   >
                     {label}
@@ -333,7 +333,7 @@ function MissionsForm({ params }) {
             <div>
               <label
                 htmlFor="questionCount"
-                className="mb-2 block text-sm font-bold text-slate-800"
+                className="mb-2 block text-sm font-bold text-ink-body"
               >
                 Jumlah Soal per Mata Pelajaran
               </label>
@@ -342,7 +342,7 @@ function MissionsForm({ params }) {
                 id="questionCount"
                 value={questionCount}
                 onChange={(event) => setQuestionCount(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+                className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
               >
                 <option value="10">10 Soal</option>
                 <option value="20">20 Soal</option>
@@ -356,7 +356,7 @@ function MissionsForm({ params }) {
             <div>
               <label
                 htmlFor="duration"
-                className="mb-2 block text-sm font-bold text-slate-800"
+                className="mb-2 block text-sm font-bold text-ink-body"
               >
                 Durasi per Mata Pelajaran
               </label>
@@ -365,7 +365,7 @@ function MissionsForm({ params }) {
                 id="duration"
                 value={duration}
                 onChange={(event) => setDuration(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-600"
+                className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
               >
                 <option value="20">20 Menit</option>
                 <option value="30">30 Menit</option>
@@ -378,40 +378,40 @@ function MissionsForm({ params }) {
         </section>
 
         {/* RINGKASAN */}
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-900">
+        <section className="rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          <h3 className="text-lg font-bold text-ink">
             Ringkasan Konfigurasi
           </h3>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">Jenis Kegiatan</p>
-              <p className="mt-2 font-bold text-slate-900">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs text-ink-muted">Jenis Kegiatan</p>
+              <p className="mt-2 font-bold text-ink">
                 {activityType === "latihan"
                   ? "Latihan Terarah"
                   : "Simulasi TKA"}
               </p>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">Mata Pelajaran</p>
-              <p className="mt-2 font-bold text-slate-900">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs text-ink-muted">Mata Pelajaran</p>
+              <p className="mt-2 font-bold text-ink">
                 {selectedSubjects.length} mata pelajaran
               </p>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">Jumlah Soal per Sesi</p>
-              <p className="mt-2 font-bold text-slate-900">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs text-ink-muted">Jumlah Soal per Sesi</p>
+              <p className="mt-2 font-bold text-ink">
                 {questionCount} soal
               </p>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <p className="text-xs text-ink-muted">
                 {activityType === "latihan" ? "Kesulitan" : "Durasi per Sesi"}
               </p>
-              <p className="mt-2 font-bold text-slate-900">
+              <p className="mt-2 font-bold text-ink">
                 {activityType === "latihan"
                   ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
                   : `${duration} menit`}
@@ -421,17 +421,17 @@ function MissionsForm({ params }) {
 
           {/* RINGKASAN DURASI */}
           {activityType === "latihan" && (
-            <div className="mt-3 rounded-lg bg-slate-50 p-4">
-              <p className="text-xs text-slate-500">Durasi per Sesi</p>
-              <p className="mt-2 font-bold text-slate-900">
+            <div className="mt-3 rounded-lg bg-surface-muted p-4">
+              <p className="text-xs text-ink-muted">Durasi per Sesi</p>
+              <p className="mt-2 font-bold text-ink">
                 {duration} menit
               </p>
             </div>
           )}
 
           {selectedSubjects.length > 0 && (
-            <div className="mt-5 rounded-lg bg-blue-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+            <div className="mt-5 rounded-lg bg-accent-soft p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-accent-ink">
                 Mata Pelajaran yang Akan Dikerjakan
               </p>
 
@@ -439,34 +439,34 @@ function MissionsForm({ params }) {
                 {selectedSubjects.map((subject, index) => (
                   <span
                     key={subject}
-                    className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-blue-800"
+                    className="rounded-md bg-surface px-3 py-2 text-sm font-semibold text-accent-strong"
                   >
                     Sesi {index + 1}: {subject}
                   </span>
                 ))}
               </div>
 
-              <p className="mt-3 text-xs leading-5 text-blue-800">
+              <p className="mt-3 text-xs leading-5 text-accent-strong">
                 Setiap mata pelajaran akan dikerjakan dalam sesi terpisah
                 dengan hasil masing-masing.
               </p>
             </div>
           )}
 
-          <p role="status" className="mt-5 text-sm text-slate-600">
+          <p role="status" className="mt-5 text-sm text-ink-secondary">
             Estimasi total: {selectedSubjects.length * Number(duration)} menit untuk {selectedSubjects.length} mata pelajaran, tidak termasuk jeda.
           </p>
           <button
             type="button"
             disabled={!isReady}
             onClick={saveConfiguration}
-            className="mt-6 min-h-12 w-full rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+            className="mt-6 min-h-12 w-full rounded-lg bg-primary px-6 py-3 text-sm font-bold text-on-primary transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-surface-strong sm:w-auto"
           >
             Mulai {activityType === "simulasi" ? "Simulasi" : "Latihan"} →
           </button>
 
           {!isReady && (
-            <p className="mt-3 text-sm text-amber-700">
+            <p className="mt-3 text-sm text-warning-ink">
               Pilih minimal satu mata pelajaran untuk melanjutkan.
             </p>
           )}
@@ -474,14 +474,14 @@ function MissionsForm({ params }) {
           {message && (
             <div
               role="status"
-              className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900"
+              className="mt-5 rounded-lg border border-accent-line bg-accent-soft p-4 text-sm leading-6 text-accent-strong"
             >
               {message}
             </div>
           )}
         </section>
 
-        <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+        <footer className="mt-10 border-t border-line py-6 text-center text-xs text-ink-muted">
           © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>

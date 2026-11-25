@@ -25,12 +25,12 @@ export default function SchoolOverview({ context }) {
   return <Panel title="Ringkasan keanggotaan dan kelas">
     <SchoolSelect memberships={memberships} value={membership?.school_id || ""} onChange={setSelected} />
     {!memberships.length && <Empty>Keanggotaan staf aktif belum dipetakan. Hubungi koordinator/platform; afiliasi profil tidak memberikan hak manajemen kelas.</Empty>}
-    {membership && <nav className="flex flex-wrap gap-4 font-bold text-blue-800"><Link href="/teacher">Tugas guru</Link><Link href="/school/agenda">Agenda sekolah SET</Link></nav>}
+    {membership && <nav className="flex flex-wrap gap-4 font-bold text-accent-strong"><Link href="/teacher">Tugas guru</Link><Link href="/school/agenda">Agenda sekolah SET</Link></nav>}
     {membership?.role === "teacher" && <p>Ringkasan admin hanya tersedia untuk admin sekolah. Tugas dan agenda memerlukan capability sekolah yang cocok dari server.</p>}
     {membership?.role === "school_admin" && <>
-      {current?.error ? <p role="alert">{current.error}</p> : !summary ? <p role="status">Memuat ringkasan sekolah…</p> : <dl className="grid gap-4 sm:grid-cols-3">{[["Membership siswa aktif", summary.studentMemberships], ["Kelas tidak diarsipkan", summary.unarchivedClasses], ["Permintaan bergabung pending", summary.pendingRequests]].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-50 p-4"><dt className="text-sm text-slate-600">{label}</dt><dd className="text-3xl font-black">{value}</dd></div>)}</dl>}
-      <p className="text-sm text-slate-600">Hitungan mencakup semua tahun ajaran dalam workspace sekolah terpilih. Status membership bukan bukti akun Auth siswa aktif. Partisipasi, rata-rata nilai, dan aktivitas terbaru belum tersedia dari kontrak analitik terotorisasi; tidak ditampilkan sebagai nol.</p>
-      <Link className="font-bold text-blue-800 underline" href={`/school/manage?school=${encodeURIComponent(membership.school_id)}`}>Kelola siswa, kelas, undangan, dan permintaan</Link>
+      {current?.error ? <p role="alert">{current.error}</p> : !summary ? <p role="status">Memuat ringkasan sekolah…</p> : <dl className="grid gap-4 sm:grid-cols-3">{[["Membership siswa aktif", summary.studentMemberships], ["Kelas tidak diarsipkan", summary.unarchivedClasses], ["Permintaan bergabung pending", summary.pendingRequests]].map(([label, value]) => <div key={label} className="rounded-lg bg-surface-muted p-4"><dt className="text-sm text-ink-secondary">{label}</dt><dd className="text-3xl font-black">{value}</dd></div>)}</dl>}
+      <p className="text-sm text-ink-secondary">Hitungan mencakup semua tahun ajaran dalam workspace sekolah terpilih. Status membership bukan bukti akun Auth siswa aktif. Partisipasi, rata-rata nilai, dan aktivitas terbaru belum tersedia dari kontrak analitik terotorisasi; tidak ditampilkan sebagai nol.</p>
+      <Link className="font-bold text-accent-strong underline" href={`/school/manage?school=${encodeURIComponent(membership.school_id)}`}>Kelola siswa, kelas, undangan, dan permintaan</Link>
     </>}
   </Panel>;
 }

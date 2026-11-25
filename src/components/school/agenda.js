@@ -16,7 +16,7 @@ export function AgendaSelector({ portal, student = false }) {
   const [selected, setSelected] = useState(memberships[0]?.school_id || '');
   const membership = memberships.find(m => m.school_id === selected);
   return <div className="space-y-5">
-    <nav className="flex flex-wrap gap-5 font-bold text-blue-800"><Link href={student ? '/student' : '/school'}>← Dashboard</Link><Link href={student ? '/student/assignments' : '/teacher'}>Tugas sekolah</Link>{!student && <Link href="/school/manage">Manajemen sekolah</Link>}</nav>
+    <nav className="flex flex-wrap gap-5 font-bold text-accent-strong"><Link href={student ? '/student' : '/school'}>← Dashboard</Link><Link href={student ? '/student/assignments' : '/teacher'}>Tugas sekolah</Link>{!student && <Link href="/school/manage">Manajemen sekolah</Link>}</nav>
     <SchoolSelect memberships={memberships} value={membership?.school_id || ''} onChange={setSelected} />
     {!membership ? <p>Membership {student ? 'siswa' : 'guru/admin'} aktif diperlukan. Pilih sekolah; afiliasi profil tidak memberi izin.</p> : <AgendaWorkspace key={`${membership.school_id}:${membership.role}`} schoolId={membership.school_id} role={membership.role} student={student} />}
   </div>;
@@ -102,11 +102,11 @@ export function AgendaWorkspace({ schoolId, role, student }) {
   const field = key => ({ value: form[key], onChange: e => setForm(old => ({ ...old, [key]: e.target.value })) });
   const students = roster?.members.filter(m => m.role === 'student' && m.status === 'active' && m.class_id === classId) || [];
   return <div className="space-y-6">
-    <p className="text-sm text-slate-600">Satu paket SET, satu kesempatan. Jam, durasi penuh, jenjang, otorisasi dan hasil ditentukan server. Capability bukan bukti kelulusan staging/live.</p>
+    <p className="text-sm text-ink-secondary">Satu paket SET, satu kesempatan. Jam, durasi penuh, jenjang, otorisasi dan hasil ditentukan server. Capability bukan bukti kelulusan staging/live.</p>
     <button className={buttonClass} disabled={busy || loading} onClick={reload}>Muat ulang & periksa capability</button>
     {loading && <p role="status">Memeriksa kontrak dan agenda sekolah…</p>}
     {!loading && !ready && <p role="status">Agenda unavailable. Operasi dinonaktifkan sampai capability sekolah dan data berhasil diverifikasi kembali.</p>}
-    {error && <p role="alert" className="border-l-2 border-amber-600 bg-amber-50 p-4">{error}</p>}
+    {error && <p role="alert" className="border-l-2 border-warning-line bg-warning-soft p-4">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {!student && <Panel title="Buat draft agenda SET"><form onSubmit={create}><fieldset disabled={!ready || loading || busy} className="space-y-4 disabled:opacity-50">
       <Field label="Judul agenda" required minLength={3} maxLength={255} {...field('label')} />
@@ -126,7 +126,7 @@ export function AgendaWorkspace({ schoolId, role, student }) {
     </fieldset></form></Panel>}
     <Panel title="Daftar agenda (100 terbaru)">{ready && agenda?.schedules.length === 0 && <p>Belum ada agenda yang tersedia untuk akun ini.</p>}{ready && agenda?.schedules.map(item => {
       const availability = scheduleAvailability(item, serverNow);
-      return <article key={item.schedule_id} className="space-y-3 border-t border-slate-200 py-4"><h3 className="text-xl font-bold">{item.label}</h3><p>{item.status} · revisi {item.revision} · SET {item.tka_code}</p><p>{date(item.start_at)} — {date(item.deadline_at)}</p>
+      return <article key={item.schedule_id} className="space-y-3 border-t border-line py-4"><h3 className="text-xl font-bold">{item.label}</h3><p>{item.status} · revisi {item.revision} · SET {item.tka_code}</p><p>{date(item.start_at)} — {date(item.deadline_at)}</p>
         {student ? availability.canStart ? <Link prefetch={false} className={buttonClass} href={`/student/challenge?scheduledId=${encodeURIComponent(item.schedule_id)}`}>{availability.label}</Link> : <p>{availability.label}</p> : <div className="flex flex-wrap gap-3">
           {item.status === 'draft' && <button disabled={busy || !ready} className={buttonClass} onClick={() => setConfirm({ item, status: 'published' })}>Terbitkan agenda</button>}
           {item.status !== 'cancelled' && <button disabled={busy || !ready} className={buttonClass} onClick={() => setConfirm({ item, status: 'cancelled' })}>Batalkan agenda</button>}

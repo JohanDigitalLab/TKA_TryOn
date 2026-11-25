@@ -4,6 +4,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
+import ThemeToggle from "@/components/theme-toggle";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
 import { studentAttemptRequest, studentAttemptQuestions, attemptRemainingSeconds } from "@/lib/student/rpc-contract.mjs";
@@ -635,15 +636,15 @@ function ChallengeContent() {
             return (
               <div
                 key={number}
-                className="rounded-lg border border-slate-200 p-3"
+                className="rounded-lg border border-line p-3"
               >
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-ink-body">
                   {category.item_number}. {category.item_text}
                 </p>
                 <p className="mt-2 text-sm">
                   Jawaban siswa: <strong>{studentAnswer}</strong>
                 </p>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-success-ink">
                   Kunci: <strong>{category.correct_category}</strong>
                 </p>
               </div>
@@ -665,10 +666,10 @@ function ChallengeContent() {
               key={option.option_code}
               className={`rounded-lg border p-3 text-sm ${
                 option.is_correct
-                  ? "border-green-300 bg-green-50"
+                  ? "border-success-line bg-success-soft"
                   : selected
-                  ? "border-red-300 bg-red-50"
-                  : "border-slate-200 bg-white"
+                  ? "border-danger-line bg-danger-soft"
+                  : "border-line bg-surface"
               }`}
             >
               <div className="flex items-start gap-2">
@@ -682,7 +683,7 @@ function ChallengeContent() {
                   </span>
                 )}
                 {option.is_correct && (
-                  <span className="text-xs font-bold text-green-700">
+                  <span className="text-xs font-bold text-success-ink">
                     Kunci
                   </span>
                 )}
@@ -700,9 +701,9 @@ function ChallengeContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-slate-100 text-slate-600">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+      <main className="min-h-screen grid place-items-center bg-surface-raised text-ink-secondary">
+        <div className="rounded-2xl bg-surface p-8 text-center shadow-sm">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-accent-line border-t-accent" />
           <p className="font-semibold">
             Menyiapkan soal dari bank TKA TryOn…
           </p>
@@ -717,27 +718,27 @@ function ChallengeContent() {
 
   if (error && !questions.length) {
     return (
-      <main className="min-h-screen grid place-items-center bg-slate-100 p-5 text-slate-800">
-        <section className="w-full max-w-xl rounded-2xl bg-white p-7 shadow-sm">
-          <h1 className="text-xl font-extrabold text-slate-900">
+      <main className="min-h-screen grid place-items-center bg-surface-raised p-5 text-ink-body">
+        <section className="w-full max-w-xl rounded-2xl bg-surface p-7 shadow-sm">
+          <h1 className="text-xl font-extrabold text-ink">
             Sesi ujian belum dapat dimulai
           </h1>
 
-          <p className="mt-3 rounded-lg bg-red-50 p-4 text-sm leading-6 text-red-700">
+          <p className="mt-3 rounded-lg bg-danger-soft p-4 text-sm leading-6 text-danger-ink">
             {error}
           </p>
 
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-ink-muted">
             Periksa status akses melalui halaman Paket. Untuk sesi yang sudah dimulai, buka riwayat hasil dan lanjutkan sesi yang masih berjalan.
           </p>
 
           <button
             onClick={() => router.push("/student")}
-            className="mt-5 rounded-lg bg-blue-700 px-5 py-3 font-bold text-white"
+            className="mt-5 rounded-lg bg-primary px-5 py-3 font-bold text-on-primary"
           >
             Kembali ke Dashboard
           </button>
-          <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-blue-700">
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-accent-ink">
             <button onClick={() => router.push("/subscription")} className="min-h-11 underline">Paket dan aktivasi langganan</button>
             <button onClick={() => router.push("/student/results")} className="min-h-11 underline">Riwayat dan sesi berjalan</button>
           </div>
@@ -752,65 +753,65 @@ function ChallengeContent() {
 
   if (finished) {
     return (
-      <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-800">
+      <main className="min-h-screen bg-surface-raised px-4 py-8 text-ink-body">
         <div className="mx-auto max-w-4xl">
-          <section className="rounded-2xl bg-white p-6 text-center shadow-sm sm:p-8">
-            <div className="text-5xl text-green-600">✓</div>
+          <section className="rounded-2xl bg-surface p-6 text-center shadow-sm sm:p-8">
+            <div className="text-5xl text-success-ink">✓</div>
 
-            <h1 className="mt-4 text-2xl font-extrabold text-slate-900">
+            <h1 className="mt-4 text-2xl font-extrabold text-ink">
               Sesi Mata Pelajaran Selesai
             </h1>
 
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-ink-secondary">
               Hasil penilaian telah dihitung oleh Supabase.
             </p>
 
-            <div className="mt-5 rounded-xl bg-blue-50 p-4">
-              <p className="text-sm font-bold text-blue-700">
+            <div className="mt-5 rounded-xl bg-accent-soft p-4">
+              <p className="text-sm font-bold text-accent-ink">
                 {examInfo.subject}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-ink-muted">
                 Kelas {examInfo.grade} · Sesi{" "}
                 {examInfo.subjectIndex + 1} dari {examInfo.totalSubjects}
               </p>
             </div>
 
-            <div className="mt-7 rounded-2xl bg-blue-50 p-6">
-              <p className="text-sm font-semibold text-blue-700">
+            <div className="mt-7 rounded-2xl bg-accent-soft p-6">
+              <p className="text-sm font-semibold text-accent-ink">
                 NILAI AKHIR
               </p>
-              <p className="mt-2 text-6xl font-black text-blue-700">
+              <p className="mt-2 text-6xl font-black text-accent-ink">
                 {Number(result?.score ?? 0).toFixed(2)}
               </p>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-ink-muted">
                 Skala nilai 0–100 · Penilaian server
               </p>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Total Soal</p>
+              <div className="rounded-xl bg-surface-muted p-4">
+                <p className="text-xs text-ink-muted">Total Soal</p>
                 <p className="mt-1 text-2xl font-bold">
                   {result?.total_questions ?? questions.length}
                 </p>
               </div>
 
-              <div className="rounded-xl bg-green-50 p-4">
-                <p className="text-xs text-green-700">Benar</p>
-                <p className="mt-1 text-2xl font-bold text-green-700">
+              <div className="rounded-xl bg-success-soft p-4">
+                <p className="text-xs text-success-ink">Benar</p>
+                <p className="mt-1 text-2xl font-bold text-success-ink">
                   {result?.correct_answers ?? 0}
                 </p>
               </div>
 
-              <div className="rounded-xl bg-red-50 p-4">
-                <p className="text-xs text-red-700">Salah</p>
-                <p className="mt-1 text-2xl font-bold text-red-700">
+              <div className="rounded-xl bg-danger-soft p-4">
+                <p className="text-xs text-danger-ink">Salah</p>
+                <p className="mt-1 text-2xl font-bold text-danger-ink">
                   {result?.incorrect_or_unanswered ?? 0}
                 </p>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Terjawab</p>
+              <div className="rounded-xl bg-surface-muted p-4">
+                <p className="text-xs text-ink-muted">Terjawab</p>
                 <p className="mt-1 text-2xl font-bold">
                   {answeredCount}
                 </p>
@@ -819,7 +820,7 @@ function ChallengeContent() {
 
             <button
               onClick={() => setShowReview((value) => !value)}
-              className="mt-6 w-full rounded-lg bg-green-700 px-7 py-3 font-bold text-white hover:bg-green-800"
+              className="mt-6 w-full rounded-lg bg-success px-7 py-3 font-bold text-on-inverse hover:bg-success"
             >
               {showReview
                 ? "Tutup Rincian Jawaban"
@@ -827,18 +828,18 @@ function ChallengeContent() {
             </button>
 
             {reviewLoading && (
-              <p className="mt-5 text-sm text-slate-500">
+              <p className="mt-5 text-sm text-ink-muted">
                 Mengambil rincian jawaban…
               </p>
             )}
 
             {reviewError && (
-              <div className="mt-5 rounded-lg bg-red-50 p-4 text-left text-sm text-red-700">
+              <div className="mt-5 rounded-lg bg-danger-soft p-4 text-left text-sm text-danger-ink">
                 <strong>Review belum tersedia.</strong>
                 <p className="mt-1">{reviewError}</p>
                 <button
                   onClick={() => loadReview(attemptId)}
-                  className="mt-3 rounded-lg bg-red-700 px-4 py-2 font-bold text-white"
+                  className="mt-3 rounded-lg bg-danger px-4 py-2 font-bold text-on-inverse"
                 >
                   Coba Muat Ulang
                 </button>
@@ -848,11 +849,11 @@ function ChallengeContent() {
 
           {showReview && review && (
             <section className="mt-6 space-y-5">
-              <div className="rounded-xl bg-white p-5 shadow-sm">
+              <div className="rounded-xl bg-surface p-5 shadow-sm">
                 <h2 className="text-xl font-extrabold">
                   Review Hasil Ujian
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-ink-muted">
                   Periksa jawaban, kunci, dan pembahasan setiap soal.
                 </p>
               </div>
@@ -860,20 +861,20 @@ function ChallengeContent() {
               {reviewQuestions.map((item, index) => (
                 <article
                   key={item.question_id || index}
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-line bg-surface p-5 shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-bold text-slate-900">
+                    <h3 className="font-bold text-ink">
                       Soal Nomor {item.question_order || index + 1}
                     </h3>
 
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${
                         item.is_correct === true
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-success-tint text-success-ink"
                           : item.is_correct === false
-                          ? "bg-red-100 text-red-700"
-                          : "bg-slate-100 text-slate-600"
+                          ? "bg-danger-tint text-danger-ink"
+                          : "bg-surface-raised text-ink-secondary"
                       }`}
                     >
                       {item.is_correct === true
@@ -884,28 +885,28 @@ function ChallengeContent() {
                     </span>
                   </div>
 
-                  <p className="mt-2 text-xs font-semibold text-blue-700">
+                  <p className="mt-2 text-xs font-semibold text-accent-ink">
                     {getTypeLabel(normalizeType(item.question_type))}
                   </p>
 
                   {item.stimulus?.content_text && (
-                    <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm leading-6">
+                    <div className="mt-4 rounded-lg bg-surface-muted p-4 text-sm leading-6">
                       {item.stimulus.content_text}
                     </div>
                   )}
 
-                  <p className="mt-4 text-sm font-medium leading-7 text-slate-900">
+                  <p className="mt-4 text-sm font-medium leading-7 text-ink">
                     {item.question_text}
                   </p>
 
                   {renderReviewAnswer(item)}
 
                   {item.explanation && (
-                    <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
-                      <p className="text-xs font-bold uppercase text-blue-700">
+                    <div className="mt-4 rounded-lg border border-accent-line bg-accent-soft p-4">
+                      <p className="text-xs font-bold uppercase text-accent-ink">
                         Pembahasan
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                      <p className="mt-2 text-sm leading-6 text-ink-body">
                         {item.explanation}
                       </p>
                     </div>
@@ -919,14 +920,14 @@ function ChallengeContent() {
             {hasNextSubject ? (
               <button
                 onClick={nextSubject}
-                className="flex-1 rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
+                className="flex-1 rounded-lg bg-primary px-7 py-3 font-bold text-on-primary hover:bg-primary-hover"
               >
                 Lanjut ke Mata Pelajaran Berikutnya →
               </button>
             ) : (
               <button
                 onClick={() => router.push("/student/results")}
-                className="flex-1 rounded-lg bg-blue-700 px-7 py-3 font-bold text-white hover:bg-blue-800"
+                className="flex-1 rounded-lg bg-primary px-7 py-3 font-bold text-on-primary hover:bg-primary-hover"
               >
                 Lihat Rekap Seluruh Hasil →
               </button>
@@ -948,9 +949,9 @@ function ChallengeContent() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-800">
+    <main className="min-h-screen bg-surface-raised text-ink-body">
       {navigationWarning && (
-        <div className="fixed left-1/2 top-4 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 shadow-lg">
+        <div className="fixed left-1/2 top-4 z-[60] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-warning-line bg-warning-soft p-4 text-sm text-warning-ink shadow-lg">
           <p className="font-bold">Ujian masih berlangsung</p>
           <p className="mt-1">
             Tombol Back tidak mengakhiri ujian. Sesi dan waktu ujian tetap
@@ -959,24 +960,25 @@ function ChallengeContent() {
           <button
             type="button"
             onClick={() => setNavigationWarning(false)}
-            className="mt-3 rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white"
+            className="mt-3 rounded-lg bg-warning px-3 py-2 text-xs font-bold text-on-inverse"
           >
             Mengerti
           </button>
         </div>
       )}
 
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <BrandLogo className="h-12 w-14" />
+          <ThemeToggle />
           <div>
-            <h1 className="text-lg font-extrabold text-slate-900">
-              TKA <span className="text-blue-700">TryOn</span>
+            <h1 className="text-lg font-extrabold text-ink">
+              TKA <span className="text-accent-ink">TryOn</span>
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-muted">
               {examInfo.subject} · Kelas {examInfo.grade}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-ink-muted">
               Sesi {examInfo.subjectIndex + 1} dari{" "}
               {examInfo.totalSubjects}
             </p>
@@ -985,13 +987,13 @@ function ChallengeContent() {
           <div
             className={`rounded-lg border px-4 py-2 text-center ${
               timerCritical
-                ? "border-red-300 bg-red-50"
+                ? "border-danger-line bg-danger-soft"
                 : timerWarning
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-slate-200"
+                  ? "border-warning-line bg-warning-soft"
+                  : "border-line"
             }`}
           >
-            <p className="text-[10px] font-bold uppercase text-slate-500">
+            <p className="text-[10px] font-bold uppercase text-ink-muted">
               Sisa Waktu
             </p>
             <p
@@ -1000,10 +1002,10 @@ function ChallengeContent() {
               aria-label="Sisa waktu ujian"
               className={`font-mono text-xl font-extrabold ${
                 timerCritical
-                  ? "animate-pulse text-red-700"
+                  ? "animate-pulse text-danger-ink"
                   : timerWarning
-                    ? "text-amber-700"
-                    : "text-blue-700"
+                    ? "text-warning-ink"
+                    : "text-accent-ink"
               }`}
             >
               {isUntimed ? "Tanpa batas waktu" : formatTime(remaining)}
@@ -1012,7 +1014,7 @@ function ChallengeContent() {
               <p
                 role="status"
                 aria-live="assertive"
-                className="mt-1 max-w-[10rem] text-[10px] font-bold leading-4 text-red-700"
+                className="mt-1 max-w-[10rem] text-[10px] font-bold leading-4 text-danger-ink"
               >
                 Waktu hampir habis. Ujian akan dikirim otomatis.
               </p>
@@ -1021,7 +1023,7 @@ function ChallengeContent() {
               <p
                 role="status"
                 aria-live="polite"
-                className="mt-1 max-w-[10rem] text-[10px] font-semibold leading-4 text-amber-700"
+                className="mt-1 max-w-[10rem] text-[10px] font-semibold leading-4 text-warning-ink"
               >
                 Sisa waktu kurang dari 5 menit.
               </p>
@@ -1031,7 +1033,7 @@ function ChallengeContent() {
           <button
             onClick={() => setShowConfirm(true)}
             disabled={isFinishing || saving}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+            className="rounded-lg bg-danger px-4 py-2 text-sm font-bold text-on-inverse hover:bg-danger disabled:opacity-50"
           >
             Selesai
           </button>
@@ -1040,7 +1042,7 @@ function ChallengeContent() {
 
       {examInfo.resumed && (
         <div className="mx-auto mt-4 max-w-7xl px-4 lg:px-6">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <div className="rounded-lg border border-accent-line bg-accent-soft px-4 py-3 text-sm text-accent-strong">
             <strong>Sesi ujian dipulihkan.</strong> Kamu melanjutkan sesi ujian
             sebelumnya. Jawaban yang tersimpan dimuat kembali. Sisa waktu mengikuti batas akhir sesi.
           </div>
@@ -1048,9 +1050,9 @@ function ChallengeContent() {
       )}
 
       <div className="mx-auto grid max-w-7xl gap-5 p-4 lg:grid-cols-[1fr_290px] lg:p-6">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="rounded-xl border border-line bg-surface p-5 shadow-sm sm:p-7">
           {error && (
-            <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <p className="mb-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">
               {error}
             </p>
           )}
@@ -1059,7 +1061,7 @@ function ChallengeContent() {
             <p
               role="status"
               aria-live="polite"
-              className="mb-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-700"
+              className="mb-4 rounded-lg bg-accent-soft p-3 text-xs font-semibold text-accent-ink"
             >
               Menyimpan jawaban ke server…
             </p>
@@ -1069,7 +1071,7 @@ function ChallengeContent() {
             <p
               role="status"
               aria-live="polite"
-              className="mb-4 rounded-lg bg-green-50 p-3 text-xs font-semibold text-green-700"
+              className="mb-4 rounded-lg bg-success-soft p-3 text-xs font-semibold text-success-ink"
             >
               Jawaban tersimpan.
             </p>
@@ -1079,16 +1081,16 @@ function ChallengeContent() {
             <p
               role="status"
               aria-live="assertive"
-              className="mb-4 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700"
+              className="mb-4 rounded-lg bg-danger-soft p-3 text-xs font-semibold text-danger-ink"
             >
               Jawaban gagal tersimpan. Periksa koneksi lalu pilih jawaban lagi
               untuk mencoba kembali.
             </p>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-700">
+              <p className="text-xs font-bold uppercase tracking-wide text-accent-ink">
                 {question.subject}
               </p>
               <h2 className="mt-1 text-lg font-bold">
@@ -1096,24 +1098,24 @@ function ChallengeContent() {
               </h2>
             </div>
 
-            <span className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+            <span className="rounded-md bg-accent-soft px-3 py-2 text-xs font-semibold text-accent-ink">
               {getTypeLabel(question.type)}
             </span>
           </div>
 
           {question.stimulus && (
-            <div className="mt-6 rounded-lg bg-slate-50 p-4 text-sm leading-7 text-slate-700">
+            <div className="mt-6 rounded-lg bg-surface-muted p-4 text-sm leading-7 text-ink-body">
               {question.stimulus}
             </div>
           )}
 
           {question.instruction && (
-            <p className="mt-5 text-sm italic text-slate-500">
+            <p className="mt-5 text-sm italic text-ink-muted">
               {question.instruction}
             </p>
           )}
 
-          <p className="mt-6 text-base font-semibold leading-8 text-slate-900">
+          <p className="mt-6 text-base font-semibold leading-8 text-ink">
             {question.question}
           </p>
 
@@ -1121,7 +1123,7 @@ function ChallengeContent() {
 
           {question.type === "PG_TUNGGAL" && (
             <div className="mt-6 space-y-3">
-              <p className="text-xs font-semibold text-slate-500">
+              <p className="text-xs font-semibold text-ink-muted">
                 Pilih satu jawaban yang paling tepat.
               </p>
 
@@ -1136,15 +1138,15 @@ function ChallengeContent() {
                     onClick={() => chooseSingle(option.code)}
                     className={`flex w-full items-start gap-4 rounded-lg border p-4 text-left transition ${
                       active
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-slate-200 hover:border-blue-300"
+                        ? "border-accent bg-accent-soft"
+                        : "border-line hover:border-accent"
                     }`}
                   >
                     <span
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                         active
-                          ? "bg-blue-700 text-white"
-                          : "bg-slate-100 text-slate-700"
+                          ? "bg-primary text-on-primary"
+                          : "bg-surface-raised text-ink-body"
                       }`}
                     >
                       {option.code}
@@ -1162,7 +1164,7 @@ function ChallengeContent() {
 
           {question.type === "PGK_MA" && (
             <div className="mt-6 space-y-3">
-              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+              <div className="rounded-lg bg-accent-soft p-3 text-sm text-accent-strong">
                 Pilih semua jawaban yang benar. Jawaban dapat lebih dari satu.
               </div>
 
@@ -1177,15 +1179,15 @@ function ChallengeContent() {
                     onClick={() => toggleMultiple(option.code)}
                     className={`flex w-full items-start gap-4 rounded-lg border p-4 text-left transition ${
                       active
-                        ? "border-blue-600 bg-blue-50"
-                        : "border-slate-200 hover:border-blue-300"
+                        ? "border-accent bg-accent-soft"
+                        : "border-line hover:border-accent"
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded border text-sm font-bold ${
                         active
-                          ? "border-blue-700 bg-blue-700 text-white"
-                          : "border-slate-300 bg-white"
+                          ? "border-accent bg-primary text-on-primary"
+                          : "border-line-strong bg-surface"
                       }`}
                     >
                       {active ? "✓" : ""}
@@ -1200,7 +1202,7 @@ function ChallengeContent() {
                 );
               })}
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Dipilih: {currentPayload.option_codes.length} jawaban
               </p>
             </div>
@@ -1210,13 +1212,13 @@ function ChallengeContent() {
 
           {question.type === "PGK_KATEGORI" && (
             <div className="mt-6 space-y-4">
-              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+              <div className="rounded-lg bg-accent-soft p-3 text-sm text-accent-strong">
                 Tentukan kategori yang tepat untuk setiap pernyataan.
                 Pilih salah satu kategori yang tersedia pada masing-masing pernyataan.
               </div>
 
               {question.category_items.length === 0 && (
-                <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+                <p className="rounded-lg bg-danger-soft p-4 text-sm text-danger-ink">
                   Data pernyataan untuk soal kategori belum tersedia.
                 </p>
               )}
@@ -1229,9 +1231,9 @@ function ChallengeContent() {
                 return (
                   <div
                     key={number}
-                    className="rounded-xl border border-slate-200 bg-white p-4 transition"
+                    className="rounded-xl border border-line bg-surface p-4 transition"
                   >
-                    <p className="text-sm font-semibold leading-6 text-slate-900">
+                    <p className="text-sm font-semibold leading-6 text-ink">
                       {item.item_number}. {item.item_text}
                     </p>
 
@@ -1245,9 +1247,9 @@ function ChallengeContent() {
                             className={`flex cursor-pointer items-center justify-center gap-3 rounded-lg border px-4 py-3 transition ${
                               active
                                 ? category === "BENAR"
-                                  ? "border-green-600 bg-green-50 text-green-800"
-                                  : "border-red-500 bg-red-50 text-red-800"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                                  ? "border-success-line bg-success-soft text-success-ink"
+                                  : "border-danger-line bg-danger-soft text-danger-ink"
+                                : "border-line bg-surface text-ink-secondary hover:border-line-strong"
                             }`}
                           >
                             <input
@@ -1261,8 +1263,8 @@ function ChallengeContent() {
                               }
                               className={`h-4 w-4 ${
                                 category === "BENAR"
-                                  ? "accent-green-600"
-                                  : "accent-red-600"
+                                  ? "accent-success"
+                                  : "accent-danger"
                               }`}
                             />
 
@@ -1277,7 +1279,7 @@ function ChallengeContent() {
                 );
               })}
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Terisi:{" "}
                 {Object.keys(currentPayload.category_answers).length} dari{" "}
                 {question.category_items.length} pernyataan
@@ -1285,14 +1287,14 @@ function ChallengeContent() {
             </div>
           )}
 
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
             <button
               aria-pressed={marked.includes(current)}
               onClick={toggleMark}
               className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
                 marked.includes(current)
-                  ? "border-amber-400 bg-amber-50 text-amber-800"
-                  : "border-slate-200 text-slate-600"
+                  ? "border-warning-line bg-warning-soft text-warning-ink"
+                  : "border-line text-ink-secondary"
               }`}
             >
               {marked.includes(current)
@@ -1304,7 +1306,7 @@ function ChallengeContent() {
               <button
                 disabled={current === 0}
                 onClick={() => setCurrent((value) => value - 1)}
-                className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-bold disabled:opacity-40"
+                className="rounded-lg border border-line px-5 py-3 text-sm font-bold disabled:opacity-40"
               >
                 Sebelumnya
               </button>
@@ -1312,14 +1314,14 @@ function ChallengeContent() {
               {current < questions.length - 1 ? (
                 <button
                   onClick={() => setCurrent((value) => value + 1)}
-                  className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800"
+                  className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary hover:bg-primary-hover"
                 >
                   Berikutnya →
                 </button>
               ) : (
                 <button
                   onClick={() => setShowConfirm(true)}
-                  className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white"
+                  className="rounded-lg bg-primary px-5 py-3 text-sm font-bold text-on-primary"
                 >
                   Selesai Sesi
                 </button>
@@ -1330,8 +1332,8 @@ function ChallengeContent() {
 
         {/* NAVIGASI SOAL */}
 
-        <aside className="h-fit rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-bold text-slate-900">Navigasi Soal</h3>
+        <aside className="h-fit rounded-xl border border-line bg-surface p-5 shadow-sm">
+          <h3 className="font-bold text-ink">Navigasi Soal</h3>
 
           <div className="mt-4 grid grid-cols-5 gap-2">
             {questions.map((item, index) => {
@@ -1348,39 +1350,39 @@ function ChallengeContent() {
                   onClick={() => setCurrent(index)}
                   className={`relative h-11 rounded-lg border text-sm font-bold ${
                     current === index
-                      ? "border-blue-700 bg-blue-700 text-white"
+                      ? "border-accent bg-primary text-on-primary"
                       : answered
-                      ? "border-green-300 bg-green-50 text-green-700"
-                      : "border-slate-200 text-slate-600"
+                      ? "border-success-line bg-success-soft text-success-ink"
+                      : "border-line text-ink-secondary"
                   }`}
                 >
                   {index + 1}
                   {marked.includes(index) && (
-                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-amber-500" />
+                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-warning" />
                   )}
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-xs text-slate-600">
+          <div className="mt-6 space-y-3 border-t border-line pt-5 text-xs text-ink-secondary">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded bg-blue-700" />
+              <span className="h-3 w-3 rounded bg-primary" />
               Soal aktif
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded bg-green-500" />
+              <span className="h-3 w-3 rounded bg-success" />
               Sudah dijawab
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded bg-amber-500" />
+              <span className="h-3 w-3 rounded bg-warning" />
               Ditandai ragu-ragu
             </div>
           </div>
 
-          <div className="mt-6 rounded-lg bg-slate-50 p-4">
-            <p className="text-xs text-slate-500">Progres pengerjaan</p>
-            <p className="mt-1 text-xl font-extrabold text-slate-900">
+          <div className="mt-6 rounded-lg bg-surface-muted p-4">
+            <p className="text-xs text-ink-muted">Progres pengerjaan</p>
+            <p className="mt-1 text-xl font-extrabold text-ink">
               {answeredCount}/{questions.length}
             </p>
             <p
@@ -1388,10 +1390,10 @@ function ChallengeContent() {
               aria-live="polite"
               className={`mt-1 text-xs ${
                 saveStatus === "error"
-                  ? "font-semibold text-red-700"
+                  ? "font-semibold text-danger-ink"
                   : saveStatus === "saved"
-                    ? "font-semibold text-green-700"
-                    : "text-slate-500"
+                    ? "font-semibold text-success-ink"
+                    : "text-ink-muted"
               }`}
             >
               {saveStatus === "saving"
@@ -1417,14 +1419,14 @@ function ChallengeContent() {
             if (saving) event.preventDefault();
             else setShowConfirm(false);
           }}
-          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl bg-white p-0 shadow-xl backdrop:bg-black/50"
+          className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl bg-surface p-0 shadow-xl backdrop:bg-black/50"
         >
           <div className="p-6">
-            <h3 id="finish-dialog-title" className="text-xl font-extrabold text-slate-900">
+            <h3 id="finish-dialog-title" className="text-xl font-extrabold text-ink">
               Akhiri Sesi Ujian?
             </h3>
 
-            <p id="finish-dialog-description" className="mt-3 text-sm leading-6 text-slate-600">
+            <p id="finish-dialog-description" className="mt-3 text-sm leading-6 text-ink-secondary">
               Kamu telah menjawab {answeredCount} dari{" "}
               {questions.length} soal untuk mata pelajaran{" "}
               <strong>{examInfo.subject}</strong>.
@@ -1432,7 +1434,7 @@ function ChallengeContent() {
             </p>
 
             {saving && (
-              <p className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
+              <p className="mt-3 rounded-lg bg-accent-soft p-3 text-xs text-accent-ink">
                 Sistem sedang menyimpan jawaban. Mohon tunggu sebelum
                 mengakhiri ujian.
               </p>
@@ -1442,7 +1444,7 @@ function ChallengeContent() {
               <button
                 disabled={saving}
                 onClick={() => setShowConfirm(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold disabled:opacity-50"
+                className="rounded-lg border border-line px-4 py-2 text-sm font-bold disabled:opacity-50"
               >
                 Kembali
               </button>
@@ -1450,7 +1452,7 @@ function ChallengeContent() {
               <button
                 disabled={saving}
                 onClick={finishExam}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-bold text-on-inverse disabled:opacity-50"
               >
                 {saving ? "Memproses…" : "Ya, Akhiri"}
               </button>
@@ -1471,7 +1473,7 @@ export default function ChallengePage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-h-screen place-items-center bg-slate-100 text-slate-600">
+        <main className="grid min-h-screen place-items-center bg-surface-raised text-ink-secondary">
           <p className="font-semibold">Menyiapkan sesi ujian…</p>
         </main>
       }

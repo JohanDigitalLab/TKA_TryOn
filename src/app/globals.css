@@ -1,29 +1,201 @@
 @import "tailwindcss";
 
+/* Reference palette: navy/lavender, cyan, lime and fuchsia. Only color tokens vary. */
 :root {
   color-scheme: light;
-  --background: #f5f6f3;
-  --foreground: #172033;
-  --ink: #172033;
-  --muted: #657083;
-  --line: #d9dee5;
-  --blue: #1457d9;
-  --blue-deep: #0d3ea6;
+  --background: #f7f8ff;
+  --foreground: #171735;
+  --surface: #ffffff;
+  --surface-muted: #f0f1fb;
+  --surface-raised: #e9eaf7;
+  --surface-strong: #dcdeef;
+  --ink: #171735;
+  --ink-body: #30304f;
+  --ink-secondary: #50516d;
+  --ink-muted: #656580;
+  --line: #dcddec;
+  --line-subtle: #e9eaf4;
+  --line-strong: #bfc2d9;
+  --primary: #d9ff5b;
+  --primary-hover: #c5ed43;
+  --on-primary: #10102a;
+  --accent: #087c94;
+  --accent-ink: #08748b;
+  --accent-strong: #075b70;
+  --accent-soft: #e6f9fc;
+  --accent-tint: #cdf1f7;
+  --accent-line: #a1dce7;
+  --accent-deep: #133d49;
+  --secondary: #f5a8ff;
+  --secondary-ink: #8c288e;
+  --secondary-soft: #fff0ff;
+  --secondary-tint: #f9dcfb;
+  --secondary-line: #e8b8ed;
+  --success: #15803d;
+  --success-ink: #166534;
+  --success-soft: #edf9f0;
+  --success-tint: #d5f2de;
+  --success-line: #9cd7b0;
+  --warning: #a65a08;
+  --warning-ink: #854509;
+  --warning-soft: #fff8e7;
+  --warning-tint: #ffedbd;
+  --warning-line: #e7c67b;
+  --danger: #c82d4c;
+  --danger-ink: #ac2440;
+  --danger-soft: #fff0f2;
+  --danger-tint: #ffdde3;
+  --danger-line: #f0afbc;
+  --inverse: #171735;
+  --inverse-deep: #10102a;
+  --on-inverse: #ffffff;
+  --inverse-muted: #d3d3e7;
+  --inverse-accent: #67e8f9;
+  --muted: var(--ink-muted);
+  --blue: var(--accent-ink);
+  --blue-deep: var(--accent-strong);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #10102a;
+  --foreground: #f7f5ff;
+  --surface: #1b1b39;
+  --surface-muted: #151530;
+  --surface-raised: #252546;
+  --surface-strong: #343456;
+  --ink: #f7f5ff;
+  --ink-body: #e2e2f1;
+  --ink-secondary: #c5c5dc;
+  --ink-muted: #aaaac6;
+  --line: #393957;
+  --line-subtle: #2c2c4b;
+  --line-strong: #565679;
+  --accent: #67e8f9;
+  --accent-ink: #67e8f9;
+  --accent-strong: #a5f3fc;
+  --accent-soft: #15323f;
+  --accent-tint: #1b4351;
+  --accent-line: #2c6373;
+  --secondary-ink: #f5a8ff;
+  --secondary-soft: #35203f;
+  --secondary-tint: #4b2854;
+  --secondary-line: #80518c;
+  --success-ink: #8fe5b0;
+  --success-soft: #142e2a;
+  --success-tint: #1c4235;
+  --success-line: #346b50;
+  --warning-ink: #f8d48a;
+  --warning-soft: #352c22;
+  --warning-tint: #4a3822;
+  --warning-line: #85673c;
+  --danger-ink: #ffabbc;
+  --danger-soft: #382031;
+  --danger-tint: #4e273b;
+  --danger-line: #8a485d;
+}
+
+/* No-script/system fallback before the head initializer has run. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --background: #10102a;
+    --foreground: #f7f5ff;
+    --surface: #1b1b39;
+    --surface-muted: #151530;
+    --surface-raised: #252546;
+    --surface-strong: #343456;
+    --ink: #f7f5ff;
+    --ink-body: #e2e2f1;
+    --ink-secondary: #c5c5dc;
+    --ink-muted: #aaaac6;
+    --line: #393957;
+    --line-subtle: #2c2c4b;
+    --line-strong: #565679;
+    --accent: #67e8f9;
+    --accent-ink: #67e8f9;
+    --accent-strong: #a5f3fc;
+    --accent-soft: #15323f;
+    --accent-tint: #1b4351;
+    --accent-line: #2c6373;
+    --secondary-ink: #f5a8ff;
+    --secondary-soft: #35203f;
+    --secondary-tint: #4b2854;
+    --secondary-line: #80518c;
+    --success-ink: #8fe5b0;
+    --success-soft: #142e2a;
+    --success-tint: #1c4235;
+    --success-line: #346b50;
+    --warning-ink: #f8d48a;
+    --warning-soft: #352c22;
+    --warning-tint: #4a3822;
+    --warning-line: #85673c;
+    --danger-ink: #ffabbc;
+    --danger-soft: #382031;
+    --danger-tint: #4e273b;
+    --danger-line: #8a485d;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-strong: var(--surface-strong);
+  --color-ink: var(--ink);
+  --color-ink-body: var(--ink-body);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-subtle: var(--line-subtle);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-line: var(--accent-line);
+  --color-accent-deep: var(--accent-deep);
+  --color-secondary: var(--secondary);
+  --color-secondary-ink: var(--secondary-ink);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-tint: var(--secondary-tint);
+  --color-secondary-line: var(--secondary-line);
+  --color-success: var(--success);
+  --color-success-ink: var(--success-ink);
+  --color-success-soft: var(--success-soft);
+  --color-success-tint: var(--success-tint);
+  --color-success-line: var(--success-line);
+  --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-tint: var(--warning-tint);
+  --color-warning-line: var(--warning-line);
+  --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-tint: var(--danger-tint);
+  --color-danger-line: var(--danger-line);
+  --color-inverse: var(--inverse);
+  --color-inverse-deep: var(--inverse-deep);
+  --color-on-inverse: var(--on-inverse);
+  --color-inverse-muted: var(--inverse-muted);
+  --color-inverse-accent: var(--inverse-accent);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
-/* Keep native controls consistent with the application's light surfaces. */
+/* Native controls follow the active theme. */
 html {
   scroll-padding-top: 9rem;
 }
 
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid #2563eb;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -36,8 +208,8 @@ button:disabled {
 }
 
 ::selection {
-  background: #dbeafe;
-  color: #1e3a8a;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
 }
 
 
@@ -57,3 +229,48 @@ body {
   line-height: 1.6;
   text-rendering: optimizeLegibility;
 }
+
+/* Fixed inverse panels retain their original visual hierarchy in either mode. */
+.bg-inverse, .bg-inverse-deep {
+  --ink-muted: #b8b8d2;
+  --ink-secondary: #d3d3e7;
+  --warning-ink: #f8d48a;
+}
+
+:where(dialog, select, option) {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+:where(input, textarea) { caret-color: var(--accent-ink); }
+:where(input, textarea)::placeholder { color: var(--ink-muted); }
+:where(input, textarea):autofill {
+  -webkit-text-fill-color: var(--ink);
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+}
+
+/* Only the newly requested theme control adds dimensions; existing UI is untouched. */
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: .5rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1;
+}
+.theme-toggle:hover { border-color: var(--accent); background: var(--accent-soft); }
+.theme-to-light { display: none; }
+:root[data-theme="dark"] .theme-to-light { display: inline; }
+:root[data-theme="dark"] .theme-to-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-to-light { display: inline; }
+  :root:not([data-theme]) .theme-to-dark { display: none; }
+}
+.theme-toggle-floating { position: fixed; right: 1rem; bottom: 1rem; z-index: 60; }
+body:has(header .theme-toggle) > .theme-toggle-floating { display: none; }
+@media print { .theme-toggle { display: none; } }

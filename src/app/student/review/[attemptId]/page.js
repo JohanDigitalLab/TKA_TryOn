@@ -41,10 +41,10 @@ function AttemptReview() {
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl space-y-6 px-4 py-8 sm:px-6">
-      <Link href="/student" className="font-bold text-blue-700 hover:underline">← Kembali ke dashboard siswa</Link>
-      <h1 className="text-2xl font-extrabold text-slate-950">Review Simulasi TKA</h1>
+      <Link href="/student" className="font-bold text-accent-ink hover:underline">← Kembali ke dashboard siswa</Link>
+      <h1 className="text-2xl font-extrabold text-ink">Review Simulasi TKA</h1>
       {loading && <p role="status">Memuat review jawaban…</p>}
-      {error && <div role="alert" className="rounded-xl bg-amber-50 p-5 text-amber-900"><p>{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-3 rounded-lg border border-amber-400 px-4 py-2 font-bold">Coba lagi</button></div>}
+      {error && <div role="alert" className="rounded-xl bg-warning-soft p-5 text-warning-ink"><p>{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-3 rounded-lg border border-warning-line px-4 py-2 font-bold">Coba lagi</button></div>}
       {!loading && review && <ReviewSession key={attemptId} initiallyExpanded session={{ subjectIndex: 0, subject: "Simulasi TKA", score: review.score, totalQuestions: review.total_questions, correctAnswers: review.correct_answers, incorrectOrUnanswered: Math.max(0, Number(review.total_questions || 0) - Number(review.correct_answers || 0)), answeredCount: review.questions.filter((question) => Object.keys(question.answer_payload || {}).length > 0).length, review }} />}
     </main>
   );
