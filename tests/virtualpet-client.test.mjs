@@ -131,6 +131,12 @@ test('UI source contract: server-only state/rewards, retry gate, ordered one-sho
   assert.doesNotMatch(room, /function decay|setPet|setDev|Simulasi|Mode demo|Date.now\(|"food"|"legendary"|"medicine"/);
   for (const line of room.split('\n').filter(line => line.includes('localStorage.'))) assert.match(line, /KEY\}-theme/);
   assert.match(room, /loaded && !tips && !session && !result/);
+  // Status loading/processing renders inside the shared toast region, not inline paragraphs.
+  assert.match(room, /const statusToast = busy \? \(!loaded \? "Memuat sahabatmu…" : "Memproses perintah…"\) : !loaded \? "Data VirtualPet belum dimuat\." : ""/);
+  assert.match(room, /const visibleToast = toast \|\| statusToast/);
+  assert.match(room, /\{visibleToast && \(\s*<motion\.div/);
+  assert.doesNotMatch(room, /\{busy && <p role="status"/);
+  assert.doesNotMatch(room, /\{!loaded && <p role="status"/);
   assert.match(room, /Coba lagi/); assert.match(room, /Jangan tampilkan lagi/);
   assert.ok(room.indexOf('await run("feed"') < room.indexOf('setEffects(previous'));
   assert.match(hook, /if \(lock.current\)/); assert.match(hook, /finally[\s\S]*lock.current = false/);

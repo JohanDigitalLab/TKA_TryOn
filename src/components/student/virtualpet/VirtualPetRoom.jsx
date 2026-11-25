@@ -16,6 +16,7 @@ import {
   Heart,
   Home,
   Leaf,
+  Loader2,
   Moon,
   PawPrint,
   Settings2,
@@ -497,6 +498,9 @@ export default function VirtualPetRoom() {
     if (await run("start", { scenario })) { setHelp(false); setBag(false); setRescueOpen(false); }
   }
   const modalOpen = loaded && !tips && !session && !result && (!pet || adopt);
+  // Status loading/processing ditampilkan lewat toast, bukan paragraf inline.
+  const statusToast = busy ? (!loaded ? "Memuat sahabatmu…" : "Memproses perintah…") : !loaded ? "Data VirtualPet belum dimuat." : "";
+  const visibleToast = toast || statusToast;
   return (
     <div className={dark ? "virtualpet-scope dark" : "virtualpet-scope"}>
       <div className="vp-app min-h-dvh bg-[#f8f9f5] text-[#354436] dark:bg-[#18231e] dark:text-[#e3eadd]">
@@ -539,9 +543,7 @@ export default function VirtualPetRoom() {
     `}</style>
         <main className="mx-auto max-w-[1200px] px-3 py-8 sm:px-3 md:px-8">
           <DashboardBreadcrumb current="Sahabat Virtual" />
-          {!loaded && <p role="status" className="vp-panel mb-4 p-4">{busy ? "Memuat sahabatmu…" : "Data VirtualPet belum dimuat."}</p>}
           {error && !session && <div role="alert" className="vp-panel fixed inset-x-4 top-4 z-[75] mx-auto max-w-xl p-4 text-red-600 shadow-xl">{error}<button disabled={busy} className="vp-btn ml-3 bg-[var(--soft)]" onClick={() => run("bootstrap")}>Coba lagi</button></div>}
-          {busy && <p role="status" className="mb-3 text-xs">Memproses perintah…</p>}
           <header id="header" className="mb-8 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-[#799261] p-2.5 text-white shadow-lg shadow-[#799261]/25">
@@ -1182,17 +1184,18 @@ export default function VirtualPetRoom() {
           role="status"
         >
           <AnimatePresence>
-            {toast && (
+            {visibleToast && (
               <motion.div
+                key={visibleToast}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 10, opacity: 0 }}
                 className="flex w-full max-w-lg items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3.5 text-xs shadow-xl sm:px-5 sm:py-4 sm:text-sm"
               >
                 <span className="shrink-0 text-[#8ea66f]">
-                  <Sparkles size={19} />
+                  {statusToast && visibleToast === statusToast ? <Loader2 size={19} className={reduced ? undefined : "animate-spin motion-reduce:animate-none"} /> : <Sparkles size={19} />}
                 </span>
-                {toast}
+                {visibleToast}
               </motion.div>
             )}
           </AnimatePresence>
