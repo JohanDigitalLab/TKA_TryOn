@@ -79,3 +79,11 @@ test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async
   assert.ok(home.includes("<RegisterModal"));
   assert.ok(home.includes("setRegisterLevel(path.level)"));
 });
+
+test("kartu game beranda membuka rute saat login dan popup login saat belum", async () => {
+  const home = await readFile(new URL("../src/app/page.js", import.meta.url), "utf8");
+  assert.match(home, /async function openGame\(route\) \{\s*const \{ data \} = await supabase\.auth\.getUser\(\);\s*if \(data\.user\) router\.push\(route\);\s*else \{\s*setPendingGame\(route\);\s*setShowLogin\(true\);/);
+  assert.match(home, /router\.push\(pendingGame \|\| "\/home"\)/);
+  assert.match(home, /onClick=\{\(\) => openGame\(game\.route\)\}/);
+  assert.doesNotMatch(home, /<Link key=\{game\.title\} href=\{game\.route\}/);
+});

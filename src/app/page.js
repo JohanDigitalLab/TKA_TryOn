@@ -62,11 +62,24 @@ export default function HomeNewPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingGame, setPendingGame] = useState(null);
 
   async function openLogin() {
     const { data } = await supabase.auth.getUser();
     if (data.user) router.push("/home");
-    else setShowLogin(true);
+    else {
+      setPendingGame(null);
+      setShowLogin(true);
+    }
+  }
+
+  async function openGame(route) {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) router.push(route);
+    else {
+      setPendingGame(route);
+      setShowLogin(true);
+    }
   }
 
   async function handleLogin(event) {
@@ -79,7 +92,7 @@ export default function HomeNewPage() {
     });
     if (loginError || !data.session)
       setError(loginError?.message || "Login belum berhasil. Coba lagi ya.");
-    else router.push("/home");
+    else router.push(pendingGame || "/home");
     setLoading(false);
   }
 
@@ -279,10 +292,10 @@ export default function HomeNewPage() {
         <div className="mt-12 grid gap-8 px-1 md:grid-cols-3 md:gap-6 md:py-5">
           {[
             { title: "Boss Fight", tag: "MAIN CHARACTER ENERGY", emoji: "🐲", accent: "⚔️", label: "Kalahkan boss. Menangkan progres.", text: "Ubah soal jadi jurus andalan. Jawab tantangan, hadapi boss, dan buktikan skill-mu!", color: "bg-[#ffc4e6]", shape: "rounded-[3rem_1.5rem_4rem_1.5rem] md:-rotate-2", scene: "bg-[#bda6ff]", badge: "BOSS LEVEL", meter: "w-2/3", route: "/student/fightboss" },
-            { title: "Sahabat Virtual", tag: "YOUR NEW STUDY BESTIE", emoji: "🐣", accent: "💖", label: "Rawat bestie. Upgrade diri.", text: "Teman kecil, motivasi besar. Belajar bareng pet kesayangan dan temani dia tumbuh!", color: "bg-[#d9ff83]", shape: "rounded-[4rem_4rem_1.5rem_3rem] md:translate-y-6 md:rotate-2", scene: "bg-[#a9e7b7]", badge: "BESTIE MODE", meter: "w-4/5", route: "/student/virtualpet" },
-            { title: "Petualangan Peta Materi", tag: "GO EXPLORE, GO GROW", emoji: "🏝️", accent: "🧭", label: "Buka peta. Temukan potensimu.", text: "Jelajahi pulau, tuntaskan misi, dan kumpulkan bintang. Tiap langkah punya cerita baru!", color: "bg-[#a6eaff]", shape: "rounded-[1.5rem_4rem_2rem_4rem] md:-rotate-1", scene: "bg-[#76ccdf]", badge: "KOTAK MISTERI", meter: "w-1/2", route: "/student/mapadventure" },
+            { title: "Sahabat Virtual", tag: "YOUR NEW STUDY BESTIE", emoji: "🐣", accent: "💖", label: "Rawat bestie. Upgrade diri.", text: "Teman kecil, motivasi besar. Belajar bareng binatang kesayangan dan temani dia tumbuh!", color: "bg-[#d9ff83]", shape: "rounded-[4rem_4rem_1.5rem_3rem] md:translate-y-6 md:rotate-2", scene: "bg-[#a9e7b7]", badge: "BESTIE MODE", meter: "w-4/5", route: "/student/virtualpet" },
+            { title: "Petualangan Peta", tag: "GO EXPLORE, GO GROW", emoji: "🏝️", accent: "🧭", label: "Buka peta. Temukan potensimu.", text: "Jelajahi pulau, tuntaskan misi. Tiap langkah adalah bukti pemahaman materi kamu!", color: "bg-[#a6eaff]", shape: "rounded-[1.5rem_4rem_2rem_4rem] md:-rotate-1", scene: "bg-[#76ccdf]", badge: "KOTAK MISTERI", meter: "w-1/2", route: "/student/mapadventure" },
           ].map((game) => (
-            <Link key={game.title} href={game.route} className={`group relative flex flex-col border-2 border-[#17152e] p-6 text-[#17152e] shadow-[6px_7px_0_#17152e] transition-transform duration-200 hover:-translate-y-2 focus-visible:outline-4 focus-visible:outline-offset-8 focus-visible:outline-violet-500 motion-reduce:transform-none ${game.color} ${game.shape}`}>
+            <button key={game.title} type="button" onClick={() => openGame(game.route)} aria-label={`Main ${game.title}`} className={`group relative flex flex-col border-2 border-[#17152e] p-6 text-left text-[#17152e] shadow-[6px_7px_0_#17152e] transition-transform duration-200 hover:-translate-y-2 focus-visible:outline-4 focus-visible:outline-offset-8 focus-visible:outline-violet-500 motion-reduce:transform-none ${game.color} ${game.shape}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-black tracking-wider">{game.tag}</span>
                 <span aria-hidden="true" className="text-2xl">✦</span>
@@ -297,7 +310,9 @@ export default function HomeNewPage() {
               <h3 className="mt-6 text-3xl font-black tracking-tight">{game.title}</h3>
               <p className="mt-2 text-sm font-extrabold">{game.label}</p>
               <p className="mt-3 flex-1 text-sm leading-6 text-[#17152e]/80">{game.text}</p>
-            </Link>
+              <div aria-hidden="true" className="mt-6 h-2 overflow-hidden rounded-full bg-black/10"><div className={`h-full rounded-full bg-[#17152e] ${game.meter}`} /></div>
+              <span className="mt-4 flex items-center justify-between text-sm font-black">Let’s play & learn <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#17152e] text-xl text-white">↗</span></span>
+            </button>
           ))}
         </div>
       </section>
@@ -343,7 +358,7 @@ export default function HomeNewPage() {
         <div
           className={`fixed inset-0 z-50 grid place-items-center px-5 backdrop-blur-md ${theme === "light" ? "bg-slate-900/25" : "bg-[#080817]/80"}`}
           onMouseDown={(event) =>
-            event.target === event.currentTarget && setShowLogin(false)
+            event.target === event.currentTarget && (setShowLogin(false), setPendingGame(null))
           }
         >
           <form
@@ -354,7 +369,10 @@ export default function HomeNewPage() {
               <h2 className="text-2xl font-black">Welcome back ✦</h2>
               <button
                 type="button"
-                onClick={() => setShowLogin(false)}
+                onClick={() => {
+                  setShowLogin(false);
+                  setPendingGame(null);
+                }}
                 className={`text-2xl ${theme === "light" ? "text-slate-400" : "text-white/50"}`}
               >
                 ×
