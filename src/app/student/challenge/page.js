@@ -4,7 +4,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
-import ThemeToggle from "@/components/theme-toggle";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
 import { studentAttemptRequest, studentAttemptQuestions, attemptRemainingSeconds } from "@/lib/student/rpc-contract.mjs";
@@ -970,7 +969,7 @@ function ChallengeContent() {
       <header className="sticky top-0 z-40 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <BrandLogo className="h-12 w-14" />
-          <ThemeToggle />
+
           <div>
             <h1 className="text-lg font-extrabold text-ink">
               TKA <span className="text-accent-ink">TryOn</span>

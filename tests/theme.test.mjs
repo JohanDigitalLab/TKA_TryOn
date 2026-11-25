@@ -35,6 +35,17 @@ test("theme is initialized before the body and isolated from authentication", ()
   assert.match(toggle, /localStorage.setItem\(THEME_STORAGE_KEY, theme\)/);
 });
 
+test("one persistent global theme control is available independently of page headers", () => {
+  const layout = fs.readFileSync(new URL("../src/app/layout.js", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  assert.match(layout, /<ThemeToggle floating \/>/);
+  assert.doesNotMatch(css, /body:has\(header \.theme-toggle\)/);
+  assert.match(css, /\.theme-toggle-floating\s*\{[^}]*position: fixed;[^}]*z-index: 110;/);
+  for (const path of ["src/app/page.js", "src/app/admin/page.js", "src/app/student/challenge/page.js", "src/components/portal-header.js"]) {
+    assert.doesNotMatch(fs.readFileSync(new URL("../" + path, import.meta.url), "utf8"), /<ThemeToggle/);
+  }
+});
+
 test("all application colors use centralized tokens, excluding neutral overlays", () => {
   function walk(url) {
     for (const entry of fs.readdirSync(url, { withFileTypes: true })) {

@@ -2,7 +2,6 @@
 "use client";
 
 import BrandLogo from "@/components/brand-logo";
-import ThemeToggle from "@/components/theme-toggle";
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -918,7 +917,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <ThemeToggle />
             <span className="rounded-full bg-success-soft px-3 py-1.5 text-xs font-semibold text-success-ink">
               ● Platform Workspace
             </span>

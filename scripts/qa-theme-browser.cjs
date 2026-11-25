@@ -83,6 +83,12 @@ async function run() {
    assert.equal(response.status(),200);
    assert.equal(await page.locator('html').getAttribute('data-theme'),mode);
    assert.equal(await page.locator('.theme-toggle:visible').count(),1);
+   const control=page.locator('.theme-toggle-floating');
+   await control.click();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),mode==='light'?'dark':'light');
+   await control.click();
+   assert.equal(await page.locator('html').getAttribute('data-theme'),mode);
+   await page.mouse.move(0,0);
    assert.deepEqual(errors,[]);
    if(path==='/student/challenge')assert.ok(await page.getByText('Berapakah hasil dari 2 + 2?',{exact:true}).isVisible());
    // Capture computed text/background pairs for visual review. Ignore disabled/hidden text.
@@ -122,9 +128,15 @@ async function run() {
   });
   await check('mobile theme control and overflow',async()=>{
    await page.setViewportSize({width:390,height:844});
-   for(const path of ['/','/student','/admin','/student/challenge']){
+   for(const path of paths){
     await page.goto(base+path,{waitUntil:'networkidle'});
     assert.equal(await page.locator('.theme-toggle:visible').count(),1);
+    const control=page.locator('.theme-toggle-floating');
+    const box=await control.boundingBox();
+    assert.ok(box && box.x>=0 && box.y>=0 && box.x+box.width<=390 && box.y+box.height<=844,path+' control outside viewport');
+    await control.click();
+    assert.equal(await page.locator('html').getAttribute('data-theme'),mode==='light'?'dark':'light');
+    await control.click();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),path+' overflow');
    }
   });

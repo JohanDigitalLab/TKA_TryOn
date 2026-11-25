@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import BrandLogo from "@/components/brand-logo";
-import ThemeToggle from "@/components/theme-toggle";
 
 export default function PortalHeader({ displayName = "Siswa", signingOut = false, onSignOut }) {
   const initials = displayName
@@ -24,7 +23,6 @@ export default function PortalHeader({ displayName = "Siswa", signingOut = false
           </div>
         </Link>
         <nav aria-label="Navigasi portal" className="flex items-center gap-1 sm:gap-2">
-          <ThemeToggle />
           <span aria-label={`Profil ${displayName}`} title={displayName} className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-tint text-sm font-bold text-accent-ink sm:h-10 sm:w-10">{initials}</span>
           <button type="button" aria-label="Keluar dari akun" onClick={onSignOut} disabled={signingOut} className="rounded-lg border border-line px-2 py-2 text-xs font-semibold text-ink-secondary hover:bg-surface-muted disabled:opacity-60 sm:px-3 sm:text-sm">{signingOut ? "Keluar…" : "Keluar"}</button>
         </nav>

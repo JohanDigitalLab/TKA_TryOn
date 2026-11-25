@@ -5,7 +5,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/brand-logo";
-import ThemeToggle from "@/components/theme-toggle";
 import { studentRegistrationPath } from "@/lib/student/registration.mjs";
 import { supabase } from "@/lib/supabase";
 
@@ -138,7 +137,6 @@ export default function Home() {
 
           {/* AKUN KANAN */}
           <div className="flex items-center justify-self-end gap-2 md:col-start-3 md:row-start-1">
-            <ThemeToggle />
             <button
               type="button"
               onClick={handleOpenLogin}

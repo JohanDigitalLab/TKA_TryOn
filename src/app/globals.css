@@ -271,6 +271,12 @@ body {
   :root:not([data-theme]) .theme-to-light { display: inline; }
   :root:not([data-theme]) .theme-to-dark { display: none; }
 }
-.theme-toggle-floating { position: fixed; right: 1rem; bottom: 1rem; z-index: 60; }
-body:has(header .theme-toggle) > .theme-toggle-floating { display: none; }
+/* One global control, independent of route headers, loading states and overlays. */
+.theme-toggle-floating {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 110;
+  box-shadow: 0 2px 8px var(--line-strong);
+}
 @media print { .theme-toggle { display: none; } }
