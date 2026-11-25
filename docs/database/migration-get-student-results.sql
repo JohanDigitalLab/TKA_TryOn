@@ -135,6 +135,9 @@ BEGIN
     FROM public.exam_attempts e
     WHERE e.user_id = v_target
       AND e.attempt_status = 'SUBMITTED'
+      -- Jangan tampilkan hasil gamifikasi di halaman Hasil. 
+      -- Riwayat gamifikasi tetap bisa dilihat di halaman Gamifikasi.
+      AND e.attempt_type IN ('TRYOUT', 'PRACTICE', 'ASSIGNMENT')
     ORDER BY e.started_at DESC, e.id DESC
     LIMIT 200
   ) a;

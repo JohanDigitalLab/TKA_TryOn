@@ -309,11 +309,14 @@ function ResultsContent() {
         if (rpcError) throw rpcError;
 
         setStudents(Array.isArray(data?.students) ? data.students : []);
+        // VirtualPet adalah gamifikasi, bukan mata pelajaran: jangan pernah
+        // dimasukkan ke pengelompokan hasil/kompetensi meskipun RPC lama mengirimnya.
+        const isVirtualpet = (value) => normalizeKey(value) === "virtualpet";
         setPayload({
           viewer: data?.viewer || null,
           subjects: Array.isArray(data?.subjects) ? data.subjects : [],
-          attempts: Array.isArray(data?.attempts) ? data.attempts : [],
-          competency: Array.isArray(data?.competency) ? data.competency : [],
+          attempts: (Array.isArray(data?.attempts) ? data.attempts : []).filter((attempt) => !isVirtualpet(attempt.subject_name)),
+          competency: (Array.isArray(data?.competency) ? data.competency : []).filter((row) => !isVirtualpet(row.subject)),
         });
         setError("");
       } catch (err) {

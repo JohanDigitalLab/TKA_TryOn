@@ -28,6 +28,15 @@ test('results: user_id valid menyembunyikan picker dan menampilkan nama siswa di
   assert.match(source, /const studentName =/);
 });
 
+test('hasil siswa mengecualikan VirtualPet dari attempts dan kompetensi', async () => {
+  const source = await read('src/app/student/results/page.js');
+  assert.match(source, /normalizeKey\(value\) === "virtualpet"/);
+  assert.match(source, /\.filter\(\(attempt\) => !isVirtualpet\(attempt\.subject_name\)\)/);
+  assert.match(source, /\.filter\(\(row\) => !isVirtualpet\(row\.subject\)\)/);
+  const sql = await read('docs/database/migration-get-student-results.sql');
+  assert.match(sql, /coalesce\(lower\(btrim\(e\.gamification_app\)\), ''\) <> 'virtualpet'/);
+});
+
 test('get_student_results membandingkan v_actor_type dengan literal lowercase', async () => {
   const sql = await read('docs/database/migration-get-student-results.sql');
   // v_actor_type berasal dari lower(btrim(...)), jadi semua pembandingnya harus lowercase.

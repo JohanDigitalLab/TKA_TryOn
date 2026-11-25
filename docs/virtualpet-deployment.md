@@ -15,6 +15,10 @@ Migrasi gagal tertutup bila ada duplikasi pet aktif per pengguna, inventory per 
 
 Jalankan ulang migrasi VirtualPet yang sudah diperbarui untuk mengaktifkan jumlah soal 5/5/10 dan reward XP pet. Tidak ada migrasi otomatis dari aplikasi. Sesi lama tetap dilanjutkan memakai pool dan jumlah soal tersimpan (termasuk 15 soal); hasil yang sudah selesai tidak diberi reward retroaktif. Penamaan schema aktual adalah exam_attempts (attempt_type=GAMIFICATION, gamification_app=VIRTUALPET) dan gamification_log. estimate_duration pada kebutuhan dipetakan ke question_versions.estimate_minutes.
 
+## Hasil belajar tidak menampilkan VirtualPet
+
+VirtualPet adalah gamifikasi, bukan mata pelajaran. Halaman /student/results menyaring attempt dan kompetensi berlabel VirtualPet di sisi klien, dan [migration-get-student-results.sql](database/migration-get-student-results.sql) diperbarui mengecualikan attempt dengan gamification_app='VIRTUALPET' dari daftar attempts. Operator perlu menjalankan ulang migrasi hasil tersebut secara manual agar RPC live ikut mengecualikan; sebelum itu filter klien tetap menyembunyikannya. Tidak ada attempt atau log VirtualPet yang dihapus.
+
 ## Kontrak dan pemetaan
 
 Endpoint [public.virtualpet()](database/migration-virtualpet.sql:249) menerima tindakan bootstrap, settings, adopt, feed, start, finish melalui parameter p_action dan object p_payload. Semua tindakan mensyaratkan pengguna login, profil STUDENT aktif, auth terverifikasi, tidak dihapus/dibanned. Tidak mensyaratkan subscription. Semua akses memakai lock transaksi per pengguna sebelum lock pet/sesi/exam.
