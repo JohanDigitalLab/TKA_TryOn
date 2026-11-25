@@ -12,7 +12,7 @@ Endpoint /api/bossfight memakai Authorization Bearer JWT Supabase pengguna; tanp
 
 ## Batch dan jawaban
 
-Respons sesi memuat attempt_id, settings, hp, combo, healed, used, correct, terminal, questions dan result. **questions adalah seluruh batch outstanding yang tersedia**, bukan hanya satu soal. Setiap soal memuat id, version, text, type, instruction, stimulus, options, category_items, order dan player. Tidak ada answer_keys, is_correct atau correct_category. Server menilai memakai helper ujian existing; client tidak boleh mengasumsikan kunci tersedia.
+Respons sesi memuat attempt_id, settings, hp, combo, healed, used, correct, terminal, questions dan result. **questions adalah seluruh batch outstanding yang tersedia**, bukan hanya satu soal. Setiap soal memuat id, version, text, type, instruction, stimulus, options, category_items, order dan player. Sesi baru menyertakan answer_keys.options (kode opsi benar) dan answer_keys.categories (nomor pernyataan ke kategori benar) untuk review. Penilaian dan reward tetap diverifikasi server. Kunci dapat dilihat pengguna melalui browser; ini tradeoff eksplisit untuk game, bukan ujian kompetitif. Pool sesi lama tidak diubah dan mungkin belum memiliki kunci. Terapkan ulang migrasi BossFight untuk mengaktifkan kontrak ini.
 
 Format jawaban: pilihan tunggal memakai option_codes satu kode; multi-answer memakai option_codes beberapa kode; kategori memakai category_answers pemetaan nomor ke kategori. Timeout wajib answer_payload object kosong. Server menentukan kebenaran, HP, kombo, pemain, dan hasil; bukan menerima nilai itu dari client. Timestamp jawaban adalah waktu penerimaan server; timeout masih merupakan laporan client, bukan pembuktian wall-clock.
 

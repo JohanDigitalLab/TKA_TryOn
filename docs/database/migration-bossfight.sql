@@ -43,7 +43,7 @@ REVOKE ALL ON FUNCTION private.bossfight_guard_exam() FROM PUBLIC,anon,authentic
 
 CREATE OR REPLACE FUNCTION private.bossfight_settings(p_patch jsonb DEFAULT '{}') RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE u uuid:=auth.uid(); k text; val text; d jsonb:='{"SHOW_TIPS":"1","SUBJECT":"Matematika","IS_PVP":"0","FIGHT_MODE":"Maksimal jumlah soal","MAX_QUESTIONS":"5","P2_NAME":"Player2"}'; s jsonb;
+DECLARE u uuid:=auth.uid(); k text; val text; d jsonb:='{"SHOW_TIPS":"1","SUBJECT":"Matematika","IS_PVP":"0","FIGHT_MODE":"Maksimal jumlah soal","MAX_QUESTIONS":"5","P1_NAME":"","P2_NAME":"Player2"}'; s jsonb;
 BEGIN
  IF u IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
  IF jsonb_typeof(p_patch) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid settings' USING ERRCODE='22023'; END IF;
@@ -54,7 +54,7 @@ BEGIN
  FOR k,val IN SELECT key,value FROM jsonb_each_text(d) LOOP
   SELECT value INTO val FROM public.user_settings WHERE user_id=u AND "group"='BOSSFIGHT' AND name=k ORDER BY id LIMIT 1;
   val:=coalesce(p_patch->>k,val,d->>k);
-  IF length(val)>255 OR btrim(val)='' OR (k IN('SHOW_TIPS','IS_PVP') AND val NOT IN('0','1'))
+  IF length(val)>255 OR (btrim(val)='' AND k<>'P1_NAME') OR (k IN('SHOW_TIPS','IS_PVP') AND val NOT IN('0','1'))
    OR (k='MAX_QUESTIONS' AND (val !~ '^[0-9]{1,3}$'))
    OR (k='FIGHT_MODE' AND val NOT IN('Maksimal jumlah soal','Fight to Death')) THEN
    RAISE EXCEPTION 'Invalid setting value' USING ERRCODE='22023'; END IF;
@@ -72,9 +72,10 @@ DECLARE s private.bossfight_sessions%ROWTYPE; n integer; q jsonb;
 BEGIN
  SELECT * INTO STRICT s FROM private.bossfight_sessions WHERE attempt_id=p_id AND user_id=auth.uid();
  n:=jsonb_array_length(s.records);
- SELECT coalesce(jsonb_agg((value-'answer_keys')||jsonb_build_object('order',ordinality,'player',CASE WHEN s.settings->>'IS_PVP'='1' THEN (ordinality-1)%2+1 ELSE 1 END) ORDER BY ordinality),'[]'::jsonb) INTO q
+ SELECT coalesce(jsonb_agg(value||jsonb_build_object('order',ordinality,'player',CASE WHEN s.settings->>'IS_PVP'='1' THEN (ordinality-1)%2+1 ELSE 1 END) ORDER BY ordinality),'[]'::jsonb) INTO q
  FROM jsonb_array_elements(s.pool) WITH ORDINALITY WHERE NOT s.terminal AND ordinality>n;
- RETURN jsonb_build_object('attempt_id',p_id,'settings',s.settings,'hp',s.hp,'combo',s.combo,'healed',s.healed,'used',n,'correct',s.correct,'terminal',s.terminal,'questions',q,'result',s.result);
+ RETURN jsonb_build_object('attempt_id',p_id,'settings',s.settings,'hp',s.hp,'combo',s.combo,'healed',s.healed,'used',n,'correct',s.correct,'terminal',s.terminal,'questions',q,'result',s.result,
+   'player_name',(SELECT coalesce(nullif(btrim(nickname),''),nullif(btrim(full_name),''),'Player 1') FROM public.profiles WHERE id=auth.uid()));
 END $$;
 
 -- Trusted operator configuration, never supplied by the client.
@@ -95,7 +96,11 @@ BEGIN
    SELECT random() shuffle,jsonb_build_object('id',q.id,'version',v.id,'type',q.question_type,'text',v.question_text,'instruction',v.instruction,
     'stimulus',(SELECT jsonb_build_object('title',st.title,'content_text',st.content_text,'file_url',st.file_url,'media_description',st.media_description) FROM public.question_stimuli st WHERE st.id=v.stimulus_id),
     'options',coalesce((SELECT jsonb_agg(jsonb_build_object('option_code',o.option_code,'option_text',o.option_text) ORDER BY o.option_order,o.option_code) FROM public.question_options o WHERE o.question_version_id=v.id),'[]'),
-    'category_items',coalesce((SELECT jsonb_agg(jsonb_build_object('item_number',c.item_number,'item_text',c.item_text,'category_label',c.category_label) ORDER BY c.item_number) FROM public.question_category_items c WHERE c.question_version_id=v.id),'[]')
+    'category_items',coalesce((SELECT jsonb_agg(jsonb_build_object('item_number',c.item_number,'item_text',c.item_text,'category_label',c.category_label) ORDER BY c.item_number) FROM public.question_category_items c WHERE c.question_version_id=v.id),'[]'),
+    -- Explicit low-stakes review contract: keys travel with the question batch.
+    'answer_keys',jsonb_build_object(
+      'options',coalesce((SELECT jsonb_agg(o.option_code ORDER BY o.option_code) FROM public.question_options o WHERE o.question_version_id=v.id AND o.is_correct),'[]'),
+      'categories',coalesce((SELECT jsonb_object_agg(c.item_number::text,c.correct_category) FROM public.question_category_items c WHERE c.question_version_id=v.id),'{}'))
    ) doc
    FROM public.questions q JOIN LATERAL(SELECT * FROM public.question_versions WHERE question_id=q.id AND version_status='PUBLISHED' AND estimate_minutes>0 AND estimate_minutes<=5 ORDER BY version_number DESC,id DESC LIMIT 1) v ON true
    WHERE q.subject_code=p_subject AND lower(q.education_level_id)=p_level AND q.question_status='PUBLISHED' AND q.question_type IN('PG_TUNGGAL','PGK_MA','PGK_KATEGORI')
@@ -117,7 +122,7 @@ BEGIN
  IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR octet_length(p_payload::text)>65536 THEN RAISE EXCEPTION 'Invalid payload' USING ERRCODE='22023'; END IF;
  IF p_action IN('bootstrap','settings') THEN
   cfg:=private.bossfight_settings(CASE WHEN p_action='settings' THEN coalesce(p_payload->'settings','{}') ELSE '{}' END);
-  RETURN jsonb_build_object('settings',cfg,'tip',CASE WHEN cfg->>'SHOW_TIPS'='1' THEN
+  RETURN jsonb_build_object('settings',cfg,'player_name',(SELECT coalesce(nullif(btrim(nickname),''),nullif(btrim(full_name),''),'Player 1') FROM public.profiles WHERE id=u),'tip',CASE WHEN cfg->>'SHOW_TIPS'='1' THEN
    (SELECT jsonb_build_object('id',id,'message',message) FROM public.gamification_tips WHERE application='BOSSFIGHT' AND is_active ORDER BY random() LIMIT 1) ELSE NULL END);
  END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('bossfight:session:'||u::text,0));
@@ -130,8 +135,14 @@ BEGIN
   SELECT subject_code,name INTO sc,subj FROM public.subjects WHERE name=cfg->>'SUBJECT' AND right(lower(subject_code),length(lvl)+1)='-'||lvl ORDER BY subject_code LIMIT 1;
   IF sc IS NULL THEN RAISE EXCEPTION 'Subject unavailable' USING ERRCODE='22023'; END IF;
   SELECT death_initial INTO batch_limit FROM private.bossfight_config WHERE singleton;
-  pool:=private.bossfight_pool(sc,lvl,CASE WHEN cfg->>'FIGHT_MODE'='Maksimal jumlah soal' THEN (cfg->>'MAX_QUESTIONS')::integer ELSE batch_limit END);
+  IF cfg->>'FIGHT_MODE'='Maksimal jumlah soal' THEN
+    batch_limit:=(cfg->>'MAX_QUESTIONS')::integer * CASE WHEN cfg->>'IS_PVP'='1' THEN 2 ELSE 1 END;
+  END IF;
+  pool:=private.bossfight_pool(sc,lvl,batch_limit);
   IF jsonb_array_length(pool)=0 THEN RAISE EXCEPTION 'No published questions' USING ERRCODE='P0001'; END IF;
+  -- PvP terbatas wajib mendapat kuota penuh agar kedua pemain punya giliran sama.
+  IF cfg->>'FIGHT_MODE'='Maksimal jumlah soal' AND cfg->>'IS_PVP'='1' AND jsonb_array_length(pool)<batch_limit THEN
+    RAISE EXCEPTION 'Not enough published questions for PvP' USING ERRCODE='P0001'; END IF;
   INSERT INTO public.exam_attempts(user_id,education_level,grade,subject_name,duration_minutes,total_questions,attempt_type,gamification_app,started_at,deadline_at)
    VALUES(u,upper(lvl),CASE lvl WHEN 'sd' THEN 6 WHEN 'smp' THEN 9 ELSE 12 END,subj,60,0,'GAMIFICATION','BOSSFIGHT',clock_timestamp(),NULL) RETURNING id INTO aid;
   INSERT INTO private.bossfight_sessions(attempt_id,user_id,settings,pool) VALUES(aid,u,cfg,pool);

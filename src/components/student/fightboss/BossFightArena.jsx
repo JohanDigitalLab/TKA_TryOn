@@ -2,7 +2,7 @@
 import "./fightboss.css";
 import { supabase } from "@/lib/supabase";
 import { createBossfightClient, answerPayload } from "@/lib/student/bossfight-client";
-import { categoryOptions } from "@/lib/student/bossfight-client";
+import { BossFightChoices, BossFightReview } from "./BossFightQuestions";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,7 +18,6 @@ import {
   Pencil,
   Flame,
   Heart,
-  RotateCcw,
   Shield,
   Settings,
   Skull,
@@ -80,7 +79,7 @@ function HealthBar({ label, value, boss = false, onEdit }) {
   );
 }
 // Inline vector avatars keep this single-file demo independent of external assets.
-function Fighter({ boss = false, attack, name = "Raja Aljabar" }) {
+function Fighter({ boss = false, attack, pose = "idle", name = "Raja Aljabar" }) {
   const active = boss
     ? attack === "smash"
     : attack === "punch" || attack === "kick";
@@ -88,7 +87,8 @@ function Fighter({ boss = false, attack, name = "Raja Aljabar" }) {
     <svg
       viewBox="0 0 160 180"
       role="img"
-      aria-label={boss ? name : "Avatar petarung siswa"}
+      aria-label={`${name}: ${pose === "ko" ? "terkapar di lantai" : pose === "winner" ? "menang dengan kedua tangan terangkat" : "siap bertarung"}`}
+      data-pose={pose}
       className="h-32 w-28 overflow-visible sm:h-44 sm:w-40"
     >
       <ellipse
@@ -125,22 +125,22 @@ function Fighter({ boss = false, attack, name = "Raja Aljabar" }) {
       )}
       <motion.g
         animate={
-          active
-            ? { rotate: boss ? [-30, -100, 20, 0] : [0, -55, 0] }
-            : { rotate: 0 }
+          pose === "winner" ? { rotate: 45, x: -12, y: 10 } : active
+            ? { rotate: boss ? [-30, -100, 20, 0] : [0, -55, 0], x: 0, y: 0 }
+            : { rotate: 0, x: 0, y: 0 }
         }
         transition={{ duration: 0.6 }}
-        style={{ transformOrigin: "50px 90px" }}
+        style={{ transformBox: "view-box", transformOrigin: "52px 88px" }}
       >
         <path
-          d="M52 88 L30 112"
+          d={pose === "winner" ? "M52 88 L0 88" : "M52 88 L30 112"}
           stroke={boss ? "#fb7185" : "#6ee7b7"}
           strokeWidth="18"
           strokeLinecap="round"
         />
         <circle
-          cx="28"
-          cy="115"
+          cx={pose === "winner" ? 0 : 28}
+          cy={pose === "winner" ? 88 : 115}
           r="13"
           fill={boss ? "#9f1239" : "#047857"}
           stroke={boss ? "#fda4af" : "#a7f3d0"}
@@ -149,22 +149,22 @@ function Fighter({ boss = false, attack, name = "Raja Aljabar" }) {
       </motion.g>
       <motion.g
         animate={
-          active
-            ? { rotate: boss ? [30, 100, -20, 0] : [0, -100, 0] }
-            : { rotate: 0 }
+          pose === "winner" ? { rotate: -45, x: 12, y: 10 } : active
+            ? { rotate: boss ? [30, 100, -20, 0] : [0, -100, 0], x: 0, y: 0 }
+            : { rotate: 0, x: 0, y: 0 }
         }
         transition={{ duration: 0.6 }}
-        style={{ transformOrigin: "108px 90px" }}
+        style={{ transformBox: "view-box", transformOrigin: "108px 88px" }}
       >
         <path
-          d="M108 88 L130 112"
+          d={pose === "winner" ? "M108 88 L160 88" : "M108 88 L130 112"}
           stroke={boss ? "#fb7185" : "#6ee7b7"}
           strokeWidth="18"
           strokeLinecap="round"
         />
         <circle
-          cx="132"
-          cy="115"
+          cx={pose === "winner" ? 160 : 132}
+          cy={pose === "winner" ? 88 : 115}
           r="13"
           fill={boss ? "#9f1239" : "#047857"}
           stroke={boss ? "#fda4af" : "#a7f3d0"}
@@ -354,6 +354,7 @@ export default function BossFightArena() {
   const [selection, setSelection] = useState([]);
   const [categories, setCategories] = useState({});
   const [serverResult, setServerResult] = useState(null);
+  const [resultClosed, setResultClosed] = useState(false);
   const retryRef = useRef(null);
   const healRef = useRef(false);
   const request = useCallback(async (payload) => createBossfightClient(async () => {
@@ -361,12 +362,14 @@ export default function BossFightArena() {
     if (error) throw error;
     return data.session?.access_token;
   })(payload), []);
-  function applySettings(settings) {
+  const profileNameRef = useRef("Player 1");
+  function applySettings(settings, playerName) {
+    if (playerName?.trim()) profileNameRef.current = playerName.trim();
     setSubject(settings.SUBJECT || "Matematika");
     setMatchMode(settings.IS_PVP === "1" ? "pvp" : "system");
     setBattleMode(!settings.FIGHT_MODE || settings.FIGHT_MODE === "Fight to Death" ? "death" : "limited");
     setMaxQuestions(Number(settings.MAX_QUESTIONS || 5));
-    setNames(previous => [previous[0], settings.P2_NAME || "Player2"]);
+    setNames([settings.IS_PVP === "1" ? settings.P1_NAME?.trim() || profileNameRef.current : profileNameRef.current, settings.P2_NAME || "Player2"]);
   }
   async function run(operation) {
     retryRef.current = operation;
@@ -376,7 +379,7 @@ export default function BossFightArena() {
     finally { setBusy(false); }
   }
   async function acceptSession(next) {
-    setSession(next); applySettings(next.settings);
+    setSession(next); applySettings(next.settings, next.player_name);
     setPlayerHP(next.hp[0]); setBossHP(next.hp[1]); setCombos(next.combo);
     setMaxCombo(previous => Math.max(previous, ...next.combo));
     setActivePlayer((next.questions[0]?.player || 1) - 1);
@@ -384,7 +387,7 @@ export default function BossFightArena() {
     setInventories(previous => previous.map((inventory, index) => ({...inventory, heal: next.healed[index]})));
     if (next.terminal) {
       const finished = next.result ? next : await request({action: "finish", attempt_id: next.attempt_id, records: []});
-      setSession(finished); setServerResult(finished.result);
+      setSession(finished); setServerResult(finished.result); setResultClosed(false);
       setResultKind(finished.hp.includes(0) ? "ko" : "points");
       setGameStatus(finished.result.winner === 0 ? "draw" : finished.result.victory ? "victory" : "defeat");
       setQuestionOpen(false);
@@ -395,7 +398,7 @@ export default function BossFightArena() {
     const operation = async () => {
       const data = await request();
       if (!alive) return;
-      applySettings(data.settings);
+      applySettings(data.settings, data.player_name);
       setTip(data.settings.SHOW_TIPS === "1" ? data.tip : null);
     };
     retryRef.current = operation;
@@ -407,7 +410,7 @@ export default function BossFightArena() {
   // The server returns the entire remaining batch in authoritative order.
   // Consume only its head; each answer response supplies the remaining queue/refill.
   const pool = (session?.questions || []).map(q => ({
-    ...q, subject, question: q.text, passage: q.stimulus?.content_text,
+    ...q, optionDetails: q.options, subject, question: q.text, passage: q.stimulus?.content_text,
     options: (q.options || []).map(option => option.option_text),
   }));
   const bossName =
@@ -417,7 +420,11 @@ export default function BossFightArena() {
         ? "Pujangga Sastra"
         : "Ilmuwan Roket";
   const pvp = matchMode === "pvp";
+  const totalQuestionLimit = maxQuestions * (pvp ? 2 : 1);
   const currentPlayer = pvp ? activePlayer : 0;
+  const winner = serverResult?.winner;
+  const playerPose = serverResult && winner !== 0 ? (winner === 1 ? "winner" : resultKind === "ko" ? "ko" : "idle") : "idle";
+  const bossPose = serverResult && winner !== 0 ? (winner === 2 ? "winner" : resultKind === "ko" ? "ko" : "idle") : "idle";
   const activeName = names[currentPlayer];
   const activeHP = currentPlayer === 0 ? playerHP : bossHP;
   const comboCount = combos[currentPlayer];
@@ -579,7 +586,7 @@ export default function BossFightArena() {
   function resetToReady() {
     if (busy || lockRef.current) return;
     setQuestionOpen(false); setResting(false); setSettingsOpen(false); setEditing(null);
-    setSession(null); setServerResult(null); setReview(false); setResultKind(null);
+    setSession(null); setServerResult(null); setResultClosed(false); setReview(false); setResultKind(null);
     setGameStatus("playing"); setPlayerHP(MAX_HP); setBossHP(MAX_HP);
     setActivePlayer(0); setCombos([0, 0]); setMaxCombo(0); setQuestionIndex(0); setRecords([]);
     setImpact(null); setHealing(null); setSelected(null); setLocked(false);
@@ -607,7 +614,7 @@ export default function BossFightArena() {
     if (busy || error) return;
     await run(async () => {
       const data = await request({action: "settings", settings: patch});
-      if (!session || serverResult) applySettings(data.settings);
+      if (!session || serverResult) applySettings(data.settings, data.player_name);
       setSettingsOpen(false); setEditing(null);
       setNotice("Pengaturan disimpan untuk sesi berikutnya; sesi aktif tidak direset.");
     });
@@ -628,7 +635,7 @@ export default function BossFightArena() {
         />
         <div className="relative mx-auto max-w-4xl">
           <DashboardBreadcrumb current="Boss Fight" />
-          {busy && <div role="status" className="my-4 animate-pulse rounded-2xl bg-slate-200 p-6">Memuat BossFight…</div>}
+          {busy && <div role="status" aria-live="polite" className="pointer-events-none fixed right-4 top-4 z-[110] flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"><span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 motion-reduce:animate-none" />Memuat BossFight…</div>}
           {error && <div role="alert" className="my-4 rounded-xl border border-rose-400 p-4">{error}<button className="ml-3 underline" disabled={busy} onClick={() => retryRef.current && run(retryRef.current)}>Coba lagi</button></div>}
           {tip && <Popup title="Tips BossFight" onClose={() => { if (!busy) { if (hideTips) void run(async () => { await request({action: "settings", settings: {SHOW_TIPS: "0"}}); setTip(null); }); else setTip(null); } }}><div className="p-5"><p>{tip.message}</p><label className="mt-4 block"><input type="checkbox" checked={hideTips} onChange={e => setHideTips(e.target.checked)} /> Jangan tampilkan lagi</label></div></Popup>}
           <header className="mb-8 flex items-center justify-between gap-3">
@@ -671,7 +678,7 @@ export default function BossFightArena() {
             >
               <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-500 sm:text-base">
                 <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-black text-amber-700 sm:text-sm dark:bg-amber-500/10 dark:text-amber-400">
-                  {pvp ? "PLAYER VS PLAYER" : "BOSS LEVEL 10"}
+                  {pvp ? "PLAYER VS PLAYER" : subject === "Acak" ? "BOSS LEVEL 10" : subject}
                 </span>
 
               </span>
@@ -744,7 +751,7 @@ export default function BossFightArena() {
                 key={`player-${impact?.id ?? 0}`}
                 className="relative z-10"
                 animate={
-                  reduceMotion
+                  playerPose === "ko" ? { rotate: -90, y: 28, x: 0 } : serverResult ? { rotate: 0, y: 0, x: 0 } : reduceMotion
                     ? {}
                     : impact?.attack === "punch"
                       ? { x: [0, 85, 0], rotate: [0, 12, 0] }
@@ -756,13 +763,14 @@ export default function BossFightArena() {
                 }
                 transition={{ duration: 0.7 }}
               >
-                <Fighter attack={impact?.attack} />
+                <Fighter attack={serverResult ? null : impact?.attack} pose={playerPose} name={names[0]} />
               </motion.div>
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center pb-10">
                 <span className="text-2xl font-black italic text-slate-200 dark:text-slate-800">
                   VS
                 </span>
               </div>
+              {serverResult && resultClosed && <div className="absolute inset-0 z-30 flex items-center justify-center"><button type="button" onClick={resetToReady} className="rounded-2xl bg-emerald-600 px-6 py-4 font-black text-white shadow-xl">Main Lagi</button></div>}
               <AnimatePresence mode="wait">
                 {!questionOpen && !settingsOpen && gameStatus === "playing" && (
                   <motion.div
@@ -801,7 +809,7 @@ export default function BossFightArena() {
                       >
                         {resting
                           ? "Selesai Istirahat? GO lagi!"
-                          : "Siap bertarung? GO!"}
+                          : "Siap Bertarung? GO!"}
                       </button>
                     )}
                   </motion.div>
@@ -811,7 +819,7 @@ export default function BossFightArena() {
                 key={`boss-${impact?.id ?? 0}`}
                 className="relative z-10"
                 animate={
-                  reduceMotion
+                  bossPose === "ko" ? { rotate: 90, y: 28, x: 0 } : serverResult ? { rotate: 0, y: 0, x: 0 } : reduceMotion
                     ? {}
                     : impact?.attack === "smash"
                       ? { x: [0, -85, 0], y: [0, -25, 0], rotate: [0, -15, 0] }
@@ -823,7 +831,8 @@ export default function BossFightArena() {
               >
                 <Fighter
                   boss
-                  attack={impact?.attack}
+                  attack={serverResult ? null : impact?.attack}
+                  pose={bossPose}
                   name={pvp ? names[1] : bossName}
                 />
               </motion.div>
@@ -994,7 +1003,7 @@ export default function BossFightArena() {
                         Soal {questionIndex + 1}
                         <span className="text-slate-400">
                           {" "}
-                          / {battleMode === "death" ? "∞" : maxQuestions}
+                          / {battleMode === "death" ? "∞" : totalQuestionLimit}
                         </span>
                       </span>
                       <span className="hidden rounded-md bg-slate-100 px-2 py-1 text-[10px] text-slate-500 dark:bg-slate-800 sm:inline">
@@ -1089,55 +1098,9 @@ export default function BossFightArena() {
                       </button>
                     ))}
                   </div>
-                  <div className="grid gap-3 border-t border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-950/20 sm:grid-cols-2 sm:p-7">
-                    {question.type === "PGK_KATEGORI" && question.category_items.map(item => <label key={item.item_number} className="block rounded-xl border p-3">{item.item_text}<select className="ml-3 rounded border p-2" value={categories[item.item_number] || ""} onChange={e => setCategories(previous => ({...previous, [item.item_number]: e.target.value}))}><option value="">Pilih kategori</option>{categoryOptions(question.category_items).map(label => <option key={label}>{label}</option>)}</select></label>)}
-                    {question.type === "PGK_MA" && <p className="col-span-full text-sm">Pilih semua jawaban yang benar. Terpilih: {selection.map(i => session.questions[0].options[i].option_code).join(", ") || "belum ada"}</p>}
-                    {question.options.map((option, index) => {
-                      const removed = eliminated.includes(index);
-                      // No local correctness inference: grading belongs to the server.
-                      const isAnswer = false;
-                      const wrong = false;
-                      return (
-                        <button
-                          type="button"
-                          key={`${question.id}-${index}`}
-                          disabled={
-                            settingsOpen ||
-                            locked ||
-                            removed ||
-                            gameStatus !== "playing"
-                          }
-                          onClick={() => question.type === "PGK_MA" ? setSelection(previous => previous.includes(index) ? previous.filter(i => i !== index) : [...previous, index]) : answer(index)}
-                          aria-pressed={question.type === "PGK_MA" ? selection.includes(index) : undefined}
-                          aria-label={`${"ABCD"[index]}. ${option}${removed ? ", dieliminasi" : ""}`}
-                          className={`group flex min-h-16 items-center gap-3 rounded-xl border-2 p-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 ${removed ? "border-transparent opacity-25" : isAnswer ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300" : wrong ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300" : "border-slate-200 bg-white enabled:hover:border-emerald-400 enabled:hover:shadow-sm dark:border-slate-700 dark:bg-slate-900"}`}
-                        >
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-extrabold ${isAnswer ? "bg-emerald-500 text-white" : wrong ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}
-                          >
-                            {isAnswer ? (
-                              <Check size={18} />
-                            ) : wrong ? (
-                              <X size={18} />
-                            ) : (
-                              "ABCD"[index]
-                            )}
-                          </span>
-                          <span
-                            className={`flex-1 text-sm font-semibold ${removed ? "line-through" : ""}`}
-                          >
-                            {option}
-                          </span>
-                          {!locked && !removed && (
-                            <ChevronRight
-                              size={15}
-                              className="text-slate-300 group-hover:text-emerald-500"
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                    {question.type !== "PG_TUNGGAL" && <button className="rounded-xl bg-emerald-600 p-3 font-bold text-white" disabled={question.type === "PGK_MA" ? !selection.length : question.category_items.some(item => !categories[item.item_number])} onClick={() => answer(question.type === "PGK_MA" ? selection : categories)}>Kirim jawaban</button>}
+                  <div className="space-y-4 border-t border-slate-200 p-5 dark:border-slate-800 sm:p-7">
+                    <BossFightChoices question={question} selection={selection} categories={categories} selected={selected} disabled={locked || busy || !!error || settingsOpen || gameStatus !== "playing"} onSelect={index => question.type === "PGK_MA" ? setSelection(previous => previous.includes(index) ? previous.filter(i => i !== index) : [...previous, index]) : setSelected(index)} onCategory={(number, value) => setCategories(previous => ({ ...previous, [number]: value }))} />
+                    <button className="w-full rounded-lg bg-blue-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-40" disabled={locked || busy || !!error || (question.type === "PG_TUNGGAL" ? selected === null : question.type === "PGK_MA" ? !selection.length : question.category_items.some(item => !categories[item.item_number]))} onClick={() => answer(question.type === "PG_TUNGGAL" ? selected : question.type === "PGK_MA" ? selection : categories)}>Kirim Jawaban</button>
                   </div>
                 </section>
               </Popup>
@@ -1152,8 +1115,7 @@ export default function BossFightArena() {
                     event.preventDefault();
                     const name = draftName.trim();
                     if (!name || busy || error) return;
-                    if (editing === 1) void saveSettings({P2_NAME: name});
-                    else { setNames(previous => [name, previous[1]]); setEditing(null); }
+                    void saveSettings(editing === 1 ? {P2_NAME: name} : {P1_NAME: name});
                   }}
                 >
                   <label className="block text-sm font-bold">
@@ -1183,7 +1145,7 @@ export default function BossFightArena() {
             <br />
             {battleMode === "death"
               ? "Fight to Death: pertarungan berlanjut sampai salah satu HP habis."
-              : `Batas ${maxQuestions} soal: mayoritas benar = Menang Angka. HP habis = KO.`}{" "}
+              : pvp ? `Batas ${totalQuestionLimit} soal (${maxQuestions} per pemain). HP habis = KO.` : `Batas ${totalQuestionLimit} soal: mayoritas benar = Menang Angka. HP habis = KO.`}{" "}
             Bantuan hanya sekali per pemain per sesi.{" "}
             {pvp &&
               `Pemain bergantian menjawab pertanyaan. Sekarang giliran: ${activeName}.`}
@@ -1205,11 +1167,11 @@ export default function BossFightArena() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {serverResult && gameStatus !== "playing" && (
+          {serverResult && !resultClosed && gameStatus !== "playing" && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md"
+              className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md ${review ? "p-0 sm:p-4" : "p-4"}`}
             >
               <motion.section
                 role="dialog"
@@ -1221,7 +1183,7 @@ export default function BossFightArena() {
                   if (event.key === "Tab") {
                     const elements = Array.from(
                       event.currentTarget.querySelectorAll(
-                        "button:not(:disabled)",
+                        "button:not(:disabled), a[href]",
                       ),
                     );
                     const first = elements[0];
@@ -1238,7 +1200,7 @@ export default function BossFightArena() {
                     }
                   }
                 }}
-                className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-8"
+                className={`w-full overflow-y-auto border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 ${review ? "h-dvh max-w-3xl rounded-none px-4 py-6 sm:h-auto sm:max-h-[90dvh] sm:rounded-3xl sm:py-8" : "max-h-[90dvh] max-w-lg rounded-3xl p-6 sm:p-8"}`}
               >
                 {review ? (
                   <>
@@ -1250,64 +1212,16 @@ export default function BossFightArena() {
                     >
                       <ArrowLeft size={16} /> Kembali ke hasil
                     </button>
-                    <h2 id="result-title" className="mb-5 text-2xl font-black">
-                      Bekal untuk ronde berikutnya
-                    </h2>
                     <div className="space-y-4">
                       {records.length < (session?.used || 0) && <p>Riwayat parsial: hanya jawaban yang tersimpan di browser ini tersedia setelah memuat ulang.</p>}
-                      {records.map((record) => {
-                        const item = record.question;
-                        return (
-                          <article
-                            key={record.questionIndex}
-                            className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"
-                          >
-                            <p
-                              className={`mb-2 flex items-center gap-2 text-xs font-bold ${record.correct ? "text-emerald-500" : "text-rose-500"}`}
-                            >
-                              {record.correct ? (
-                                <Check size={14} />
-                              ) : (
-                                <X size={14} />
-                              )}{" "}
-                              {pvp ? `${names[record.player]} · ` : ""}Soal{" "}
-                              {record.questionIndex + 1} ·{" "}
-                              {record.correct
-                                ? "Benar"
-                                : record.selected === null
-                                  ? "Waktu habis"
-                                  : "Belum tepat"}
-                            </p>
-                            <h3 className="text-sm font-bold">
-                              {item.question}
-                            </h3>
-                            {item.formula && (
-                              <code className="mt-2 block text-sm">
-                                {item.formula}
-                              </code>
-                            )}
-                            <p className="mt-3 text-xs text-slate-500">
-                              Jawabanmu:{" "}
-                              {record.selected === null
-                                ? "Tidak menjawab"
-                                : Array.isArray(record.selected) ? record.selected.map(i => item.options[i]).join(", ") : typeof record.selected === "object" ? Object.entries(record.selected).map(([n, value]) => `${n}: ${value}`).join(", ") : item.options[record.selected]}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-500">
-                              Penilaian dikonfirmasi server. Kunci jawaban tidak tersedia.
-                            </p>
-                            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                              {item.explanation}
-                            </p>
-                          </article>
-                        );
-                      })}
+                      <BossFightReview records={records} names={names} pvp={pvp} />
                     </div>
                     <button
                       type="button"
-                      onClick={resetToReady}
+                      onClick={() => setReview(false)}
                       className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
                     >
-                      <RotateCcw size={16} /> Main Lagi
+                      <X size={16} /> Kembali ke Hasil
                     </button>
                   </>
                 ) : (
@@ -1377,7 +1291,7 @@ export default function BossFightArena() {
                       {correctCount} benar dari {session?.used || 0} soal dijawab ·{" "}
                       {battleMode === "death"
                         ? "Fight to Death · tanpa batas soal"
-                        : `batas ${maxQuestions} soal`}
+                        : `batas ${totalQuestionLimit} soal`}
                     </p>
                     <div className="my-5 flex justify-center gap-5 text-sm font-bold">
                       <span className="flex items-center gap-1.5 text-violet-500">
@@ -1388,10 +1302,10 @@ export default function BossFightArena() {
                     <button
                       autoFocus
                       type="button"
-                      onClick={resetToReady}
+                      onClick={() => { setResultClosed(true); setReview(false); setImpact(null); }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     >
-                      <RotateCcw size={16} /> Main Lagi <ArrowRight size={16} />
+                      <X size={16} /> Tutup
                     </button>
                     <button
                       type="button"

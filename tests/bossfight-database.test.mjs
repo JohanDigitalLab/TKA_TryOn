@@ -62,20 +62,27 @@ test('BossFight PostgreSQL integration: real RPC, helpers and persistence', { sk
   await user(''); await assert.rejects(rpc('bootstrap'), /Authentication/);
   await user(uid);
   const boot = await rpc('bootstrap');
-  assert.deepEqual(boot.settings, { SHOW_TIPS: '1', SUBJECT: 'Matematika', IS_PVP: '0', FIGHT_MODE: 'Maksimal jumlah soal', MAX_QUESTIONS: '5', P2_NAME: 'Player2' });
-  assert.equal(boot.tip.message, 'Tip Boss'); assert.equal(await count('user_settings'), 6);
+  assert.deepEqual(boot.settings, { SHOW_TIPS: '1', SUBJECT: 'Matematika', IS_PVP: '0', FIGHT_MODE: 'Maksimal jumlah soal', MAX_QUESTIONS: '5', P1_NAME: '', P2_NAME: 'Player2' });
+  assert.equal(boot.player_name, 'Nina');
+  await rpc('settings', { settings: { P1_NAME: 'Jagoan' } });
+  assert.equal((await rpc('bootstrap')).settings.P1_NAME, 'Jagoan');
+  await db.query("UPDATE profiles SET nickname=' ', full_name='Nina Lengkap' WHERE id=$1", [uid]);
+  assert.equal((await rpc('bootstrap')).player_name, 'Nina Lengkap');
+  await db.query("UPDATE profiles SET nickname='Nina' WHERE id=$1", [uid]);
+  await rpc('settings', { settings: { P1_NAME: '' } });
+  assert.equal(boot.tip.message, 'Tip Boss'); assert.equal(await count('user_settings'), 7);
   await db.query(`DELETE FROM user_settings WHERE user_id=$1 AND name='P2_NAME'`, [uid]);
   assert.equal((await rpc('bootstrap')).settings.P2_NAME, 'Player2');
   await rpc('settings', { settings: { P2_NAME: 'Rival' } });
   assert.equal((await rpc('bootstrap')).settings.P2_NAME, 'Rival');
-  await rpc('bootstrap'); assert.equal(await count('user_settings'), 6);
+  await rpc('bootstrap'); assert.equal(await count('user_settings'), 7);
   await assert.rejects(rpc('settings', { settings: { IS_PVP: true } }), /Invalid setting/);
   await assert.rejects(rpc('settings', { settings: { MAX_QUESTIONS: '0' } }), /Invalid question limit/);
   await db.query(`INSERT INTO user_settings(user_id,"group",name,value) VALUES($1,'BOSSFIGHT','SHOW_TIPS','0')`, [uid]);
   await rpc('settings', { settings: { SHOW_TIPS: '1', MAX_QUESTIONS: '10' } });
   assert.equal((await db.query(`SELECT count(DISTINCT value) n FROM user_settings WHERE name='SHOW_TIPS'`)).rows[0].n, 1);
   let s = await rpc('start'); const aid = s.attempt_id;
-  assert.equal(s.questions.length, 10); assert.ok(s.questions.every(q => !('answer_keys' in q)));
+  assert.equal(s.questions.length, 10); assert.ok(s.questions.every(q => Array.isArray(q.answer_keys.options)));
   assert.equal((await rpc('start')).attempt_id, aid); assert.equal(await count('exam_attempt_questions'), 0);
   await assert.rejects(rpc('finish', { attempt_id: aid }), /not terminal/);
   await user(other); await assert.rejects(rpc('batch', { attempt_id: aid }), /unavailable/); await user(uid);
@@ -108,8 +115,14 @@ test('BossFight PostgreSQL integration: real RPC, helpers and persistence', { sk
   // Alternating PvP, independent combo and heal; equal HP is a draw.
   await rpc('settings', { settings: { MAX_QUESTIONS: '2', IS_PVP: '1' } });
   s = await rpc('start'); assert.equal(s.questions[0].player, 1);
+  assert.equal(s.questions.length, 4);
+  assert.deepEqual(s.questions.map(q => q.player), [1, 2, 1, 2]);
   s = await rpc('batch', { attempt_id: s.attempt_id, records: [record(s)] }); assert.equal(s.questions[0].player, 2);
+  s = await rpc('batch', { attempt_id: s.attempt_id, records: [record(s)] });
+  assert.equal(s.terminal, false);
+  s = await rpc('batch', { attempt_id: s.attempt_id, records: [record(s)] });
   s = await rpc('finish', { attempt_id: s.attempt_id, records: [record(s)] });
+  assert.equal(s.used, 4);
   assert.equal(s.result.winner, 0); assert.equal(s.result.xp, 0);
   // Direct or unrelated legacy writes cannot mutate BossFight attempts.
   await assert.rejects(db.query("UPDATE exam_attempts SET score=100 WHERE id=$1", [aid]), /Use BossFight/);
