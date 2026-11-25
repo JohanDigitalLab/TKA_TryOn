@@ -55,10 +55,14 @@ export function openGachaChest(request, nodeId, chestTier) {
 // Use a monotonic local clock anchored to the server's remaining time. Device wall-clock
 // changes cannot add time. SQL still makes the authoritative expiry decision.
 export function questionSecondsLeft(session, elapsedMs = 0) {
-  if (session?.stage === "practice" || !session?.deadline_at) return null;
+  if (session?.feedback || session?.stage === "practice" || !session?.deadline_at) return null;
   const remaining = Number.isFinite(session.remaining_seconds) ? session.remaining_seconds :
     (Date.parse(session.deadline_at) - Date.parse(session.server_now)) / 1000;
   return Math.max(0, Math.ceil(remaining - Math.max(0, elapsedMs) / 1000));
+}
+
+export function matchingSession(state, { nodeId, stage }) {
+  return state?.sessions?.find(session => session.nodeId === nodeId && session.stage === stage) || null;
 }
 
 export function createMapadventureClient({ getSession, actions, fetcher = fetch, onIdentityChange = () => {} }) {
@@ -90,12 +94,22 @@ export function createMapadventureClient({ getSession, actions, fetcher = fetch,
     }
     const current = await getSession();
     if (current.error || current.data?.session?.user?.id !== userId || (result.ok && result.userId !== userId) || result.code === "ACCOUNT_CHANGED") return invalidate();
-    if (!result.ok) throw Object.assign(new Error(result.error || "Perintah MapAdventure gagal."), { rejected: true });
+    if (!result.ok) throw Object.assign(new Error(result.error || "Perintah MapAdventure gagal."), { rejected: true, code: result.code });
     return result.data;
   }
   function answerAdvanced(state, previous) {
     const s = state.session;
     return !s || s.attempt_id !== previous.attempt_id || s.question?.id !== previous.question_id || s.feedback?.question_id === previous.question_id || !!s.effects?.retried !== previous.retried;
+  }
+  async function reconcile(saved) {
+    if (saved.action === "start") {
+      // A start may have committed. Discover only its node/stage, never replay it
+      // or substitute an unrelated attempt from another subject or stage.
+      const state = await send("bootstrap", {});
+      const descriptor = matchingSession(state, saved.payload);
+      return descriptor ? send("bootstrap", { attempt_id: descriptor.attempt_id }) : state;
+    }
+    return send("bootstrap", saved.attempt_id ? { attempt_id: saved.attempt_id } : {});
   }
   return async function request(action, payload = {}, context = {}) {
     if (busy) throw new Error("Perintah sebelumnya masih diproses.");
@@ -105,12 +119,12 @@ export function createMapadventureClient({ getSession, actions, fetcher = fetch,
       // Reconcile before replay; never turn a retry into a second final answer.
       if (pending) {
         const saved = pending;
-        const state = await send("bootstrap", {});
+        const state = await reconcile(saved);
         if (!["answer", "timeout"].includes(saved.action) || answerAdvanced(state, saved)) {
           pending = null;
           return { ...state, notice: "Data tersimpan sudah dimuat ulang. Periksa hasil sebelum melanjutkan." };
         }
-        if (action !== saved.action) { pending = null; return state; }
+        if (action !== saved.action || payload.attempt_id !== saved.attempt_id || payload.question_id !== saved.question_id) { pending = null; return state; }
         payload = saved.payload; // an answer/timeout retry keeps the same frozen keys
       }
       const retried = !!context.retried;
@@ -121,10 +135,12 @@ export function createMapadventureClient({ getSession, actions, fetcher = fetch,
         return state;
       } catch (error) {
         if (error.code === "ACCOUNT_CHANGED" || error.rejected) { pending = null; throw error; }
-        if (["answer", "timeout", "use_tool", "buy"].includes(action)) {
+        // A lost start may have reconciled a stale completed node. Never replay
+        // that click automatically into a new attempt; inspect server state first.
+        if (["start", "answer", "timeout", "next", "previous", "complete_node", "use_tool", "buy"].includes(action)) {
           pending = attempt;
           try {
-            const state = await send("bootstrap", {});
+            const state = await reconcile(attempt);
             if (!["answer", "timeout"].includes(action) || answerAdvanced(state, attempt)) {
               pending = null;
               return { ...state, notice: "Koneksi terputus; data server dimuat ulang. Periksa jawaban, alat, dan saldo. Pembelian/pemakaian tidak diulang otomatis." };

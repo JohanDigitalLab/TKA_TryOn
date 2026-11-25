@@ -65,7 +65,7 @@ test("compact header matches BossFight structure and removes redundant map label
   assert.match(islands, /before:mx-auto after:mx-auto/);
 });
 
-test("errors and notifications use one dismissible top-layer popup including answer validation", () => {
+test("notifications outside quiz use a dismissible popup while quiz validation stays inline", () => {
   const page = read("src/components/student/mapadventure/MapAdventure.jsx");
   const hook = read("src/components/student/mapadventure/useMapAdventure.js");
   assert.equal((page.match(/<Feedback game=\{game\} \/>/g) || []).length, 1);
@@ -75,6 +75,38 @@ test("errors and notifications use one dismissible top-layer popup including ans
   assert.match(page, /game.reportError\(error.message\)/);
   assert.match(hook, /const closeFeedback = useCallback/);
   assert.match(hook, /const reportError = useCallback/);
+});
+
+test("quiz navigates bounded cursor independently of answered count with immutable current review", () => {
+  const page = read("src/components/student/mapadventure/MapAdventure.jsx");
+  const quiz = page.slice(page.indexOf('function Quiz('), page.indexOf('function AdventureResult('));
+  assert.match(quiz, /const hasNext = session.index < session.total - 1/);
+  assert.match(quiz, /session.index <= 0/);
+  for (const action of ['previous', 'next']) assert.ok(quiz.includes(`game.run("${action}", { attempt_id: session.attempt_id, question_id: q.id })`));
+  assert.doesNotMatch(quiz, /hasNext = session.answered|!feedback.*game.run\("next"/);
+  assert.match(quiz, /const answerDraft = readOnly \? session.answer_payload \|\| \{\} : draft/);
+  assert.match(quiz, /categories=\{answerDraft.category_answers \|\| \{\}\}/);
+  assert.match(quiz, /disabled=\{game.busy \|\| expired \|\| readOnly\}/);
+  assert.match(quiz, /const timed = .*&& !feedback/);
+  assert.match(quiz, /const allHandled = session.total > 0 && session.answered === session.total/);
+  assert.match(quiz, /\{allHandled && <button.*game.run\("complete_node"/);
+  assert.equal((quiz.match(/game.run\("complete_node"/g) || []).length, 1);
+  assert.match(quiz, /game.run\("bootstrap", \{ attempt_id: session.attempt_id \}\)/);
+  // Tools are hidden in review; the answer control remains visible but locked.
+  assert.match(quiz, /disabled=\{game.busy \|\| !q \|\| expired \|\| readOnly\}/);
+  assert.ok(quiz.indexOf('{!readOnly && <>') < quiz.indexOf('{TOOLS.map'));
+  assert.ok(quiz.indexOf('{!readOnly && <>') < quiz.indexOf('onClick={answer}'));
+});
+
+test("subject selection and stage starts no longer depend on global session conflicts", () => {
+  const page = read("src/components/student/mapadventure/MapAdventure.jsx");
+  const hook = read("src/components/student/mapadventure/useMapAdventure.js");
+  assert.doesNotMatch(page + hook, /activeSessionConflict|differentActiveSession|resumeActiveSession|blockedStart/);
+  const selector = page.slice(page.indexOf('<select aria-label="Mata pelajaran"'), page.indexOf('</select>'));
+  assert.match(selector, /disabled=\{game.busy\}/);
+  assert.doesNotMatch(selector, /state.session|setSelection\(null\)/);
+  assert.match(hook, /previous: previousMapadventure/);
+  assert.match(hook, /const data = await request\(action, payload, context\)/);
 });
 
 test("topic map renders connected nodes using authoritative material and gatekeeper status", () => {

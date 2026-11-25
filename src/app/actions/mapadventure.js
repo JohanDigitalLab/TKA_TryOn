@@ -13,6 +13,7 @@ export async function startMapadventure(payload, expectedUserId) { return servic
 export async function answerMapadventure(payload, expectedUserId) { return service.execute("answer", payload, expectedUserId); }
 export async function timeoutMapadventure(payload, expectedUserId) { return service.execute("timeout", payload, expectedUserId); }
 export async function nextMapadventure(payload, expectedUserId) { return service.execute("next", payload, expectedUserId); }
+export async function previousMapadventure(payload, expectedUserId) { return service.execute("previous", payload, expectedUserId); }
 export async function useToolMapadventure(payload, expectedUserId) { return service.execute("use_tool", payload, expectedUserId); }
 export async function buyMapadventure(payload, expectedUserId) { return service.execute("buy", payload, expectedUserId); }
 export async function mapadventure_complete_node(userId, nodeId, score, usedTools, attemptId) {

@@ -18,14 +18,15 @@ function fixture(options = {}) {
   return { calls, getUser, cookies, ...createMapadventureActions({ getUser, cookies }) };
 }
 const cases = [
-  ['bootstrap', {}], ['settings', { settings: { SHOW_TIPS: '0', SUBJECT: 'Matematika' } }], ['material', { nodeId: user }],
+  ['bootstrap', {}], ['bootstrap', { attempt_id: other }], ['previous', { attempt_id: user, question_id: other }],
+  ['settings', { settings: { SHOW_TIPS: '0', SUBJECT: 'Matematika' } }], ['material', { nodeId: user }],
   ['read_complete', { nodeId: user, readToken: other }], ['start', { nodeId: user, stage: 'practice' }],
   ['answer', { attempt_id: user, question_id: other, answer_payload: { option_codes: ['A'] } }],
   ['timeout', { attempt_id: user, question_id: other }], ['next', { attempt_id: user, question_id: other }],
   ['use_tool', { attempt_id: user, question_id: other, tool: 'clue' }], ['complete_node', { attempt_id: user }],
   ['complete_island', { islandId: user }], ['gacha', { nodeId: user, chestTier: 'golden' }], ['buy', { tool: 'secondchance' }],
 ];
-test('all twelve actions reverify cookie identity and call only user-scoped canonical RPC', async () => {
+test('all supported actions reverify cookie identity and call only user-scoped canonical RPC', async () => {
   const f = fixture();
   for (const [action, payload] of cases) {
     const result = await f.execute(action, payload, user);
@@ -89,7 +90,53 @@ test('completion compatibility hints never reach SQL; active node and attempt bi
   const before = f.calls.filter(c => c[0] === 'rpc' && c[2].p_action === 'complete_node').length;
   assert.equal((await f.completeNode(user, other, 100, [], other)).ok, false);
   assert.equal(f.calls.filter(c => c[0] === 'rpc' && c[2].p_action === 'complete_node').length, before);
-  assert.equal((await f.completeNode(other, user, 100, [])).code, 'ACCOUNT_CHANGED');
+  assert.equal((await f.completeNode(other, user, 100, [], other)).code, 'ACCOUNT_CHANGED');
+  assert.deepEqual(f.calls.find(c => c[0] === 'rpc')[2], { p_action: 'bootstrap', p_payload: { attempt_id: other } });
+  const missing = fixture();
+  assert.equal((await missing.completeNode(user, user, 100, [])).ok, false);
+  assert.equal(missing.calls.length, 0);
+});
+test('completed attempt replay returns its bound frozen result without another finish', async () => {
+ const result = { attempt_id: other, nodeId: user, passed: true, stars: 3, tools: [] };
+ const f = fixture({ rpc: async () => ({ data: { ...state, result } }) });
+ const replay = await f.completeNode(user, user, undefined, undefined, other);
+ assert.equal(replay.ok, true);
+ assert.equal(replay.data.result.attempt_id, other);
+ assert.equal(f.calls.filter(call => call[0] === 'rpc').length, 1);
+ assert.equal((await f.completeNode(user, other, undefined, undefined, other)).ok, false);
+});
+test('explicit completion rejects missing, different, and incomplete targeted attempts before finish', async () => {
+  for (const session of [null, { attempt_id: user, nodeId: user, total: 3, answered: 3 },
+    { attempt_id: other, nodeId: other, total: 3, answered: 3 },
+    { attempt_id: other, nodeId: user, total: 3, answered: 2 }]) {
+    const f = fixture({ rpc: async () => ({ data: { ...state, session } }) });
+    assert.equal((await f.completeNode(user, user, undefined, undefined, other)).ok, false);
+    assert.deepEqual(f.calls.filter(c => c[0] === 'rpc').map(c => c[2]), [{ p_action: 'bootstrap', p_payload: { attempt_id: other } }]);
+  }
+});
+test('bootstrap and bidirectional navigation accept only explicit UUID selectors', () => {
+  assert.equal(validPayload('bootstrap', {}), true);
+  assert.equal(validPayload('bootstrap', { attempt_id: user }), true);
+  for (const attempt_id of [null, 1, '', 'bad']) assert.equal(validPayload('bootstrap', { attempt_id }), false);
+  for (const action of ['next', 'previous']) {
+    assert.equal(validPayload(action, { attempt_id: user, question_id: other }), true);
+    for (const payload of [{}, { attempt_id: user }, { question_id: other }, { attempt_id: user, question_id: 'bad' },
+      { attempt_id: user, question_id: other, index: 0 }, { attempt_id: user, question_id: other, is_timeout: true }]) assert.equal(validPayload(action, payload), false);
+  }
+});
+test('selected session and descriptor projections expose review answer without private fields', () => {
+  const descriptor = { attempt_id: other, nodeId: user, stage: 'practice', subject_code: 'MAT', theme_id: user, index: 1, total: 3, answered: 2 };
+  const data = publicState({ ...state, sessions: [{ ...descriptor, user_id: user, records: ['secret'], pool: ['secret'] }],
+    session: { ...descriptor, question: { id: user, text: 'Review', answer_keys: { option_codes: ['B'] } },
+      feedback: { question_id: user, correct: false, accepted: true },
+      answer_payload: { option_codes: ['A', 2], category_answers: { 1: 'Benar', bad: 'secret', 2: 42 }, first_answer: 'secret', answer_keys: ['secret'] } } });
+  assert.deepEqual(data.sessions, [descriptor]);
+  assert.equal(data.session.question.id, user);
+  assert.equal(data.session.feedback.question_id, user);
+  assert.deepEqual(data.session.answer_payload, { option_codes: ['A'], category_answers: { 1: 'Benar' } });
+  assert.doesNotMatch(JSON.stringify(data), /secret|answer_keys|user_id|records|pool/);
+  assert.equal(publicState(state).session, null);
+  assert.deepEqual(publicState(state).sessions, []);
 });
 test('public return strips answer keys, hidden clue, first answers, audit fields', () => {
   const data = publicState({ ...state, session: { tools: [], question: { id: user, answer_keys: { option_codes: ['A'] }, clue: 'hidden', options: [{ option_code: 'A', is_correct: true }], category_items: [{ item_number: 1, correct_category: 'secret' }] }, effects: { clue: 'paid', first_answer: 'secret' } } });
@@ -149,6 +196,6 @@ test('bridge cookie is isolated, verified, HttpOnly, short, secure in production
 test('dedicated Next actions expose requested names and no token or service role arguments', () => {
   const source = readFileSync(new URL('../src/app/actions/mapadventure.js', import.meta.url), 'utf8');
   assert.match(source, /^"use server"/);
-  for (const name of ['mapadventure_complete_node', 'mapadventure_complete_island', 'mapadventure_open_gatcha']) assert.match(source, new RegExp(`export async function ${name}\\(`));
+  for (const name of ['previousMapadventure', 'mapadventure_complete_node', 'mapadventure_complete_island', 'mapadventure_open_gatcha']) assert.match(source, new RegExp(`export async function ${name}\\(`));
   assert.doesNotMatch(source, /accessToken|service_role|token/);
 });

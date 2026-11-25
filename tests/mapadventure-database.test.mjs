@@ -33,6 +33,8 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   await db.exec(await sql('migration-create-subject-topics.sql'));
   await db.exec(await sql('migration-gamification-foundation.sql'));
   await db.exec(await sql('migration-virtualpet.sql'));
+  await db.exec(await sql('migration-create-map-adventure-logs.sql'));
+  await db.exec(await sql('migration-add-map-adventure-logs-stars.sql'));
   const migration = await sql('migration-mapadventure.sql');
   await db.exec(migration); await db.exec(migration);
   await db.exec(await sql('migration_generic_exam_attempt.sql'));
@@ -43,6 +45,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     if (isolated) await db.exec('SAVEPOINT rpc_test');
     try {
       const data=(await db.query('SELECT public.mapadventure($1,$2::jsonb) data', [a, JSON.stringify(p)])).rows[0].data;
+      if (p.attempt_id && data.session) assert.equal(data.session.attempt_id,p.attempt_id, 'explicit operation must return the selected attempt, never another unfinished session');
       if (isolated) await db.exec('RELEASE SAVEPOINT rpc_test');
       return data;
     } catch(error) {
@@ -55,13 +58,27 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   const open = async nodeId => (await rpc('material', { nodeId })).material;
   const read = async nodeId => rpc('read_complete', { nodeId, readToken: (await open(nodeId)).readToken });
   const start = async (nodeId, stage) => (await rpc('start', { nodeId, stage })).session;
+  const resume = async s => (await rpc('bootstrap', { attempt_id: s.attempt_id })).session;
+  const navigate = async (s, direction) => (await rpc(direction, { attempt_id: s.attempt_id, question_id: s.question.id })).session;
+  // Update the authoritative slot ledger, not just the compatibility current-clock column.
+  const expire = s => db.query(`UPDATE private.mapadventure_sessions SET
+    question_ledger=jsonb_set(question_ledger,ARRAY[question_index::text,'deadline_at'],to_jsonb(clock_timestamp()-interval '1 hour')),
+    question_deadline_at=clock_timestamp()-interval '1 hour' WHERE attempt_id=$1`, [s.attempt_id]);
   const good = q => q.type === 'PGK_KATEGORI' ? { category_answers: { 1: ' benar ', 2: 'SALAH' } } : { option_codes: q.type === 'PGK_MA' ? ['C', 'B'] : ['B'] };
   const wrong = q => q.type === 'PGK_KATEGORI' ? { category_answers: { 1: 'Salah', 2: 'Benar' } } : { option_codes: ['A'] };
   const acknowledge = async r => r.session?.feedback && r.session.answered < r.session.total ? { ...await rpc('next', { attempt_id: r.session.attempt_id, question_id: r.session.feedback.question_id }), answer: r.answer } : r;
   const answer = async (s, payload = good(s.question)) => acknowledge(await rpc('answer', { attempt_id: s.attempt_id, question_id: s.question.id, answer_payload: payload }));
   const complete = s => rpc('complete_node', { attempt_id: s.attempt_id });
   const finish = async (s, goodCount = s.total) => {
-    while (s.question) { const r = await answer(s, s.index < goodCount ? good(s.question) : wrong(s.question)); s = r.session; }
+    // The cursor remains on a real question during feedback and after the last answer.
+    // Walk bounded slots, including unanswered slots skipped earlier, without rewriting records.
+    for (let visits = 0; s.answered < s.total; visits++) {
+      assert.ok(visits < s.total * 3, 'finish must make progress through unanswered slots');
+      if (!s.feedback) s = (await answer(s, s.index < goodCount ? good(s.question) : wrong(s.question))).session;
+      else if (s.index === s.total - 1) {
+        while (s.index > 0) s = await navigate(s, 'previous');
+      } else s = await navigate(s, 'next');
+    }
     return complete(s);
   };
   const use = (s, tool) => rpc('use_tool', { attempt_id: s.attempt_id, question_id: s.question.id, tool });
@@ -148,13 +165,16 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.equal(s.question.answer_keys,undefined); assert.equal(s.question.clue,undefined);
     const resumed=await start(nodeId,'practice'); assert.deepEqual({...resumed,server_now:null},{...s,server_now:null});
     await user(other); await rpc('bootstrap'); await assert.rejects(complete(s),/Session unavailable/); await user(uid);
-    await assert.rejects(rpc('settings',{settings:{SUBJECT:'IPA'}}),/Finish active/);
+    await rpc('settings',{settings:{SUBJECT:'IPA'}});
+    await assert.rejects(rpc('bootstrap',{attempt_id:s.attempt_id}),/Session unavailable/);
+    await rpc('settings',{settings:{SUBJECT:'Matematika'}});
+    assert.equal((await resume(s)).attempt_id,s.attempt_id);
     await assert.rejects(complete(s),/All questions/);
     await assert.rejects(answer(s,{option_codes:['Z']}));
     await assert.rejects(rpc('answer',{attempt_id:s.attempt_id,question_id:uid,answer_payload:good(s.question)}),/current frozen/);
     const aid=s.attempt_id; const r=await finish(s,2); assert.equal(r.result.correct,2); assert.equal(r.result.total,3); assert.equal(r.result.passed,false); assert.equal(r.result.stars,0); assert.equal(r.profile_xp,1); assert.equal(r.wallet.points,25);
     assert.equal(r.nodes[0].practice_status,'UNLOCKED'); assert.equal(r.nodes[0].sidequest_status,'LOCKED');
-    assert.equal((await rows('SELECT practice_attempt_id FROM map_adventure_topics WHERE id=$1',[nodeId]))[0].practice_attempt_id,null);
+    assert.equal((await rows('SELECT practice_attempt_id FROM map_adventure_topics WHERE id=$1',[nodeId]))[0].practice_attempt_id,aid);
     assert.equal((await rows('SELECT attempt_status FROM exam_attempts WHERE id=$1',[aid]))[0].attempt_status,'SUBMITTED');
     assert.equal((await complete({attempt_id:aid})).wallet.points,25);
   });
@@ -174,7 +194,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.deepEqual({wallet:r.wallet,status:r.status,xp:r.profile_xp},before);
     assert.equal(r.nodes[0].sidequest_status,'UNLOCKED'); assert.equal(r.nodes[0].mysterychest_status,'LOCKED');
     assert.deepEqual((await rows('SELECT attempt_status,correct_answers,score FROM exam_attempts WHERE id=$1',[failedId]))[0],{attempt_status:'SUBMITTED',correct_answers:4,score:'80.00'});
-    assert.equal((await rows('SELECT sidequest_attempt_id FROM map_adventure_topics WHERE id=$1',[nodeId]))[0].sidequest_attempt_id,null);
+    assert.equal((await rows('SELECT sidequest_attempt_id FROM map_adventure_topics WHERE id=$1',[nodeId]))[0].sidequest_attempt_id,failedId);
     const failedReplay=await complete(s); assert.deepEqual(failedReplay.result,r.result); assert.deepEqual(failedReplay.wallet,before.wallet); assert.equal(failedReplay.profile_xp,before.xp);
     s=await start(nodeId,'sidequest'); assert.notEqual(s.attempt_id,failedId);
     await assert.rejects(use(s,'clue'),/inventory empty/);
@@ -239,7 +259,8 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     for(const table of ['private.mapadventure_sessions','private.mapadventure_reads','public.user_wallet','public.map_adventure_topics','public.map_adventure_themes','public.map_adventure_tools','public.map_adventure_status']) {
       await assert.rejects(db.query(`SELECT * FROM ${table}`),/permission denied/); await assert.rejects(db.query(`DELETE FROM ${table}`),/permission denied/);
     }
-    assert.equal((await rpc('bootstrap')).session.attempt_id,s.attempt_id);
+    assert.equal((await rpc('bootstrap')).session,null);
+    assert.equal((await resume(s)).attempt_id,s.attempt_id);
     await db.exec('RESET ROLE');
     const legacy=(await rows("INSERT INTO exam_attempts(user_id,duration_minutes,attempt_type) VALUES($1,60,'TRYOUT') RETURNING id",[uid]))[0].id;
     await db.query('INSERT INTO exam_attempt_questions(attempt_id,question_id,question_version_id,question_order) VALUES($1,$2,$3,1)',[legacy,s.question.id,s.question.version]);
@@ -258,7 +279,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.equal(s,null);
     await db.exec("UPDATE questions SET question_status='PUBLISHED',difficulty=CASE WHEN question_type='PG_TUNGGAL' THEN 'SULIT' ELSE 'SEDANG' END WHERE theme='B'");
     s=await start(id,'sidequest');
-    while(s.question && s.question.type!=='PG_TUNGGAL') s=(await answer(s)).session;
+    while(s.index < s.total - 1 && s.question.type!=='PG_TUNGGAL') s=await navigate(s,'next');
     assert.ok(s.question);
     let r=await use(s,'fiftyfifty');
     await assert.rejects(answer(r.session,{option_codes:[r.session.effects.eliminated[0]]}),/Eliminated/);
@@ -313,7 +334,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   });
   for(const stage of ['sidequest','gatekeeper']) await t.test(`${stage} start/replacement shortage is atomic and replacement keeps stage restrictions and priority`,async()=>{
     await db.exec('BEGIN'); isolated=true;
-    await db.query(`UPDATE map_adventure_topics SET ${stage}_status='UNLOCKED' WHERE id=$1`,[nodeId]);
+    await db.query(`UPDATE map_adventure_topics SET ${stage}_status='UNLOCKED',${stage}_attempt_id=NULL WHERE id=$1`,[nodeId]);
     await db.exec(`UPDATE map_adventure_tools SET skipreplace=3 WHERE user_id='${uid}'; UPDATE question_versions SET estimate_minutes=6`);
     const ids=(await rows("SELECT id FROM questions WHERE subject_code='mat-sd' AND theme='A' AND topic='A1' ORDER BY id")).map(q=>q.id);
     // Plenty of published easy-long (and, for gatekeeper, hard) decoys cannot fill a shortage.
@@ -357,7 +378,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   });
   await t.test('per-question deadlines, strict timeout, late answers, private persistence and no reward bypass',async()=>{
     await db.exec('BEGIN'); isolated=true;
-    await db.query("UPDATE map_adventure_topics SET sidequest_status='UNLOCKED' WHERE id=$1",[nodeId]);
+    await db.query("UPDATE map_adventure_topics SET sidequest_status='UNLOCKED',sidequest_attempt_id=NULL WHERE id=$1",[nodeId]);
     let s=await start(nodeId,'sidequest');
     assert.ok(s.remaining_seconds>118 && s.remaining_seconds<=120); assert.equal(s.question.estimate_minutes,2);
     assert.equal((await rows('SELECT deadline_at FROM exam_attempts WHERE id=$1',[s.attempt_id]))[0].deadline_at,null);
@@ -368,8 +389,10 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     await assert.rejects(answer(s,{is_timeout:true}),/Unknown answer field/);
     const before=await rpc('bootstrap'); const old=s;
     // Owner manipulates the private clock; never wait for real fixture durations.
-    await db.query('UPDATE private.mapadventure_sessions SET question_deadline_at=clock_timestamp() WHERE attempt_id=$1',[s.attempt_id]);
-    const expired=(await rpc('bootstrap')).session; assert.equal(expired.question.id,s.question.id); assert.equal(expired.remaining_seconds,0);
+    await expire(s);
+    const expired=await resume(s); assert.equal(expired.question.id,s.question.id); assert.equal(expired.remaining_seconds,0);
+    assert.equal(expired.feedback.is_timeout,true); assert.equal(expired.answered,1);
+    assert.deepEqual((await resume(s)).feedback,expired.feedback);
     let r=await answer(s); assert.equal(r.answer.is_timeout,true); assert.equal(r.session.index,1);
     assert.ok(r.session.remaining_seconds>118); s=r.session;
     const stored=(await rows('SELECT answer_payload,is_timeout FROM exam_attempt_answers WHERE attempt_id=$1',[s.attempt_id]))[0];
@@ -377,7 +400,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     const rec=(await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[s.attempt_id]))[0].records[0];
     assert.equal(rec.correct,false); assert.equal(rec.is_timeout,true);
     await assert.rejects(timeout(old),/current frozen/);
-    await db.query("UPDATE private.mapadventure_sessions SET question_deadline_at=clock_timestamp()-interval '1 hour' WHERE attempt_id=$1",[s.attempt_id]);
+    await expire(s);
     r=await timeout(s); assert.equal(r.answer.is_timeout,true); assert.equal(r.session.index,2); assert.ok(r.session.remaining_seconds>118);
     r=await finish(r.session); assert.equal(r.result.correct,3); assert.equal(r.result.passed,false);
     assert.deepEqual([r.result.xp,r.result.points,r.result.stars],[0,0,0]); assert.deepEqual(r.wallet,before.wallet); assert.equal(r.profile_xp,before.profile_xp);
@@ -386,7 +409,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   });
   await t.test('timed tools atomic +30 once per slot, retry/replacement no reset, practice untimed, legacy resume',async()=>{
     await db.exec('BEGIN'); isolated=true;
-    await db.query("UPDATE map_adventure_topics SET sidequest_status='UNLOCKED',practice_status='UNLOCKED' WHERE id=$1",[nodeId]);
+    await db.query("UPDATE map_adventure_topics SET sidequest_status='UNLOCKED',practice_status='UNLOCKED',sidequest_attempt_id=NULL,practice_attempt_id=NULL WHERE id=$1",[nodeId]);
     await db.exec(`UPDATE map_adventure_tools SET freezetime=4,secondchance=4,skipreplace=4 WHERE user_id='${uid}'`);
     let s=await start(nodeId,'sidequest'); const aid=s.attempt_id;
     const original=Date.parse(s.deadline_at);
@@ -398,20 +421,19 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     r=await use(r.session,'skipreplace'); assert.equal(Date.parse(r.session.deadline_at),original+30000);
     await assert.rejects(use(r.session,'freezetime'),/already used/);
     await assert.rejects(use(r.session,'skipreplace'),/already used/);
-    await db.query('UPDATE private.mapadventure_sessions SET question_deadline_at=clock_timestamp() WHERE attempt_id=$1',[aid]);
-    r=await use(r.session,'freezetime'); assert.equal(r.answer.is_timeout,true); assert.equal(r.inventory.freezetime,3); assert.equal(r.session.index,1);
-    // Simulate pre-timer active row/snapshot, deploy twice, initialize only on first resume.
-    await db.query("UPDATE private.mapadventure_sessions SET question_deadline_at=NULL,pool=(SELECT jsonb_agg(x-'estimate_minutes') FROM jsonb_array_elements(pool) x) WHERE attempt_id=$1",[aid]);
+    await expire(r.session);
+    r=await use(r.session,'freezetime'); assert.equal(r.answer.is_timeout,true); assert.equal(r.inventory.freezetime,3); assert.equal(r.session.index,0);
+    // Simulate pre-timer active row/snapshot at the next unanswered legacy slot.
+    await db.query("UPDATE private.mapadventure_sessions SET question_index=NULL,question_ledger='{}',feedback=NULL,effects='{}',question_deadline_at=NULL,pool=(SELECT jsonb_agg(x-'estimate_minutes') FROM jsonb_array_elements(pool) x) WHERE attempt_id=$1",[aid]);
     await db.exec('SET CONSTRAINTS ALL IMMEDIATE');
     const transactionalMigration=migration.replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,'');
     await db.exec(transactionalMigration); await db.exec(transactionalMigration);
     await db.exec('SET CONSTRAINTS ALL DEFERRED');
     assert.equal((await rows('SELECT question_deadline_at FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].question_deadline_at,null);
-    s=(await rpc('bootstrap')).session;
-    assert.equal(s.deadline_at,null); assert.ok(s.feedback);
-    s=(await rpc('next',{attempt_id:aid,question_id:s.feedback.question_id})).session;
+    s=await resume({attempt_id:aid});
+    assert.equal(s.index,1); assert.equal(s.feedback,null);
     assert.ok(s.remaining_seconds>118); assert.equal(s.question.estimate_minutes,2);
-    assert.equal((await rpc('bootstrap')).session.deadline_at,s.deadline_at);
+    assert.equal((await resume(s)).deadline_at,s.deadline_at);
     await finish(s);
     s=await start(nodeId,'practice'); assert.equal(s.deadline_at,null); assert.equal(s.remaining_seconds,null);
     await assert.rejects(rpc('timeout',{attempt_id:s.attempt_id,question_id:s.question.id}),/not expired/);
@@ -422,18 +444,18 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   });
   await t.test('gatekeeper snapshots actual duration across bank edits; all timed-out questions score zero without grader error',async()=>{
     await db.exec('BEGIN'); isolated=true;
-    await db.query("UPDATE map_adventure_topics SET gatekeeper_status='UNLOCKED' WHERE id=$1",[nodeId]);
+    await db.query("UPDATE map_adventure_topics SET gatekeeper_status='UNLOCKED',gatekeeper_attempt_id=NULL WHERE id=$1",[nodeId]);
     await db.exec('UPDATE question_versions SET estimate_minutes=6');
     let s=await start(nodeId,'gatekeeper'); assert.ok(s.remaining_seconds>358 && s.remaining_seconds<=360);
     const deadline=s.deadline_at; const initial=await rpc('bootstrap');
     await db.exec('UPDATE question_versions SET estimate_minutes=1');
-    s=(await rpc('bootstrap')).session; assert.equal(s.deadline_at,deadline); assert.equal(s.question.estimate_minutes,6);
+    s=await resume(s); assert.equal(s.deadline_at,deadline); assert.equal(s.question.estimate_minutes,6);
     await db.exec(`UPDATE map_adventure_tools SET secondchance=5 WHERE user_id='${uid}'`);
     s=(await use(s,'secondchance')).session;
-    while(s.question) {
-      await db.query('UPDATE private.mapadventure_sessions SET question_deadline_at=clock_timestamp() WHERE attempt_id=$1',[s.attempt_id]);
+    while(s.answered < s.total) {
+      await expire(s);
       const r=await answer(s); assert.equal(r.answer.is_timeout,true); assert.equal(r.answer.retry,false);
-      s=r.session; if(s.question) { assert.equal(s.question.estimate_minutes,6); assert.ok(s.remaining_seconds>358); }
+      s=r.session; if(s.answered < s.total) { assert.equal(s.question.estimate_minutes,6); assert.ok(s.remaining_seconds>358); }
     }
     const r=await complete(s); assert.equal(r.result.correct,0); assert.equal(r.result.passed,false);
     assert.deepEqual([r.result.xp,r.result.points,r.result.stars],[0,0,0]); assert.equal(r.profile_xp,initial.profile_xp); assert.deepEqual(r.wallet,initial.wallet);
@@ -462,7 +484,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   });
   await t.test('branch unlock, gatekeeper bypasses chest, late sidequest/chest never downgrade completed gate',async()=>{
     await db.exec('BEGIN'); isolated=true;
-    await db.query("UPDATE map_adventure_topics SET practice_status='UNLOCKED',sidequest_status='LOCKED',mysterychest_status='LOCKED',gatekeeper_status='LOCKED',chest_reward=NULL WHERE id=$1",[nodeId]);
+    await db.query("UPDATE map_adventure_topics SET practice_status='UNLOCKED',sidequest_status='LOCKED',mysterychest_status='LOCKED',gatekeeper_status='LOCKED',chest_reward=NULL,practice_attempt_id=NULL,sidequest_attempt_id=NULL,gatekeeper_attempt_id=NULL WHERE id=$1",[nodeId]);
     let r=await finish(await start(nodeId,'practice'));
     assert.equal(r.nodes[0].sidequest_status,'UNLOCKED'); assert.equal(r.nodes[0].gatekeeper_status,'UNLOCKED'); assert.equal(r.nodes[0].mysterychest_status,'LOCKED');
     await assert.rejects(rpc('gacha',{nodeId}),/Chest locked/);
@@ -493,29 +515,337 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
       const replay=await complete(s); assert.deepEqual(replay.result,r.result); assert.deepEqual(replay.status,r.status);
       await db.exec(`UPDATE map_adventure_tools SET clue=10 WHERE user_id='${uid}'`);
       const toolSession=(await use(await start(nodeId,stage),'clue')).session;
+      assert.equal((await rows(`SELECT ${stage}_attempt_id pointer FROM map_adventure_topics WHERE id=$1`,[nodeId]))[0].pointer,toolSession.attempt_id);
       r=await finish(toolSession); assert.equal(r.result.stars,2); assert.equal(r.result.best_stars,3); assert.deepEqual(r.status,replay.status);
-      r=await finish(await start(nodeId,stage),0); assert.equal(r.result.stars,0); assert.equal(r.result.best_stars,3); assert.equal(r.nodes[0][`${stage}_status`],'COMPLETED'); assert.deepEqual(r.status,replay.status);
+      const failed=await start(nodeId,stage);
+      r=await finish(failed,0); assert.equal(r.result.stars,0); assert.equal(r.result.best_stars,3); assert.equal(r.nodes[0][`${stage}_status`],'COMPLETED'); assert.deepEqual(r.status,replay.status);
+      assert.equal(r.nodes[0][`${stage}_attempt_id`],failed.attempt_id);
+      assert.equal(r.nodes[0].mysterychest_status,before.nodes[0].mysterychest_status); assert.deepEqual(r.nodes[0].chest_reward,before.nodes[0].chest_reward);
+      assert.deepEqual(r.wallet,before.wallet); assert.equal(r.profile_xp,before.profile_xp);
+      for (const [attempt,stars] of [[s,3],[toolSession,2],[failed,0]]) {
+        assert.deepEqual((await rows('SELECT stars FROM map_adventure_logs WHERE exam_attempt_id=$1',[attempt.attempt_id])).map(l=>l.stars),[stars]);
+        await complete(attempt);
+      }
       assert.equal(await count('gamification_log'),logs);
     }
     await db.exec('ROLLBACK'); isolated=false;
   });
-  await t.test('authoritative persisted feedback pauses unseen clock, next is bound/idempotent, review uses frozen keys and records',async()=>{
+  await t.test('persisted current-question feedback leaves unseen clock stopped, navigation is bound, review uses frozen keys and records',async()=>{
     await db.exec('BEGIN'); isolated=true;
     const s=await start(nodeId,'gatekeeper');
     const raw=await rpc('answer',{attempt_id:s.attempt_id,question_id:s.question.id,answer_payload:good(s.question)});
-    assert.equal(raw.answer.correct,true); assert.equal(raw.session.feedback.correct,true); assert.equal(raw.session.question,null); assert.equal(raw.session.deadline_at,null);
-    const resumed=(await rpc('bootstrap')).session; assert.deepEqual(resumed.feedback,raw.answer); assert.equal(resumed.deadline_at,null);
+    assert.equal(raw.answer.correct,true); assert.equal(raw.session.feedback.correct,true); assert.equal(raw.session.question.id,s.question.id); assert.equal(raw.session.deadline_at,s.deadline_at);
+    const resumed=await resume(s); assert.deepEqual(resumed.feedback,raw.answer); assert.equal(resumed.deadline_at,s.deadline_at);
     const hidden=(await rows('SELECT pool FROM private.mapadventure_sessions WHERE attempt_id=$1',[s.attempt_id]))[0].pool[1];
-    await assert.rejects(rpc('answer',{attempt_id:s.attempt_id,question_id:hidden.id,answer_payload:good(hidden)}),/Acknowledge/);
-    await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:hidden.id}),/Invalid feedback/);
+    const ledger=(await rows('SELECT question_ledger FROM private.mapadventure_sessions WHERE attempt_id=$1',[s.attempt_id]))[0].question_ledger;
+    assert.equal(ledger['1'],undefined, 'feedback/reload must not start the unseen slot clock');
+    await assert.rejects(rpc('answer',{attempt_id:s.attempt_id,question_id:hidden.id,answer_payload:good(hidden)}),/current frozen/);
+    await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:hidden.id}),/current frozen/);
     await user(other); await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}),/Session unavailable/); await user(uid);
     let r=await rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}); assert.ok(r.session.remaining_seconds>118);
-    const deadline=r.session.deadline_at; r=await rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}); assert.equal(r.session.deadline_at,deadline);
+    const deadline=r.session.deadline_at;
+    await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}),/current frozen/);
+    assert.equal((await resume(r.session)).deadline_at,deadline);
+    const revisited=await navigate(r.session,'previous'); assert.deepEqual(revisited.feedback,raw.answer);
+    assert.equal(revisited.deadline_at,s.deadline_at);
+    const replay=await rpc('answer',{attempt_id:s.attempt_id,question_id:s.question.id,answer_payload:wrong(s.question)});
+    assert.deepEqual(replay.answer,raw.answer); assert.deepEqual(replay.session.answer_payload,good(s.question));
+    r={session:await navigate(revisited,'next')};
     // Bank edits cannot alter the final frozen review.
     await db.exec("UPDATE question_options SET is_correct=false; UPDATE question_category_items SET correct_category='Wrong'");
     r=await finish(r.session); assert.equal(r.result.review.length,5); assert.equal(r.result.correct,5);
     for(const record of r.result.review) { assert.equal(record.correct,true); assert.ok(record.question.answer_keys); assert.equal(record.question.clue,undefined); assert.ok(record.answer_payload); }
     assert.deepEqual((await complete(s)).result.review,r.result.review);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  for (const stage of ['practice','sidequest','gatekeeper']) await t.test(`${stage}: all status/pointer transitions, fail logs, stale recovery and rejected foreign pointers`,async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    const pointer = `${stage}_attempt_id`, status = `${stage}_status`;
+    const node = async () => (await rows('SELECT * FROM map_adventure_topics WHERE id=$1',[nodeId]))[0];
+    const audit = async aid => rows('SELECT user_id,topic_attempt_id,node_type,exam_attempt_id,stars FROM map_adventure_logs WHERE exam_attempt_id=$1',[aid]);
+    const snapshot = async () => ({ attempts:await count('exam_attempts'), logs:await count('map_adventure_logs'), node:await node(), state:await rpc('bootstrap') });
+    // Both unlocked/completed empty pointers create and persist a new attempt immediately.
+    for (const initial of ['UNLOCKED','COMPLETED']) {
+      await db.query(`UPDATE map_adventure_topics SET ${status}=$1,${pointer}=NULL WHERE id=$2`,[initial,nodeId]);
+      const before=await count('exam_attempts');
+      let s=await start(nodeId,stage);
+      assert.equal(await count('exam_attempts'),before+1); assert.equal((await node())[pointer],s.attempt_id);
+      // Both statuses with unfinished pointer must resume the exact frozen session.
+      const resumed=await rpc('start',{nodeId,stage});
+      assert.equal(resumed.resumed,true); assert.equal(resumed.session.attempt_id,s.attempt_id);
+      assert.equal(resumed.session.question.id,s.question.id); assert.equal(resumed.session.deadline_at,s.deadline_at);
+      const r=await finish(s,0);
+      assert.equal((await node())[status],initial); assert.equal((await node())[pointer],s.attempt_id);
+      assert.deepEqual(await audit(s.attempt_id),[{user_id:uid,topic_attempt_id:nodeId,node_type:stage.toUpperCase(),exam_attempt_id:s.attempt_id,stars:0}]);
+      await complete(s); await complete(s); assert.equal((await audit(s.attempt_id)).length,1);
+      // Failed UNLOCKED must not fabricate completion; COMPLETED+finished also retries.
+      const retried=await start(nodeId,stage); assert.notEqual(retried.attempt_id,s.attempt_id);
+      assert.equal((await node())[pointer],retried.attempt_id);
+      await finish(retried);
+      // A stale finish cannot replace the pointer to a newer active retry.
+      const newer=await start(nodeId,stage); await complete(s);
+      assert.equal((await node())[pointer],newer.attempt_id); assert.equal((await resume(newer)).attempt_id,newer.attempt_id);
+      await finish(newer);
+    }
+    // Recover stale UNLOCKED + successful finished pointer; no new exam/rewards/log.
+    const successful=(await node())[pointer];
+    await db.query(`UPDATE map_adventure_topics SET ${status}='UNLOCKED' WHERE id=$1`,[nodeId]);
+    const before=await snapshot(); const r=await rpc('start',{nodeId,stage});
+    assert.equal(r.session,null); assert.equal((await node())[status],'COMPLETED'); assert.equal((await node())[pointer],successful);
+    assert.equal(await count('exam_attempts'),before.attempts); assert.equal(await count('map_adventure_logs'),before.logs);
+    assert.deepEqual(r.wallet,before.state.wallet); assert.equal(r.profile_xp,before.state.profile_xp);
+    // LOCKED never resumes/creates, whether pointer is empty or finished/unfinished.
+    for (const value of [null,successful]) {
+      await db.query(`UPDATE map_adventure_topics SET ${status}='LOCKED',${pointer}=$1 WHERE id=$2`,[value,nodeId]);
+      if(stage==='gatekeeper') await db.query("UPDATE map_adventure_topics SET practice_status='UNLOCKED' WHERE id=$1",[nodeId]);
+      await assert.rejects(start(nodeId,stage),/Node locked/);
+    }
+    await db.query(`UPDATE map_adventure_topics SET ${status}='COMPLETED',${pointer}=NULL WHERE id=$1`,[nodeId]);
+    let s=await start(nodeId,stage);
+    await db.query(`UPDATE map_adventure_topics SET ${status}='LOCKED' WHERE id=$1`,[nodeId]);
+    await assert.rejects(start(nodeId,stage),/Node locked/);
+    await db.query(`UPDATE map_adventure_topics SET ${status}='COMPLETED' WHERE id=$1`,[nodeId]);
+    // A missing legacy pointer adopts its owned active session; no pool reroll.
+    await db.query(`UPDATE map_adventure_topics SET ${pointer}=NULL WHERE id=$1`,[nodeId]);
+    assert.equal((await start(nodeId,stage)).attempt_id,s.attempt_id); assert.equal((await node())[pointer],s.attempt_id);
+    await finish(s);
+    const finishedPointer=s.attempt_id;
+    s=await start(nodeId,stage);
+    await db.query(`UPDATE map_adventure_topics SET ${pointer}=$1 WHERE id=$2`,[finishedPointer,nodeId]);
+    await assert.rejects(start(nodeId,stage),/Attempt pointer conflicts with active session/);
+    await db.query(`UPDATE map_adventure_topics SET ${pointer}=$1 WHERE id=$2`,[s.attempt_id,nodeId]);
+    await finish(s);
+    // Reject missing, other-node, other-stage, and foreign-owner pointers, even with an owned active session.
+    const otherNode=(await rpc('bootstrap')).nodes[1].id;
+    const anotherStage=stage==='practice'?'sidequest':'practice';
+    const wrongStage=(await rows('SELECT attempt_id FROM private.mapadventure_sessions WHERE user_id=$1 AND node_id=$2 AND stage=$3 LIMIT 1',[uid,nodeId,anotherStage]))[0].attempt_id;
+    const wrongNode=(await rows('SELECT attempt_id FROM private.mapadventure_sessions WHERE user_id=$1 AND node_id=$2 LIMIT 1',[uid,otherNode]))[0].attempt_id;
+    await user(other); let foreignState=await rpc('bootstrap'); const foreignNode=foreignState.nodes[0].id;
+    await db.query(`UPDATE map_adventure_topics SET ${status}='COMPLETED' WHERE id=$1`,[foreignNode]);
+    const foreign=await start(foreignNode,stage); await user(uid);
+    s=await start(nodeId,stage);
+    for (const bad of [uid,wrongStage,wrongNode,foreign.attempt_id]) {
+      await db.query(`UPDATE map_adventure_topics SET ${pointer}=$1 WHERE id=$2`,[bad,nodeId]);
+      const attempts=await count('exam_attempts'); await assert.rejects(start(nodeId,stage),/Attempt pointer unavailable/);
+      assert.equal(await count('exam_attempts'),attempts);
+    }
+    await db.query(`UPDATE map_adventure_topics SET ${pointer}=$1 WHERE id=$2`,[s.attempt_id,nodeId]);
+    await finish(s);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('UNLOCKED recovery/retry retains existing higher stars even when new passing score is lower',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    await db.query("UPDATE map_adventure_topics SET practice_status='UNLOCKED',practice_attempt_id=NULL WHERE id=$1",[nodeId]);
+    await db.query('UPDATE map_adventure_tools SET clue=1 WHERE user_id=$1',[uid]);
+    const before=await rpc('bootstrap');
+    const s=(await use(await start(nodeId,'practice'),'clue')).session;
+    const r=await finish(s); assert.equal(r.result.stars,2); assert.equal(r.nodes[0].practice_stars,3); assert.equal(r.result.best_stars,3);
+    assert.equal(r.status.stars,before.status.stars);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('finish/log failure rolls back submission, rewards, progress and allows one retry',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    await db.query("UPDATE map_adventure_topics SET gatekeeper_status='UNLOCKED',gatekeeper_attempt_id=NULL WHERE id=$1",[nodeId]);
+    let s=await start(nodeId,'gatekeeper');
+    while(s.answered < s.total) s=(await answer(s)).session;
+    const before=await rpc('bootstrap');
+    await db.exec("CREATE FUNCTION private.reject_map_log() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test log failure'; END $$; CREATE TRIGGER reject_map_log BEFORE INSERT ON map_adventure_logs FOR EACH ROW EXECUTE FUNCTION private.reject_map_log()");
+    await assert.rejects(complete(s),/test log failure/);
+    assert.equal((await rows('SELECT attempt_status FROM exam_attempts WHERE id=$1',[s.attempt_id]))[0].attempt_status,'IN_PROGRESS');
+    assert.equal((await rows('SELECT result FROM private.mapadventure_sessions WHERE attempt_id=$1',[s.attempt_id]))[0].result,null);
+    let state=await rpc('bootstrap'); assert.deepEqual(state.wallet,before.wallet); assert.deepEqual(state.status,before.status); assert.equal(state.profile_xp,before.profile_xp);
+    await db.exec('DROP TRIGGER reject_map_log ON map_adventure_logs');
+    const finished=await complete(s); await complete(s);
+    assert.equal(finished.wallet.points,before.wallet.points+50); assert.equal(finished.profile_xp,before.profile_xp+1);
+    assert.equal(Number((await rows('SELECT count(*) n FROM map_adventure_logs WHERE exam_attempt_id=$1',[s.attempt_id]))[0].n),1);
+    await assert.rejects(db.query('INSERT INTO map_adventure_logs(user_id,topic_attempt_id,node_type,exam_attempt_id) VALUES($1,$2,$3,$4)',[uid,nodeId,'GATEKEEPER',s.attempt_id]),/unique constraint/);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('independent unfinished node/stage sessions, subject switching, descriptors and explicit ownership',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    const otherNode=(await rpc('bootstrap')).nodes[1].id;
+    const a=await start(nodeId,'sidequest');
+    const b=await start(nodeId,'gatekeeper');
+    const c=await start(otherNode,'practice');
+    assert.equal(new Set([a.attempt_id,b.attempt_id,c.attempt_id]).size,3);
+    const stored=async()=>rows('SELECT * FROM private.mapadventure_sessions WHERE attempt_id=ANY($1::uuid[]) ORDER BY attempt_id',[[a.attempt_id,b.attempt_id,c.attempt_id]]);
+    const original=await stored();
+    let state=await rpc('bootstrap'); assert.equal(state.session,null);
+    assert.deepEqual(new Set(state.sessions.map(s=>s.attempt_id)),new Set([a.attempt_id,b.attempt_id,c.attempt_id]));
+    for(const s of [a,b,c]) {
+      const descriptor=state.sessions.find(d=>d.attempt_id===s.attempt_id);
+      assert.deepEqual(descriptor,{attempt_id:s.attempt_id,nodeId:s.nodeId,stage:s.stage,subject_code:'mat-sd',theme_id:state.nodes.find(n=>n.id===s.nodeId).theme_id,index:0,total:s.total,answered:0});
+      assert.equal((await start(s.nodeId,s.stage)).attempt_id,s.attempt_id);
+      assert.equal((await resume(s)).question.id,s.question.id);
+    }
+    assert.deepEqual(await stored(),original, 'selection/start resume must not reroll or reset existing clocks');
+    state=await rpc('settings',{settings:{SUBJECT:'IPA'}}); assert.equal(state.session,null);
+    const ipa=state.nodes[0].id; await read(ipa); const d=await start(ipa,'practice');
+    assert.equal((await rpc('bootstrap')).sessions.length,4);
+    for(const s of [a,b,c]) await assert.rejects(rpc('bootstrap',{attempt_id:s.attempt_id}),/Session unavailable/);
+    await assert.rejects(rpc('answer',{attempt_id:a.attempt_id,question_id:a.question.id,answer_payload:good(a.question)}),/profile\/subject changed/);
+    await rpc('settings',{settings:{SUBJECT:'Matematika'}});
+    for(const s of [a,b,c]) assert.equal((await resume(s)).deadline_at,s.deadline_at);
+    await assert.rejects(rpc('bootstrap',{attempt_id:d.attempt_id}),/Session unavailable/);
+    await assert.rejects(rpc('bootstrap',{attempt_id:uid}),/Session unavailable/);
+    await user(other); state=await rpc('bootstrap'); assert.equal(state.sessions.length,0);
+    for(const s of [a,b,c,d]) {
+      await assert.rejects(rpc('bootstrap',{attempt_id:s.attempt_id}),/Session unavailable/);
+      for(const action of ['next','previous','answer','timeout','use_tool']) {
+        const payload={attempt_id:s.attempt_id,question_id:s.question.id};
+        if(action==='answer') payload.answer_payload=good(s.question);
+        if(action==='use_tool') payload.tool='clue';
+        await assert.rejects(rpc(action,payload),/Session unavailable/);
+      }
+    }
+    await user(uid); assert.deepEqual(await stored(),original);
+    const result=await finish(a); assert.equal(result.result.attempt_id,a.attempt_id);
+    state=await rpc('bootstrap'); assert.equal(state.session,null);
+    assert.deepEqual(new Set(state.sessions.map(s=>s.attempt_id)),new Set([b.attempt_id,c.attempt_id,d.attempt_id]));
+    assert.equal((await resume(b)).deadline_at,b.deadline_at); assert.equal((await resume(c)).answered,0);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('bounded previous/next include unanswered slots; cursor is independent of record count and finish stays explicit',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    const initial=await rpc('bootstrap'); let s=await start(nodeId,'practice'); const aid=s.attempt_id;
+    assert.equal((await navigate(s,'previous')).index,0);
+    for(const action of ['next','previous']) {
+      await assert.rejects(rpc(action,{attempt_id:aid}),/Missing session/);
+      await assert.rejects(rpc(action,{attempt_id:aid,question_id:uid}),/current frozen/);
+      await assert.rejects(rpc(action,{attempt_id:aid,question_id:s.question.id,index:2}),/Unknown payload/);
+    }
+    s=await navigate(s,'next'); assert.equal(s.index,1); assert.equal(s.answered,0); assert.equal(s.feedback,null);
+    const second=s.question;
+    s=await navigate(s,'next'); assert.equal(s.index,2); assert.equal(s.answered,0);
+    assert.equal((await navigate(s,'next')).index,2);
+    let r=await rpc('answer',{attempt_id:aid,question_id:s.question.id,answer_payload:good(s.question)});
+    assert.equal(r.session.index,2); assert.equal(r.session.answered,1); assert.equal(r.session.question.id,s.question.id);
+    assert.equal((await navigate(r.session,'next')).index,2);
+    s=await navigate(r.session,'previous'); assert.equal(s.question.id,second.id); assert.equal(s.feedback,null);
+    await assert.rejects(complete(s),/All questions/);
+    r=await rpc('answer',{attempt_id:aid,question_id:s.question.id,answer_payload:good(s.question)});
+    s=await navigate(r.session,'previous'); assert.equal(s.index,0); assert.equal(s.answered,2);
+    r=await rpc('answer',{attempt_id:aid,question_id:s.question.id,answer_payload:good(s.question)});
+    assert.equal(r.session.answered,3); assert.equal(r.session.index,0); assert.ok(r.session.question);
+    assert.equal((await rows('SELECT attempt_status FROM exam_attempts WHERE id=$1',[aid]))[0].attempt_status,'IN_PROGRESS');
+    assert.equal((await rows('SELECT result FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].result,null);
+    assert.equal((await rows('SELECT count(*) n FROM map_adventure_logs WHERE exam_attempt_id=$1',[aid]))[0].n,0);
+    const records=(await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].records;
+    for(let i=0;i<3;i++) {
+      const before=await resume(r.session);
+      for(const action of ['answer','timeout','use_tool']) {
+        const payload={attempt_id:aid,question_id:before.question.id};
+        if(action==='answer') payload.answer_payload=wrong(before.question);
+        if(action==='use_tool') payload.tool='skipreplace';
+        const replay=await rpc(action,payload);
+        assert.equal(replay.session.attempt_id,aid); assert.deepEqual(replay.answer,before.feedback);
+        assert.deepEqual(replay.session.answer_payload,before.answer_payload);
+      }
+      r={session:await navigate(before,'next')};
+    }
+    assert.deepEqual((await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].records,records);
+    assert.equal(Number((await rows('SELECT count(*) n FROM exam_attempt_answers WHERE attempt_id=$1',[aid]))[0].n),3);
+    const final=await complete(r.session); assert.equal(final.result.correct,3); assert.equal(final.result.review.length,3);
+    assert.deepEqual(final.wallet,initial.wallet); assert.equal(final.profile_xp,initial.profile_xp);
+    assert.deepEqual((await complete({attempt_id:aid})).result,final.result);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('visited slot clocks/effects persist across back/forward/reload; unseen clocks and other sessions stay untouched',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    await db.query('UPDATE map_adventure_tools SET clue=5,secondchance=5,freezetime=5,skipreplace=5 WHERE user_id=$1',[uid]);
+    let s=await start(nodeId,'gatekeeper'); const aid=s.attempt_id; const first=s.question.id;
+    const unrelated=await start(nodeId,'sidequest');
+    const otherBefore=(await rows('SELECT * FROM private.mapadventure_sessions WHERE attempt_id=$1',[unrelated.attempt_id]))[0];
+    s=(await use(s,'clue')).session; s=(await use(s,'secondchance')).session;
+    const retry=await rpc('answer',{attempt_id:aid,question_id:s.question.id,answer_payload:wrong(s.question)});
+    assert.equal(retry.answer.retry,true); s=retry.session;
+    const firstEffects=s.effects; assert.equal(firstEffects.first_answer,undefined);
+    const firstDeadline=s.deadline_at;
+    s=await navigate(s,'next'); const secondDeadline=s.deadline_at; assert.equal(s.index,1); assert.equal(s.answered,0);
+    assert.deepEqual(s.effects,{});
+    s=await navigate(s,'previous'); assert.equal(s.question.id,first); assert.equal(s.deadline_at,firstDeadline); assert.deepEqual(s.effects,firstEffects);
+    s=await resume(s); assert.equal(s.deadline_at,firstDeadline); assert.deepEqual(s.effects,firstEffects);
+    await assert.rejects(use(s,'clue'),/already used/); await assert.rejects(use(s,'secondchance'),/already used/);
+    s=(await use(s,'freezetime')).session; assert.equal(Date.parse(s.deadline_at)-Date.parse(firstDeadline),30000);
+    const frozen=s.deadline_at;
+    const ledger=async()=>(await rows('SELECT question_ledger FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].question_ledger;
+    assert.equal(Date.parse((await ledger())['0'].deadline_at),Date.parse(frozen));
+    s=(await use(s,'skipreplace')).session; assert.notEqual(s.question.id,first); assert.equal(s.deadline_at,frozen); assert.equal(s.answered,0);
+    assert.equal(s.effects.clue,undefined); assert.equal(s.effects.retried,undefined); assert.equal(s.effects.secondchance,undefined);
+    s=await navigate(s,'next'); assert.equal(s.deadline_at,secondDeadline);
+    s=await navigate(s,'previous'); s=await resume(s); assert.equal(s.deadline_at,frozen);
+    await assert.rejects(use(s,'freezetime'),/already used/); await assert.rejects(use(s,'skipreplace'),/already used/);
+    assert.equal((await ledger())['2'],undefined);
+    // Owner ages the selected slot; navigation must expire the source once before leaving.
+    await expire(s); s=await navigate(s,'next');
+    // Navigation expires the selected source once before leaving, but never unrelated sessions.
+    assert.equal(s.answered,1); assert.equal(s.index,1); assert.equal(s.deadline_at,secondDeadline);
+    s=await navigate(s,'previous'); assert.equal(s.feedback.is_timeout,true); assert.equal(s.answered,1);
+    const saved=(await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].records;
+    for(let i=0;i<3;i++) await resume(s);
+    assert.deepEqual((await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].records,saved);
+    assert.deepEqual((await rows('SELECT * FROM private.mapadventure_sessions WHERE attempt_id=$1',[unrelated.attempt_id]))[0],otherBefore);
+    assert.equal((await ledger())['2'],undefined);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('lazy expiry processes only explicitly selected slot once, never expires/submits attempt or starts unseen clocks',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    let a=await start(nodeId,'sidequest'); const b=await start(nodeId,'gatekeeper');
+    const first=a; a=await navigate(a,'next'); const second=a;
+    await expire(second);
+    await expire(b);
+    // Age the previous visited slot too, without selecting it.
+    await db.query(`UPDATE private.mapadventure_sessions SET question_ledger=jsonb_set(question_ledger,'{0,deadline_at}',to_jsonb(clock_timestamp()-interval '10 days')) WHERE attempt_id=$1`,[a.attempt_id]);
+    const before=await rows('SELECT attempt_id,records,question_ledger FROM private.mapadventure_sessions WHERE attempt_id=ANY($1::uuid[]) ORDER BY attempt_id',[[a.attempt_id,b.attempt_id]]);
+    assert.equal((await rpc('bootstrap')).session,null);
+    assert.deepEqual(await rows('SELECT attempt_id,records,question_ledger FROM private.mapadventure_sessions WHERE attempt_id=ANY($1::uuid[]) ORDER BY attempt_id',[[a.attempt_id,b.attempt_id]]),before);
+    a=await resume(a); assert.equal(a.question.id,second.question.id); assert.equal(a.index,1); assert.equal(a.answered,1); assert.equal(a.feedback.is_timeout,true);
+    assert.deepEqual(a.answer_payload,{});
+    assert.equal((await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1',[b.attempt_id]))[0].records.length,0);
+    let r=await rpc('timeout',{attempt_id:a.attempt_id,question_id:a.question.id}); assert.deepEqual(r.answer,a.feedback);
+    a=await navigate(a,'previous'); assert.equal(a.question.id,first.question.id); assert.equal(a.answered,2); assert.equal(a.feedback.is_timeout,true);
+    a=await navigate(a,'next'); assert.equal(a.answered,2);
+    const ledger=(await rows('SELECT question_ledger FROM private.mapadventure_sessions WHERE attempt_id=$1',[a.attempt_id]))[0].question_ledger;
+    assert.equal(ledger['2'],undefined); assert.equal(ledger['3'],undefined); assert.equal(ledger['4'],undefined);
+    assert.equal(Number((await rows('SELECT count(*) n FROM exam_attempt_answers WHERE attempt_id=$1',[a.attempt_id]))[0].n),2);
+    await assert.rejects(complete(a),/All questions/);
+    const exams=await rows('SELECT attempt_status,deadline_at,submitted_at FROM exam_attempts WHERE id=ANY($1::uuid[])',[[a.attempt_id,b.attempt_id]]);
+    assert.ok(exams.every(e=>e.attempt_status==='IN_PROGRESS' && e.deadline_at===null && e.submitted_at===null));
+    assert.equal((await start(nodeId,'sidequest')).attempt_id,a.attempt_id);
+    assert.equal((await resume(a)).answered,2);
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('canonical redeploy replaces only known global index and preserves unfinished attempts/slot ledgers',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    let s=await start(nodeId,'gatekeeper'); s=await navigate(s,'next');
+    const snapshot=async()=>({
+      sessions:await rows('SELECT * FROM private.mapadventure_sessions ORDER BY attempt_id'),
+      exams:await rows('SELECT * FROM exam_attempts ORDER BY id'),
+      answers:await rows('SELECT * FROM exam_attempt_answers ORDER BY attempt_id,question_id'),
+      nodes:await rows('SELECT * FROM map_adventure_topics ORDER BY id'),
+    });
+    const before=await snapshot();
+    await db.exec('SET CONSTRAINTS ALL IMMEDIATE; DROP INDEX private.mapadventure_active_node_stage; CREATE UNIQUE INDEX mapadventure_active_session ON private.mapadventure_sessions(user_id) WHERE result IS NULL');
+    const redeploy=migration.replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,'');
+    await db.exec(redeploy); await db.exec(redeploy);
+    assert.deepEqual(await snapshot(),before);
+    assert.equal((await rows("SELECT to_regclass('private.mapadventure_active_session') id"))[0].id,null);
+    const index=(await rows("SELECT indexdef FROM pg_indexes WHERE schemaname='private' AND indexname='mapadventure_active_node_stage'"))[0].indexdef;
+    assert.match(index,/UNIQUE.*\(user_id, node_id, stage\).*result IS NULL/);
+    assert.equal((await resume(s)).deadline_at,s.deadline_at);
+    await db.exec('SET CONSTRAINTS ALL DEFERRED');
+    const otherSession=await start(nodeId,'sidequest'); assert.notEqual(otherSession.attempt_id,s.attempt_id);
+    await db.exec('SET CONSTRAINTS ALL IMMEDIATE');
+    const finished=(await rows('SELECT attempt_id FROM private.mapadventure_sessions WHERE user_id=$1 AND node_id=$2 AND stage=$3 AND result IS NOT NULL LIMIT 1',[uid,nodeId,'gatekeeper']))[0];
+    await db.exec('SAVEPOINT duplicate_slot');
+    await assert.rejects(db.query('UPDATE private.mapadventure_sessions SET result=NULL WHERE attempt_id=$1',[finished.attempt_id]),/mapadventure_active_node_stage/);
+    await db.exec('ROLLBACK TO SAVEPOINT duplicate_slot; RELEASE SAVEPOINT duplicate_slot');
+    // An unexpected historical name is not permission to drop an arbitrary index.
+    await db.exec('CREATE INDEX mapadventure_active_session ON private.mapadventure_sessions(node_id); SAVEPOINT unsafe_index');
+    await assert.rejects(db.exec(redeploy),/Unexpected mapadventure_active_session definition/);
+    await db.exec('ROLLBACK TO SAVEPOINT unsafe_index; RELEASE SAVEPOINT unsafe_index');
+    assert.ok((await rows("SELECT to_regclass('private.mapadventure_active_session') id"))[0].id);
+    assert.equal((await resume(s)).deadline_at,s.deadline_at);
     await db.exec('ROLLBACK'); isolated=false;
   });
   await t.test('balance conflict, incompatible wallet redeploy and insufficient purchase fail closed',async()=>{

@@ -11,7 +11,7 @@ export function validPayload(action, payload) {
   if (!object(payload)) return false;
   try { if (Buffer.byteLength(JSON.stringify(payload), "utf8") > 65536) return false; } catch { return false; }
   switch (action) {
-    case "bootstrap": return keys(payload, []);
+    case "bootstrap": return keys(payload, ["attempt_id"]) && (payload.attempt_id === undefined || uuid(payload.attempt_id));
     case "settings": {
       const s = payload.settings;
       return keys(payload, ["settings"]) && keys(s, ["SHOW_TIPS", "SUBJECT"]) && Object.keys(s).length > 0 &&
@@ -24,6 +24,7 @@ export function validPayload(action, payload) {
     case "complete_island": return keys(payload, ["islandId"]) && uuid(payload.islandId);
     case "gacha": return keys(payload, ["nodeId", "chestTier"]) && uuid(payload.nodeId) && (payload.chestTier === undefined || ["wooden", "silver", "golden"].includes(payload.chestTier));
     case "buy": return keys(payload, ["tool"]) && TOOLS.includes(payload.tool);
+    case "previous":
     case "next":
     case "timeout": return keys(payload, ["attempt_id", "question_id"]) && uuid(payload.attempt_id) && uuid(payload.question_id);
     case "use_tool": return keys(payload, ["attempt_id", "question_id", "tool"]) && uuid(payload.attempt_id) && uuid(payload.question_id) && TOOLS.includes(payload.tool);
@@ -48,8 +49,6 @@ function safeError(error) {
     "Insufficient points": "Poin belum cukup untuk membeli alat ini.",
     "Tool inventory empty": "Persediaan alat ini habis.",
     "No clue available": "Petunjuk belum tersedia untuk soal ini.",
-    "Finish active session before changing subject": "Selesaikan sesi aktif sebelum mengganti mata pelajaran.",
-    "Different session already active": "Ada sesi lain yang aktif. Lanjutkan sesi tersimpan.",
     "Node locked": "Tahap ini masih terkunci.",
     "Node locked or already completed": "Tahap terkunci atau sudah selesai. Muat ulang peta.",
     "Tool already used on question": "Alat ini sudah digunakan. Muat ulang sesi untuk melihat efeknya.",
@@ -84,7 +83,9 @@ export function publicState(data) {
     nodes: (data.nodes || []).map(n => pick(n, ["id", "theme_id", "subject_topic_id", "theme", "topic", "order_number", "material_status", "practice_status", "sidequest_status", "mysterychest_status", "gatekeeper_status", "material_stars", "practice_stars", "sidequest_stars", "gatekeeper_stars", "chest_reward"])),
     status: pick(data.status, ["points", "stars"]), wallet: pick(data.wallet, ["points"]), inventory: pick(data.inventory, TOOLS), profile_xp: data.profile_xp,
     tip: data.tip ? pick(data.tip, ["id", "message"]) : null,
+    sessions: (data.sessions || []).map(s => pick(s, ["attempt_id", "nodeId", "stage", "subject_code", "theme_id", "index", "total", "answered"])),
     session: data.session ? { ...pick(data.session, ["attempt_id", "nodeId", "stage", "index", "total", "answered", "deadline_at", "server_now", "remaining_seconds"]),
+      answer_payload: data.session.answer_payload ? answerPayload(data.session.answer_payload) : null,
       question: question(data.session.question), feedback: feedback(data.session.feedback), tools: ledger(data.session.tools), effects: pick(data.session.effects, ["clue", "eliminated", "secondchance", "retried"]) } : null,
   };
   if (data.material) result.material = pick(data.material, ["nodeId", "text", "url", "readToken"]);
@@ -117,19 +118,22 @@ export function createMapadventureActions({ getUser, cookies }) {
   }
   async function completeNode(expectedUserId, nodeId, score, usedTools, attemptId) {
     // Compatibility hints are bounded, but never forwarded or used to grade/reward.
-    if (!uuid(expectedUserId) || !uuid(nodeId) || (attemptId !== undefined && !uuid(attemptId)) ||
+    if (!uuid(expectedUserId) || !uuid(nodeId) || !uuid(attemptId) ||
       (score !== undefined && (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100)) ||
       (usedTools !== undefined && (!Array.isArray(usedTools) || usedTools.length > 100 || !usedTools.every(t => keys(t, ["tool", "question_id"]) && TOOLS.includes(t.tool) && uuid(t.question_id))))) return { ok: false, error: "Perintah penyelesaian tidak valid." };
     try {
       const identity = await identityFor(expectedUserId);
       if (identity.failure) return identity.failure;
-      const state = await call(identity, "bootstrap", {});
+      const state = await call(identity, "bootstrap", { attempt_id: attemptId });
       if (!state.ok) return state;
       const session = state.data.session;
-      if (session && (session.nodeId !== nodeId || (attemptId && session.attempt_id !== attemptId))) return { ok: false, error: "Sesi aktif tidak cocok dengan topik ini." };
-      const id = attemptId || session?.attempt_id;
-      if (!id) return { ok: false, error: "Sesi tidak tersedia. Muat ulang data." };
-      const completed = await call(identity, "complete_node", { attempt_id: id });
+      if (state.data.result) {
+        return state.data.result.nodeId === nodeId && state.data.result.attempt_id === attemptId
+          ? state : { ok: false, error: "Hasil tidak cocok dengan topik ini." };
+      }
+      if (!session || session.nodeId !== nodeId || session.attempt_id !== attemptId) return { ok: false, error: "Sesi tidak cocok dengan topik ini." };
+      if (session.answered !== session.total || !(session.total > 0)) return { ok: false, error: "Tangani seluruh soal sebelum menyelesaikan sesi." };
+      const completed = await call(identity, "complete_node", { attempt_id: attemptId });
       if (completed.ok && completed.data.result?.nodeId !== nodeId) return { ok: false, error: "Hasil tidak cocok dengan topik ini." };
       return completed;
     } catch { return { ok: false, error: safeError() }; }

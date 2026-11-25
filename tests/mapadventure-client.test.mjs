@@ -101,6 +101,30 @@ test('uncommitted answer retry remains identical, preserving original draft payl
   const answers = f.calls.filter(c => c[0] === 'answer');
   assert.deepEqual(answers[0][1], answers[1][1]);
 });
+test('lost start reconciles new/resumed/stale-completed state without dispatching another start', async () => {
+  for (const exists of [true, false]) {
+    const state = { ...active, session: exists ? { ...active.session, nodeId: user, stage: 'practice' } : null };
+    const f=fixture({ action: async (action, payload) => {
+      if (action==='start') throw Error('network');
+      return { ok:true, userId:user, data: payload.attempt_id ? state : { ...state, session: null, sessions: exists ? [{ attempt_id: user, nodeId: user, stage: 'practice' }] : [] } };
+    } });
+    const result=await f.client('start',{nodeId:user,stage:'practice'});
+    assert.deepEqual(result.session,state.session);
+    assert.equal(f.calls.filter(c=>c[0]==='start').length,1);
+    assert.deepEqual(f.calls.filter(c=>c[0]==='bootstrap').map(c=>c[1]), exists ? [{}, {attempt_id:user}] : [{}]);
+  }
+});
+test('lost start and failed reconciliation require a later bootstrap, not a blind reattempt', async () => {
+  let down=true;
+  const f=fixture({ action: async () => {
+    if(down) throw Error('network');
+    return {ok:true,userId:user,data:{...active,session:null}};
+  } });
+  await assert.rejects(f.client('start',{nodeId:user,stage:'practice'}),/Koneksi terputus/);
+  down=false;
+  assert.equal((await f.client('start',{nodeId:user,stage:'practice'})).session,null);
+  assert.equal(f.calls.filter(c=>c[0]==='start').length,1);
+});
 test('uncertain buy/tool are reconciled, never automatically replayed even if bootstrap also fails', async () => {
   for (const mutation of ['buy', 'use_tool']) {
     let down = true;
@@ -167,8 +191,36 @@ test('uncommitted timeout retries identical keys only after bootstrap reconcilia
  let n=0;
  const f=fixture({action:async action=>{if(action==='timeout' && ++n===1) throw Error('network'); return {ok:true,userId:user,data:structuredClone(active)};}});
  await assert.rejects(f.client('timeout',{attempt_id:user,question_id:other}),/Koneksi terputus/);
- await f.client('timeout',{attempt_id:user,question_id:user});
+ await f.client('timeout',{attempt_id:user,question_id:other});
  assert.deepEqual(f.calls.filter(c=>c[0]==='timeout').map(c=>c[1]),[{attempt_id:user,question_id:other},{attempt_id:user,question_id:other}]);
+});
+test('answered review has no running countdown even when its original deadline is retained', () => {
+  const session = { stage: 'gatekeeper', deadline_at: '2026-01-01T00:02:00Z', remaining_seconds: 120,
+    feedback: { question_id: other, accepted: true, correct: true } };
+  assert.equal(questionSecondsLeft(session), null);
+  assert.equal(questionSecondsLeft(session, 999999), null);
+});
+test('answer reconciliation always targets selected attempt, including a later retry', async () => {
+  let count = 0;
+  const f = fixture({ action: async action => {
+    if (action === 'answer' && ++count === 1) throw Error('network');
+    return { ok: true, userId: user, data: structuredClone(active) };
+  } });
+  await assert.rejects(f.client('answer', payload), /Koneksi terputus/);
+  await f.client('answer', payload);
+  assert.deepEqual(f.calls.filter(c => c[0] === 'bootstrap').map(c => c[1]), [{ attempt_id: user }, { attempt_id: user }]);
+});
+test('uncertain answer cannot be replayed by answering a different attempt or question', async () => {
+  for (const changed of [{ ...payload, attempt_id: other }, { ...payload, question_id: user }]) {
+    const f = fixture({ action: async action => {
+      if (action === 'answer') throw Error('network');
+      return { ok: true, userId: user, data: structuredClone(active) };
+    } });
+    await assert.rejects(f.client('answer', payload), /Koneksi terputus/);
+    await f.client('answer', changed);
+    assert.equal(f.calls.filter(c => c[0] === 'answer').length, 1);
+    assert.deepEqual(f.calls.filter(c => c[0] === 'bootstrap').map(c => c[1]), [{ attempt_id: user }, { attempt_id: user }]);
+  }
 });
 test('final review adapter preserves server correctness, codes, categories and timeout with no local grading', () => {
   const question={id:user,type:'PGK_MA',text:'Frozen',options:[{option_code:'X',option_text:'Satu'},{option_code:'Z',option_text:'Dua'}],answer_keys:{option_codes:['Z']}};
@@ -181,7 +233,7 @@ test('final review adapter preserves server correctness, codes, categories and t
   assert.deepEqual(records[1].selected,{1:'Benar'}); assert.deepEqual(records[1].question.answer_keys.categories,{1:'Benar'}); assert.equal(records[2].selected,null);
 });
 test('lost answer reconciles persisted feedback without dispatching another answer',async()=>{
-  const feedback={...active,session:{...active.session,question:null,feedback:{question_id:other,correct:true}}};
+  const feedback={...active,session:{...active.session,feedback:{question_id:other,correct:true},answer_payload:{option_codes:['A']}}};
   const f=fixture({action:async action=>{if(action==='answer') throw Error('network'); return {ok:true,userId:user,data:feedback};}});
   const r=await f.client('answer',payload); assert.equal(r.session.feedback.correct,true); assert.equal(f.calls.filter(c=>c[0]==='answer').length,1);
 });
@@ -189,7 +241,7 @@ test('shared choices/review, replay controls and explicit feedback transition st
   const ui=readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx',import.meta.url),'utf8');
   assert.match(ui,/<BossFightChoices/); assert.match(ui,/<BossFightReview records=\{mapadventureReviewRecords\(result.review\)\}/);
   assert.match(ui,/navigationId="mapadventure-review-navigation"/); assert.match(ui,/Review jawaban/); assert.match(ui,/result.best_stars/);
-  assert.match(ui,/const feedback = session.feedback/); assert.match(ui,/game.run\("next", \{ attempt_id: session.attempt_id, question_id: feedback.question_id \}\)/);
+  assert.match(ui,/const feedback = session.feedback/); assert.match(ui,/game.run\("next", \{ attempt_id: session.attempt_id, question_id: q.id \}\)/);
   assert.match(ui,/disabled=\{game.busy \|\| status === "LOCKED"\}/); assert.doesNotMatch(ui,/status === "COMPLETED" && !/);
 });
 test('UI integration contract: no demo bank/local progression, reading gate, actual session/rewards, immediate tips rollback', () => {
