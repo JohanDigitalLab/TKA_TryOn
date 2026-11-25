@@ -6,6 +6,15 @@ import { createMapadventureClient } from '../src/lib/student/mapadventure-client
 const ui = readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx', import.meta.url), 'utf8');
 const quiz = ui.slice(ui.indexOf('function Quiz('), ui.indexOf('function AdventureResult('));
 
+test('completed trail confirms replay while unfinished sessions resume directly', () => {
+  const trail = ui.slice(ui.indexOf('function TopicTrail('), ui.indexOf('export default function MapAdventure('));
+  assert.match(trail, /Kamu sudah melewati ini\. Mau explore lagi\?/);
+  assert.match(trail, /COMPLETED[\s\S]{0,40}!unfinished/);
+  assert.match(trail, /game.run\("bootstrap", \{ attempt_id: attemptId \}\)/);
+  assert.doesNotMatch(trail, /replay: (true|false)/);
+  assert.match(trail, /session.nodeId === node.id && session.stage === stage/);
+});
+
 test('modal header and bag balance stay outside the scrolling body', () => {
   const modal = ui.slice(ui.indexOf('function Modal('), ui.indexOf('function Feedback('));
   assert.match(modal, /flex-col overflow-hidden/);

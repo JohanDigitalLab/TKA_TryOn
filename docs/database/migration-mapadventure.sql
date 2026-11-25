@@ -435,7 +435,7 @@ BEGIN
  IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR octet_length(p_payload::text)>65536 THEN RAISE EXCEPTION 'Invalid payload' USING ERRCODE='22023'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_payload) k WHERE NOT(k=ANY(CASE p_action
  WHEN 'bootstrap' THEN ARRAY['attempt_id'] WHEN 'settings' THEN ARRAY['settings'] WHEN 'material' THEN ARRAY['nodeId'] WHEN 'read_complete' THEN ARRAY['nodeId','readToken']
- WHEN 'start' THEN ARRAY['nodeId','stage'] WHEN 'answer' THEN ARRAY['attempt_id','question_id','answer_payload'] WHEN 'timeout' THEN ARRAY['attempt_id','question_id'] WHEN 'use_tool' THEN ARRAY['attempt_id','question_id','tool']
+ WHEN 'start' THEN ARRAY['nodeId','stage','replay'] WHEN 'answer' THEN ARRAY['attempt_id','question_id','answer_payload'] WHEN 'timeout' THEN ARRAY['attempt_id','question_id'] WHEN 'use_tool' THEN ARRAY['attempt_id','question_id','tool']
  WHEN 'next' THEN ARRAY['attempt_id','question_id'] WHEN 'previous' THEN ARRAY['attempt_id','question_id'] WHEN 'complete_node' THEN ARRAY['attempt_id'] WHEN 'complete_island' THEN ARRAY['islandId'] WHEN 'gacha' THEN ARRAY['nodeId','chestTier'] ELSE ARRAY['tool'] END))) THEN
   RAISE EXCEPTION 'Unknown payload field; client scores/user/tools/tier overrides forbidden' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('mapadventure:user:'||u::text,0));
@@ -465,6 +465,9 @@ BEGIN
   PERFORM private.mapadventure_progress(n.id,'material',3);
  ELSIF p_action='start' THEN
   stage:=p_payload->>'stage';
+  IF p_payload ? 'replay' AND jsonb_typeof(p_payload->'replay') IS DISTINCT FROM 'boolean' THEN
+   RAISE EXCEPTION 'Invalid replay choice' USING ERRCODE='22023';
+  END IF;
   IF stage IS NULL OR stage NOT IN('practice','sidequest','gatekeeper') THEN RAISE EXCEPTION 'Invalid stage' USING ERRCODE='22023'; END IF;
   IF coalesce(to_jsonb(n)->>(stage||'_status'),'LOCKED') NOT IN('UNLOCKED','COMPLETED') THEN RAISE EXCEPTION 'Node locked'; END IF;
   pointer:=(to_jsonb(n)->>(stage||'_attempt_id'))::uuid;
@@ -473,6 +476,13 @@ BEGIN
     WHERE ms.attempt_id=pointer AND ms.user_id=u AND ms.node_id=n.id AND ms.stage=p_payload->>'stage'
     AND e.user_id=u AND e.attempt_type='GAMIFICATION' AND e.gamification_app='MAPADVENTURE' FOR UPDATE OF ms;
    IF NOT FOUND THEN RAISE EXCEPTION 'Attempt pointer unavailable' USING ERRCODE='42501'; END IF;
+   IF p_payload->'replay'='false'::jsonb THEN
+    IF s.result IS NULL OR to_jsonb(n)->>(stage||'_status') IS DISTINCT FROM 'COMPLETED'
+      OR NOT EXISTS(SELECT 1 FROM public.exam_attempts e WHERE e.id=pointer AND e.user_id=u AND e.attempt_status='SUBMITTED') THEN
+     RAISE EXCEPTION 'Submitted result unavailable' USING ERRCODE='22023';
+    END IF;
+    RETURN private.mapadventure_state(NULL::uuid)||jsonb_build_object('result',s.result);
+   END IF;
    IF s.result IS NOT NULL AND to_jsonb(n)->>(stage||'_status')='UNLOCKED'
      AND coalesce((s.result->>'passed')::boolean,false) THEN
     -- Recover a stale successful status without paying first-completion rewards twice.
@@ -491,6 +501,9 @@ BEGIN
     PERFORM private.mapadventure_seed(lvl,sc,cfg->>'SUBJECT');
     RETURN private.mapadventure_state(aid)||jsonb_build_object('resumed',false);
    END IF;
+  END IF;
+  IF p_payload->'replay'='false'::jsonb THEN
+   RAISE EXCEPTION 'Submitted result unavailable' USING ERRCODE='22023';
   END IF;
   SELECT * INTO s FROM private.mapadventure_sessions ms WHERE ms.user_id=u AND ms.node_id=n.id AND ms.stage=p_payload->>'stage' AND ms.result IS NULL FOR UPDATE;
   IF FOUND THEN

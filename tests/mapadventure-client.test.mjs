@@ -267,7 +267,7 @@ test('UI integration contract: no demo bank/local progression, reading gate, act
   assert.match(ui, /sandbox=""\s+referrerPolicy="no-referrer"/);
   assert.match(ui, /rel="noopener noreferrer"/);
   assert.match(ui, /STAGES\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.id === session\.stage\s*\)\?\.requirement/);
-  assert.match(ui, /STAGES\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.id === session\.stage\s*\)\?\.selection/);
+  assert.match(ui, /STAGES\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.id === session\.stage\s*\)\?\.name/);
   assert.doesNotMatch(ui + hook, /SHOW_TIPS1|tip1/);
   assert.match(hook, /SHOW_TIPS === "1" && data.tip\?\.message/);
   assert.match(hook, /SHOW_TIPS: checked \? "0" : "1"/);

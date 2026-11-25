@@ -749,6 +749,7 @@ function AdventureResult({ result, onClose }) {
   );
 }
 function TopicTrail({ node, game }) {
+  const [replayStage, setReplayStage] = useState(null);
   const height = 760;
   // Tata letak asimetris versi impor: cabang samping di kiri, penjaga di kanan bawah.
   const coordinates = [
@@ -767,10 +768,34 @@ function TopicTrail({ node, game }) {
   async function activate(stage) {
     if (stage === "material") return game.run("material", { nodeId: node.id });
     if (stage === "mysterychest") return game.openGachaChest(node.id);
+    const unfinished = game.state.sessions?.some((session) => session.nodeId === node.id && session.stage === stage);
+    if (node[`${stage}_status`] === "COMPLETED" && !unfinished) {
+      setReplayStage(stage);
+      return;
+    }
     return game.run("start", { nodeId: node.id, stage });
   }
   return (
     <div className="relative mx-auto max-w-md" style={{ height }}>
+      {replayStage && (
+        <Modal title="Jelajahi lagi?" onClose={() => setReplayStage(null)}>
+          <p className="mb-5">Kamu sudah melewati ini. Mau explore lagi?</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button className="rounded-2xl border px-5 py-3 font-bold" disabled={game.busy}
+              onClick={async () => {
+                const attemptId = node[`${replayStage}_attempt_id`];
+                if (!attemptId) return game.reportError("Hasil attempt saat ini belum tersedia. Muat ulang peta.");
+                const saved = await game.run("bootstrap", { attempt_id: attemptId });
+                if (saved) setReplayStage(null);
+              }}>Tidak, tampilkan hasil</button>
+            <button className={button} disabled={game.busy}
+              onClick={async () => {
+                const saved = await game.run("start", { nodeId: node.id, stage: replayStage });
+                if (saved) setReplayStage(null);
+              }}>Iya, explore lagi</button>
+          </div>
+        </Modal>
+      )}
       <svg
         className="pointer-events-none absolute h-full w-full"
         viewBox={`0 0 100 ${height}`}

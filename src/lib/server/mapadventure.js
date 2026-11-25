@@ -19,7 +19,7 @@ export function validPayload(action, payload) {
     }
     case "material": return keys(payload, ["nodeId"]) && uuid(payload.nodeId);
     case "read_complete": return keys(payload, ["nodeId", "readToken"]) && uuid(payload.nodeId) && uuid(payload.readToken);
-    case "start": return keys(payload, ["nodeId", "stage"]) && uuid(payload.nodeId) && ["practice", "sidequest", "gatekeeper"].includes(payload.stage);
+    case "start": return keys(payload, ["nodeId", "stage", "replay"]) && uuid(payload.nodeId) && ["practice", "sidequest", "gatekeeper"].includes(payload.stage) && (payload.replay === undefined || typeof payload.replay === "boolean");
     case "complete_node": return keys(payload, ["attempt_id"]) && uuid(payload.attempt_id);
     case "complete_island": return keys(payload, ["islandId"]) && uuid(payload.islandId);
     case "gacha": return keys(payload, ["nodeId", "chestTier"]) && uuid(payload.nodeId) && (payload.chestTier === undefined || ["wooden", "silver", "golden"].includes(payload.chestTier));
@@ -80,7 +80,7 @@ export function publicState(data) {
     settings: pick(data.settings, ["SHOW_TIPS", "SUBJECT"]), education_level: data.education_level, subject_code: data.subject_code,
     subjects: (data.subjects || []).map(s => pick(s, ["name", "subject_code"])),
     islands: (data.islands || []).map(i => pick(i, ["id", "theme", "order_number", "status", "stars"])),
-    nodes: (data.nodes || []).map(n => pick(n, ["id", "theme_id", "subject_topic_id", "theme", "topic", "order_number", "material_status", "practice_status", "sidequest_status", "mysterychest_status", "gatekeeper_status", "material_stars", "practice_stars", "sidequest_stars", "gatekeeper_stars", "chest_reward"])),
+    nodes: (data.nodes || []).map(n => pick(n, ["id", "theme_id", "subject_topic_id", "theme", "topic", "order_number", "practice_attempt_id", "sidequest_attempt_id", "gatekeeper_attempt_id", "material_status", "practice_status", "sidequest_status", "mysterychest_status", "gatekeeper_status", "material_stars", "practice_stars", "sidequest_stars", "gatekeeper_stars", "chest_reward"])),
     status: pick(data.status, ["points", "stars"]), wallet: pick(data.wallet, ["points"]), inventory: pick(data.inventory, TOOLS), profile_xp: data.profile_xp,
     tip: data.tip ? pick(data.tip, ["id", "message"]) : null,
     sessions: (data.sessions || []).map(s => pick(s, ["attempt_id", "nodeId", "stage", "subject_code", "theme_id", "index", "total", "answered"])),

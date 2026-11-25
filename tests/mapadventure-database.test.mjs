@@ -913,6 +913,30 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.equal((await resume(s)).deadline_at,s.deadline_at);
     await db.exec('ROLLBACK'); isolated=false;
   });
+  await t.test('completed stages offer immutable submitted results or one new resumable replay',async()=>{
+    await user(uid);
+    await db.exec('BEGIN'); isolated=true;
+    for (const stage of ['practice','sidequest','gatekeeper']) {
+      const finished=await finish(await start(nodeId,stage));
+      const before=await count('exam_attempts');
+      const saved=await rpc('start',{nodeId,stage,replay:false});
+      assert.deepEqual(saved.result,finished.result);
+      assert.equal(saved.session,null);
+      assert.equal(await count('exam_attempts'),before);
+      await assert.rejects(rpc('start',{nodeId,stage,replay:'false'}),/Invalid replay choice/);
+      const replay=await rpc('start',{nodeId,stage,replay:true});
+      assert.notEqual(replay.session.attempt_id,finished.result.attempt_id);
+      assert.equal(await count('exam_attempts'),before+1);
+      assert.equal((await rpc('start',{nodeId,stage})).session.attempt_id,replay.session.attempt_id);
+      await assert.rejects(rpc('start',{nodeId,stage,replay:false}),/Submitted result unavailable/);
+      assert.equal(await count('exam_attempts'),before+1);
+      await finish(replay.session);
+      await db.query(`UPDATE map_adventure_topics SET ${stage}_attempt_id=NULL WHERE id=$1`,[nodeId]);
+      await assert.rejects(rpc('start',{nodeId,stage,replay:false}),/Submitted result unavailable/);
+      assert.equal(await count('exam_attempts'),before+1);
+    }
+    await db.exec('ROLLBACK'); isolated=false;
+  });
   await t.test('balance conflict, incompatible wallet redeploy and insufficient purchase fail closed',async()=>{
     await db.exec('BEGIN');
     await db.exec(`UPDATE user_wallet SET points=0 WHERE user_id='${uid}'; UPDATE map_adventure_status SET points=0 WHERE user_id='${uid}'`);

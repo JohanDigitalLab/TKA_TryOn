@@ -1,5 +1,11 @@
 # MapAdventure: deployment dan kontrak integrasi
 
+## Konfirmasi eksplorasi ulang — 2026-11-25
+
+Klik Latihan, SideQuest, atau Pos Penjaga yang completed tanpa sesi berjalan menampilkan “Kamu sudah melewati ini. Mau explore lagi?”. Iya membuat attempt baru; Tidak membuka hasil beku attempt terakhir. Sesi yang belum selesai tetap dilanjutkan langsung.
+
+Tombol Tidak membaca hasil melalui bootstrap dengan attempt_id dari pointer tahap saat ini. Pointer practice/sidequest/gatekeeper diteruskan oleh proyeksi state server; pemeriksaan kepemilikan tetap dilakukan RPC. Tombol Iya memakai start standar setelah konfirmasi. Kedua tombol tidak mengirim parameter replay sehingga kompatibel dengan RPC live yang belum menerima parameter tersebut. Perbaikan tombol ini tidak membutuhkan migrasi baru. Dukungan replay opsional dalam migrasi kanonis tetap hanya disiapkan untuk deployment manual; tidak diterapkan ke database live oleh asisten.
+
 ## Penyempurnaan timer dan review — 2026-11-25
 
 Timer soal ditampilkan sebagai bar menyusut dengan hitungan waktu aksesibel. SecondChance disembunyikan sebelum jawaban dikunci dan hanya ditampilkan untuk salah/timeout yang belum menggunakan alat ini. SQL kini mendukung pembukaan timeout sekali; jika deadline sudah lewat, server memberikan durasi soal baru dari snapshot, sedangkan jawaban salah dengan waktu tersisa mempertahankan deadline. Perilaku timeout ini membutuhkan penerapan ulang migrasi kanonis secara manual, belum diterapkan live.
