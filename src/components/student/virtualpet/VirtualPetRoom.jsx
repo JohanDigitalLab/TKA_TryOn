@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
+import { useTheme } from "@/components/theme-provider";
 import useVirtualpetRoom from "./useVirtualpetRoom";
 import VirtualpetQuiz, { VirtualpetAnswerReview } from "./VirtualpetQuiz";
 import { MODES } from "@/lib/student/virtualpet-client";
@@ -396,7 +397,8 @@ export default function VirtualPetRoom() {
   const { pet, loaded, session, profileXp, busy, error, tips, hideTips, updateTips, dismissTips, result, dismissResult, run } = useVirtualpetRoom();
   const [species, setSpecies] = useState("capybara");
   const [name, setName] = useState("Mochi");
-  const [dark, setDark] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
   const [muted, setMuted] = useState(true);
   const [tab, setTab] = useState("Semua item");
   const [toast, setToast] = useState("");
@@ -422,25 +424,12 @@ export default function VirtualPetRoom() {
     : 0;
   useEffect(() => {
     const pendingEffects = effectTimers.current;
-    const initialize = setTimeout(() => {
-      try { setDark(localStorage.getItem(`${KEY}-theme`) === "dark"); } catch { /* Optional theme. */ }
-    }, 0);
     return () => {
-      clearTimeout(initialize);
       if (timer.current) clearTimeout(timer.current);
       pendingEffects.forEach(clearTimeout);
       void audio.current?.close();
     };
   }, []);
-  useEffect(() => {
-    if (loaded) {
-      try {
-        localStorage.setItem(`${KEY}-theme`, dark ? "dark" : "light");
-      } catch {
-        /* Theme still works in memory. */
-      }
-    }
-  }, [dark, loaded]);
   function sound(kind) {
     if (muted) return;
     try {
@@ -568,16 +557,6 @@ export default function VirtualPetRoom() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                className="shrink-0 rounded-full vp-icon !h-10 !w-10"
-                aria-label={
-                  dark ? "Aktifkan mode terang" : "Aktifkan mode gelap"
-                }
-                aria-pressed={dark}
-                onClick={() => setDark((d) => !d)}
-              >
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
             </div>
           </header>
           <div className="vp-grid">

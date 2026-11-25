@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { createBossfightClient, answerPayload } from "@/lib/student/bossfight-client";
 import { BossFightChoices, BossFightReview } from "./BossFightQuestions";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
+import { useTheme } from "@/components/theme-provider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -335,7 +336,7 @@ export default function BossFightArena() {
   const [eliminated, setEliminated] = useState([]);
   const [impact, setImpact] = useState(null);
   const [muted, setMuted] = useState(false);
-  const [theme, setTheme] = useState("light");
+  const { theme, toggleTheme } = useTheme();
   const [review, setReview] = useState(false);
   const [notice, setNotice] = useState(
     "Pilih jawaban yang tepat untuk menyerang!",
@@ -433,15 +434,6 @@ export default function BossFightArena() {
     if (lockRef.current) return;
     setDraftName(names[index]);
     setEditing(index);
-  }
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    try {
-      localStorage.setItem("bossfight-theme", next);
-    } catch {
-      /* Storage can be unavailable in private browsing. */
-    }
   }
   const question = pool[0] || {options: [], category_items: []};
   const correctCount = serverResult?.correct ?? session?.correct ?? 0;
@@ -653,19 +645,6 @@ export default function BossFightArena() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-label={
-                  theme === "dark"
-                    ? "Gunakan tema terang"
-                    : "Gunakan tema gelap"
-                }
-                aria-pressed={theme === "dark"}
-                className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-emerald-400 focus-visible:outline-2 focus-visible:outline-emerald-500 dark:border-slate-700 dark:bg-slate-900"
-              >
-                {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
-              </button>
             </div>
           </header>
           <section

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Local game themes never change the theme of other portal pages. */
-@custom-variant dark (&:where(.fightboss-scope.dark, .fightboss-scope.dark *, .virtualpet-scope.dark, .virtualpet-scope.dark *, .mapadventure-scope.dark, .mapadventure-scope.dark *));
+/* Game scopes follow the shared session theme; html.dark also activates dark: utilities portal-wide. */
+@custom-variant dark (&:where(.fightboss-scope.dark, .fightboss-scope.dark *, .virtualpet-scope.dark, .virtualpet-scope.dark *, .mapadventure-scope.dark, .mapadventure-scope.dark *, html.dark, html.dark *));
 
 :root {
   color-scheme: light;
@@ -60,3 +60,102 @@ body {
   line-height: 1.6;
   text-rendering: optimizeLegibility;
 }
+
+/* ---------------------------------------------------------------------------
+   Portal dark theme (student + school pages, headers, breadcrumbs, tables).
+   Driven by html.dark from ThemeProvider's shared "tka-theme" session.
+   Game scopes keep their own curated palettes and are excluded here.
+--------------------------------------------------------------------------- */
+html.dark { color-scheme: dark; }
+html.dark body { background: #0b1220; color: #dbe4f0; }
+
+/* Breadcrumb pada halaman game mengikuti palet gelap portal yang sama. */
+html.dark :is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) nav[aria-label="Breadcrumb"] { color: #a9b7c9; }
+html.dark :is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) nav[aria-label="Breadcrumb"] a { color: #93c5fd; }
+html.dark :is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) nav[aria-label="Breadcrumb"] [aria-current="page"] { color: #e2e8f0; }
+
+/* Surfaces */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-white { background-color: #101b2d; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-slate-50 { background-color: #0e1828; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-slate-100 { background-color: #152238; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-slate-300 { background-color: #2a3b55; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-slate-50:hover { background-color: #16233a; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).disabled\:bg-slate-100:disabled { background-color: #152238; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).disabled\:bg-slate-300:disabled { background-color: #2a3b55; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #1c2a40; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-\[\#f5f6f3\] { background-color: #0b1220; }
+
+/* Text */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-950,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-900,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-black { color: #f1f5f9; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-800 { color: #e2e8f0; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-700 { color: #cbd5e1; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-600 { color: #a9b7c9; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-500 { color: #8b99ad; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-slate-400 { color: #76839a; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:text-slate-700:hover { color: #e2e8f0; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).disabled\:text-slate-500:disabled { color: #8b99ad; }
+
+/* Borders */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-slate-100,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-slate-200 { border-color: #24344c; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-slate-300 { border-color: #2c3f5b; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:border-slate-400:hover { border-color: #3a5273; }
+
+/* Blue accents */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-blue-700,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-blue-800 { color: #93c5fd; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-blue-900,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-blue-950 { color: #bfdbfe; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-blue-50 { background-color: #14263f; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-blue-50:hover { background-color: #1a2f4d; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-blue-100 { background-color: #1c3a5e; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-blue-200:hover { background-color: #24466f; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-blue-100 { border-color: #22406a; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-blue-200 { border-color: #2a4a73; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:border-blue-300:hover { border-color: #35598a; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).ring-blue-200 { --tw-ring-color: #2a4a73; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).focus\:ring-blue-100:focus { --tw-ring-color: #1c3a5e; }
+
+/* Amber / warning tints */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-amber-50 { background-color: #2a2412; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-amber-100:hover { background-color: #3a3118; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-amber-200 { border-color: #57471f; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-amber-300 { border-color: #6b5626; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-amber-400 { border-color: #7c632c; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-amber-700,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-amber-800 { color: #fcd34d; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-amber-900,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-amber-950 { color: #fde68a; }
+
+/* Emerald / green tints */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-emerald-50,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-green-50 { background-color: #10241c; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-green-100 { background-color: #163226; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-emerald-200,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-green-200 { border-color: #1e4636; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-green-300 { border-color: #275a44; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-emerald-700,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-green-600,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-green-700 { color: #6ee7b7; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-emerald-900,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-green-800,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-green-900 { color: #a7f3d0; }
+
+/* Rose / red tints */
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-rose-50,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-red-50 { background-color: #2c1620; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).bg-red-100 { background-color: #3a1d26; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-rose-200,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-red-200 { border-color: #5c2840; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).border-red-300 { border-color: #6f3140; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-rose-600,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-rose-700,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-red-700,
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-red-800 { color: #fca5a5; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).text-red-900 { color: #fecaca; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-red-100:hover { background-color: #3a1d26; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).hover\:bg-rose-50:hover { background-color: #2c1620; }
+html.dark :not(:is(.fightboss-scope, .virtualpet-scope, .mapadventure-scope) *).focus\:ring-red-200:focus { --tw-ring-color: #5c2840; }

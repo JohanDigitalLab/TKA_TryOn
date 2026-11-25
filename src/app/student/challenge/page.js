@@ -8,6 +8,8 @@ import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalize
 import { supabase } from "@/lib/supabase";
 import { QuestionNavigation, QuestionReviewList, RenderAnswer } from "@/components/student/question-review";
 import { getSubjectSessionConflict } from "@/lib/student/subject-session";
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 
 // =====================================================
 // HELPER
@@ -22,6 +24,7 @@ function ChallengeContent() {
   const searchParams = useSearchParams();
   const resumeAttemptId = searchParams.get("attemptId");
   const assignmentId = searchParams.get("assignmentId");
+  const { theme, toggleTheme } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1068,7 +1071,15 @@ function ChallengeContent() {
           </div>)}
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Mode Terang" : "Mode Gelap"}
+            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50"
+          >
+            {theme === "dark" ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+          </button>
           <button
             onClick={() => setShowConfirm(true)}
             disabled={isFinishing || saving}

@@ -1,5 +1,11 @@
 # MapAdventure: deployment dan kontrak integrasi
 
+## Tema gelap portal dan switcher bersama — 2026-11-25
+
+Seluruh halaman portal siswa dan sekolah (student, student/tryout, student/exercise, student/challenge, student/review, student/results, student/profile, school, school/profile, school/operator) kini memiliki mode gelap melalui satu sumber kebenaran: `ThemeProvider` menyimpan preferensi pada sessionStorage `tka-theme` (sesi yang sama dengan halaman utama), menandai `html[data-tkaTheme]`, dan menambahkan kelas `html.dark`. Layer CSS di `globals.css` mengubah permukaan, teks, garis, dan aksen slate/blue/amber/emerald/rose untuk elemen portal, sementara scope game (`fightboss-scope`, `virtualpet-scope`, `mapadventure-scope`) tetap memakai palet kurasi masing-masing.
+
+Switcher berada di dropdown profil `PortalHeader`: satu menu yang teksnya mengikuti mode aktif — "Mode Gelap" saat terang, "Mode Terang" saat gelap. BossFight, VirtualPet, dan MapAdventure tidak lagi menyimpan tema lokal (`localStorage` tema dihapus); tombol internal game memakai `useTheme()` yang sama sehingga mode berganti konsisten di semua halaman, termasuk header CBT `student/challenge`. Regresi baru `tests/theme-switcher.test.mjs` mengunci kontrak ini. Tidak ada perubahan database untuk fitur ini.
+
 ## Konfirmasi eksplorasi ulang — 2026-11-25
 
 Klik Latihan, SideQuest, atau Pos Penjaga yang completed tanpa sesi berjalan menampilkan “Kamu sudah melewati ini. Mau explore lagi?”. Iya membuat attempt baru; Tidak membuka hasil beku attempt terakhir. Sesi yang belum selesai tetap dilanjutkan langsung.

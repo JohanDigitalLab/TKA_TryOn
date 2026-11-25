@@ -4,6 +4,13 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
 
+/** Satu sumber kebenaran tema: atribut data, kelas html.dark (Tailwind), dan color-scheme ikut berubah. */
+function applyTheme(next) {
+  const root = document.documentElement;
+  root.dataset.tkaTheme = next;
+  root.classList.toggle("dark", next === "dark");
+}
+
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState("dark");
   const [ready, setReady] = useState(false);
@@ -19,14 +26,14 @@ export function ThemeProvider({ children }) {
       setTheme(initialTheme);
       setReady(true);
     });
-    document.documentElement.dataset.tkaTheme = initialTheme;
+    applyTheme(initialTheme);
   }, []);
 
   function toggleTheme() {
     setTheme((current) => {
       const next = current === "dark" ? "light" : "dark";
       window.sessionStorage.setItem("tka-theme", next);
-      document.documentElement.dataset.tkaTheme = next;
+      applyTheme(next);
       return next;
     });
   }

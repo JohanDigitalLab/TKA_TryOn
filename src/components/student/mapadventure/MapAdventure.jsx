@@ -31,6 +31,7 @@ import {
 } from "@/components/student/fightboss/BossFightQuestions";
 import { IslandNavigation, TopicMap } from "./IslandMap";
 import useMapAdventure from "./useMapAdventure";
+import { useTheme } from "@/components/theme-provider";
 import "./mapadventure.css";
 
 const button =
@@ -868,7 +869,8 @@ function TopicTrail({ node, game }) {
 }
 export default function MapAdventure() {
   const game = useMapAdventure();
-  const [dark, setDark] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
   const { selection, setSelection } = game;
   const [bag, setBag] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -953,15 +955,6 @@ export default function MapAdventure() {
                 className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-400 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900"
               >
                 <Settings size={19} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setDark(!dark)}
-                aria-pressed={dark}
-                aria-label={dark ? "Gunakan tema terang" : "Gunakan tema gelap"}
-                className="rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-400 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-700 dark:bg-slate-900"
-              >
-                {dark ? <Sun size={19} /> : <Moon size={19} />}
               </button>
             </div>
           </header>

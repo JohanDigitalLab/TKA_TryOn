@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { LogOut, Moon, Sun, UserRound } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
+import { useTheme } from "@/components/theme-provider";
 
 export default function PortalHeader({ displayName = "Siswa", signingOut = false, onSignOut, isManaged = null }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const darkActive = theme === "dark";
   const initials = displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -44,17 +48,30 @@ export default function PortalHeader({ displayName = "Siswa", signingOut = false
                   <Link
                     href="/student/profile"
                     onClick={() => setMenuOpen(false)}
-                    className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
+                    <UserRound size={16} aria-hidden="true" />
                     Profil
                   </Link>
                 )}
                 <button
                   type="button"
+                  onClick={() => {
+                    toggleTheme();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {darkActive ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+                  {darkActive ? "Mode Terang" : "Mode Gelap"}
+                </button>
+                <button
+                  type="button"
                   onClick={onSignOut}
                   disabled={signingOut}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 >
+                  <LogOut size={16} aria-hidden="true" />
                   {signingOut ? "Keluar…" : "Keluar"}
                 </button>
               </div>
