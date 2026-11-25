@@ -85,6 +85,11 @@ CREATE TABLE IF NOT EXISTS private.mapadventure_sessions(
 );
 -- NULL on legacy active sessions: initialize on first resume, never during deployment.
 ALTER TABLE private.mapadventure_sessions ADD COLUMN IF NOT EXISTS question_deadline_at timestamptz;
+-- Persist feedback across refresh/network loss; the next clock starts only on explicit next.
+ALTER TABLE private.mapadventure_sessions ADD COLUMN IF NOT EXISTS feedback jsonb;
+-- Forward-only repair of the old linear graph, without rewards or status downgrades.
+UPDATE public.map_adventure_topics SET gatekeeper_status='UNLOCKED'
+ WHERE practice_status='COMPLETED' AND gatekeeper_status='LOCKED';
 CREATE UNIQUE INDEX IF NOT EXISTS mapadventure_active_session ON private.mapadventure_sessions(user_id) WHERE result IS NULL;
 ALTER TABLE private.mapadventure_reads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE private.mapadventure_sessions ENABLE ROW LEVEL SECURITY;
@@ -130,7 +135,7 @@ DECLARE pool jsonb;
 BEGIN
  WITH candidates AS MATERIALIZED (
  SELECT q.question_type,upper(btrim(q.difficulty)) difficulty,v.estimate_minutes,
- jsonb_build_object('id',q.id,'version',v.id,'type',q.question_type,'text',v.question_text,'instruction',v.instruction,'clue',v.clue,
+ jsonb_build_object('id',q.id,'version',v.id,'type',q.question_type,'text',v.question_text,'instruction',v.instruction,'clue',v.clue,'explanation',to_jsonb(v)->>'explanation',
   'difficulty',q.difficulty,'estimate_minutes',v.estimate_minutes,'subject_code',q.subject_code,'education_level',q.education_level_id,'theme',q.theme,'topic',q.topic,
   'stimulus',(SELECT jsonb_build_object('title',s.title,'content_text',s.content_text,'file_url',s.file_url,'media_description',s.media_description) FROM public.question_stimuli s WHERE s.id=v.stimulus_id),
   'options',coalesce((SELECT jsonb_agg(jsonb_build_object('option_code',o.option_code,'option_text',o.option_text) ORDER BY o.option_order,o.option_code) FROM public.question_options o WHERE o.question_version_id=v.id),'[]'),
@@ -199,6 +204,9 @@ BEGIN
   END IF;
   prev:=h.status='COMPLETED';
  END LOOP;
+ UPDATE public.map_adventure_topics SET gatekeeper_status='UNLOCKED'
+  WHERE user_id=auth.uid() AND education_level=p_level AND subject_code=p_code
+  AND practice_status='COMPLETED' AND gatekeeper_status='LOCKED';
 END $$;
 
 CREATE OR REPLACE FUNCTION private.mapadventure_credit(p_points integer,p_xp integer,p_activity text) RETURNS void
@@ -219,14 +227,27 @@ BEGIN
 END $$;
 CREATE OR REPLACE FUNCTION private.mapadventure_progress(p_node uuid,p_stage text,p_stars integer) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE n public.map_adventure_topics%ROWTYPE; nickname text;
+DECLARE n public.map_adventure_topics%ROWTYPE; nickname text; best integer; delta integer;
 BEGIN
  SELECT coalesce(nullif(btrim(p.nickname),''),nullif(btrim(p.full_name),''),'Siswa') INTO nickname FROM public.profiles p WHERE p.id=auth.uid();
  SELECT * INTO STRICT n FROM public.map_adventure_topics WHERE id=p_node AND user_id=auth.uid() FOR UPDATE;
- IF to_jsonb(n)->>(p_stage||'_status')='COMPLETED' THEN RETURN; END IF;
+ IF to_jsonb(n)->>(p_stage||'_status')='COMPLETED' THEN
+  best:=coalesce((to_jsonb(n)->>(p_stage||'_stars'))::integer,0);
+  delta:=greatest(best,p_stars)-best;
+  IF delta>0 THEN
+   EXECUTE format('UPDATE public.map_adventure_topics SET %I=$1 WHERE id=$2',p_stage||'_stars') USING best+delta,n.id;
+   UPDATE public.map_adventure_status SET stars=stars+delta WHERE user_id=auth.uid();
+   IF p_stage='gatekeeper' THEN
+    UPDATE public.map_adventure_themes h SET stars=(SELECT coalesce(sum(gatekeeper_stars),0) FROM public.map_adventure_topics WHERE theme_id=h.id) WHERE h.id=n.theme_id;
+   END IF;
+  END IF;
+  RETURN;
+ END IF;
  IF to_jsonb(n)->>(p_stage||'_status') IS DISTINCT FROM 'UNLOCKED' THEN RAISE EXCEPTION 'Node locked'; END IF;
  IF p_stage='material' THEN UPDATE public.map_adventure_topics SET material_status='COMPLETED',material_stars=3,material_completed_at=clock_timestamp(),practice_status='UNLOCKED' WHERE id=n.id;
- ELSIF p_stage='practice' THEN UPDATE public.map_adventure_topics SET practice_status='COMPLETED',practice_stars=p_stars,sidequest_status='UNLOCKED' WHERE id=n.id;
+ ELSIF p_stage='practice' THEN UPDATE public.map_adventure_topics SET practice_status='COMPLETED',practice_stars=p_stars,
+  sidequest_status=CASE WHEN sidequest_status='LOCKED' THEN 'UNLOCKED' ELSE sidequest_status END,
+  gatekeeper_status=CASE WHEN gatekeeper_status='LOCKED' THEN 'UNLOCKED' ELSE gatekeeper_status END WHERE id=n.id;
  ELSIF p_stage='sidequest' THEN UPDATE public.map_adventure_topics SET sidequest_status='COMPLETED',sidequest_stars=p_stars,mysterychest_status='UNLOCKED' WHERE id=n.id;
  ELSIF p_stage='gatekeeper' THEN
   UPDATE public.map_adventure_topics SET gatekeeper_status='COMPLETED',gatekeeper_stars=p_stars WHERE id=n.id;
@@ -280,7 +301,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE s private.mapadventure_sessions%ROWTYPE; i integer; minutes numeric;
 BEGIN
  SELECT * INTO s FROM private.mapadventure_sessions WHERE attempt_id=p_attempt AND user_id=auth.uid() FOR UPDATE;
- IF NOT FOUND OR s.result IS NOT NULL OR s.stage='practice' THEN RETURN; END IF;
+ IF NOT FOUND OR s.result IS NOT NULL OR s.stage='practice' OR s.feedback IS NOT NULL THEN RETURN; END IF;
  i:=jsonb_array_length(s.records);
  IF i>=jsonb_array_length(s.pool) OR s.question_deadline_at IS NOT NULL THEN RETURN; END IF;
  -- Old snapshots did not carry estimates. Resolve their frozen version once, safely.
@@ -303,8 +324,8 @@ BEGIN
  IF FOUND THEN
   idx:=jsonb_array_length(s.records); q:=s.pool->idx;
   active:=jsonb_build_object('attempt_id',s.attempt_id,'nodeId',s.node_id,'stage',s.stage,'index',idx,'total',jsonb_array_length(s.pool),
-   'question',q-'answer_keys'-'clue','tools',s.tools,'effects',s.effects-'first_answer','answered',idx,
-   'deadline_at',s.question_deadline_at,'server_now',clock_timestamp(),
+   'question',CASE WHEN s.feedback IS NULL THEN q-'answer_keys'-'clue'-'explanation' ELSE NULL END,'tools',s.tools,'effects',s.effects-'first_answer','answered',idx,
+   'feedback',s.feedback,'deadline_at',s.question_deadline_at,'server_now',clock_timestamp(),
    'remaining_seconds',CASE WHEN s.question_deadline_at IS NOT NULL THEN greatest(0,extract(epoch FROM s.question_deadline_at-clock_timestamp())) ELSE NULL END);
  END IF;
  RETURN jsonb_build_object('settings',cfg,'education_level',lvl,'subject_code',sc,
@@ -327,12 +348,12 @@ BEGIN
  IF u IS NULL OR NOT EXISTS(SELECT 1 FROM public.profiles p JOIN auth.users au ON au.id=p.id WHERE p.id=u AND upper(btrim(p.account_type))='STUDENT' AND p.account_status='active'
  AND au.email_confirmed_at IS NOT NULL AND au.deleted_at IS NULL AND (au.banned_until IS NULL OR au.banned_until<=now())) THEN
   RAISE EXCEPTION 'Active authenticated STUDENT account required' USING ERRCODE='42501'; END IF;
- IF p_action IS NULL OR p_action NOT IN('bootstrap','settings','material','read_complete','start','answer','timeout','use_tool','complete_node','complete_island','gacha','buy') THEN RAISE EXCEPTION 'Invalid action' USING ERRCODE='22023'; END IF;
+ IF p_action IS NULL OR p_action NOT IN('bootstrap','settings','material','read_complete','start','answer','timeout','next','use_tool','complete_node','complete_island','gacha','buy') THEN RAISE EXCEPTION 'Invalid action' USING ERRCODE='22023'; END IF;
  IF jsonb_typeof(p_payload) IS DISTINCT FROM 'object' OR octet_length(p_payload::text)>65536 THEN RAISE EXCEPTION 'Invalid payload' USING ERRCODE='22023'; END IF;
  IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_payload) k WHERE NOT(k=ANY(CASE p_action
  WHEN 'bootstrap' THEN ARRAY[]::text[] WHEN 'settings' THEN ARRAY['settings'] WHEN 'material' THEN ARRAY['nodeId'] WHEN 'read_complete' THEN ARRAY['nodeId','readToken']
  WHEN 'start' THEN ARRAY['nodeId','stage'] WHEN 'answer' THEN ARRAY['attempt_id','question_id','answer_payload'] WHEN 'timeout' THEN ARRAY['attempt_id','question_id'] WHEN 'use_tool' THEN ARRAY['attempt_id','question_id','tool']
- WHEN 'complete_node' THEN ARRAY['attempt_id'] WHEN 'complete_island' THEN ARRAY['islandId'] WHEN 'gacha' THEN ARRAY['nodeId','chestTier'] ELSE ARRAY['tool'] END))) THEN
+ WHEN 'next' THEN ARRAY['attempt_id','question_id'] WHEN 'complete_node' THEN ARRAY['attempt_id'] WHEN 'complete_island' THEN ARRAY['islandId'] WHEN 'gacha' THEN ARRAY['nodeId','chestTier'] ELSE ARRAY['tool'] END))) THEN
   RAISE EXCEPTION 'Unknown payload field; client scores/user/tools/tier overrides forbidden' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('mapadventure:user:'||u::text,0));
  SELECT lower(btrim(education_level)) INTO lvl FROM public.profiles WHERE id=u;
@@ -367,7 +388,7 @@ BEGIN
    IF s.node_id<>n.id OR s.stage<>stage THEN RAISE EXCEPTION 'Different session already active'; END IF;
    RETURN private.mapadventure_state()||jsonb_build_object('resumed',true);
   END IF;
-  IF to_jsonb(n)->>(stage||'_status') IS DISTINCT FROM 'UNLOCKED' THEN RAISE EXCEPTION 'Node locked or already completed'; END IF;
+  IF coalesce(to_jsonb(n)->>(stage||'_status'),'LOCKED') NOT IN('UNLOCKED','COMPLETED') THEN RAISE EXCEPTION 'Node locked'; END IF;
   total:=CASE WHEN stage='practice' THEN 3 ELSE 5 END;
   pool:=private.mapadventure_pool(n.id,stage,total); aid:=gen_random_uuid();
   INSERT INTO private.mapadventure_sessions(attempt_id,user_id,node_id,stage,pool,seen_ids,writing_results)
@@ -378,9 +399,9 @@ BEGIN
    SELECT aid,(value->>'id')::uuid,(value->>'version')::uuid,ordinality::integer FROM jsonb_array_elements(pool) WITH ORDINALITY;
   UPDATE private.mapadventure_sessions SET writing_results=false WHERE attempt_id=aid;
   RETURN private.mapadventure_state()||jsonb_build_object('resumed',false);
- ELSIF p_action IN('answer','timeout','use_tool','complete_node') THEN
+ ELSIF p_action IN('answer','timeout','next','use_tool','complete_node') THEN
   aid:=(p_payload->>'attempt_id')::uuid;
-  IF aid IS NULL OR (p_action IN('answer','timeout','use_tool') AND (p_payload->>'question_id') IS NULL) THEN RAISE EXCEPTION 'Missing session/question keys' USING ERRCODE='22023'; END IF;
+  IF aid IS NULL OR (p_action IN('answer','timeout','next','use_tool') AND (p_payload->>'question_id') IS NULL) THEN RAISE EXCEPTION 'Missing session/question keys' USING ERRCODE='22023'; END IF;
   PERFORM private.mapadventure_timer(aid);
   SELECT * INTO s FROM private.mapadventure_sessions WHERE attempt_id=aid AND user_id=u FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Session unavailable' USING ERRCODE='42501'; END IF;
@@ -389,7 +410,13 @@ BEGIN
   SELECT * INTO STRICT n FROM public.map_adventure_topics WHERE id=s.node_id AND user_id=u;
   IF n.education_level<>lvl OR n.subject_code<>sc THEN RAISE EXCEPTION 'Session profile/subject changed'; END IF;
   idx:=jsonb_array_length(s.records); total:=jsonb_array_length(s.pool); q:=s.pool->idx;
+  IF p_action='next' THEN
+   IF s.records->-1->>'question_id' IS DISTINCT FROM p_payload->>'question_id' THEN RAISE EXCEPTION 'Invalid feedback transition' USING ERRCODE='22023'; END IF;
+   UPDATE private.mapadventure_sessions SET feedback=NULL WHERE attempt_id=aid;
+   RETURN private.mapadventure_state();
+  END IF;
   IF p_action IN('answer','timeout','use_tool') THEN
+   IF s.feedback IS NOT NULL THEN RAISE EXCEPTION 'Acknowledge answer feedback first' USING ERRCODE='22023'; END IF;
    IF q IS NULL OR q->>'id' IS DISTINCT FROM p_payload->>'question_id' THEN RAISE EXCEPTION 'Only current frozen question may be used' USING ERRCODE='22023'; END IF;
   END IF;
   timed_out:=s.stage<>'practice' AND s.question_deadline_at<=clock_timestamp();
@@ -400,12 +427,13 @@ BEGIN
    IF EXISTS(SELECT 1 FROM jsonb_array_elements_text(coalesce(s.effects->'eliminated','[]')) e JOIN jsonb_array_elements_text(coalesce(a->'option_codes','[]')) c ON c=e) THEN RAISE EXCEPTION 'Eliminated option cannot be selected'; END IF;
    IF NOT timed_out AND NOT ok AND coalesce((s.effects->>'secondchance')::boolean,false) AND NOT coalesce((s.effects->>'retried')::boolean,false) THEN
     UPDATE private.mapadventure_sessions SET effects=effects||jsonb_build_object('retried',true,'first_answer',a) WHERE attempt_id=aid;
-    RETURN private.mapadventure_state()||'{"answer":{"accepted":false,"retry":true}}'::jsonb;
+    RETURN private.mapadventure_state()||jsonb_build_object('answer',jsonb_build_object('question_id',q->>'id','accepted',false,'retry',true,'correct',false,'is_timeout',false));
    END IF;
    UPDATE private.mapadventure_sessions SET writing_results=true WHERE attempt_id=aid;
    INSERT INTO public.exam_attempt_answers(attempt_id,question_id,answer_payload,answered_at,is_timeout) VALUES(aid,(q->>'id')::uuid,a,clock_timestamp(),coalesce(timed_out,false));
-   UPDATE private.mapadventure_sessions SET records=records||jsonb_build_array(jsonb_build_object('question_id',q->>'id','answer_payload',a,'correct',ok,'is_timeout',coalesce(timed_out,false),'first_answer',s.effects->'first_answer')),effects='{}',question_deadline_at=NULL,writing_results=false WHERE attempt_id=aid;
-   RETURN private.mapadventure_state()||jsonb_build_object('answer',jsonb_build_object('accepted',true,'retry',false,'is_timeout',coalesce(timed_out,false)));
+   effect:=jsonb_build_object('question_id',q->>'id','accepted',true,'retry',false,'correct',ok,'is_timeout',coalesce(timed_out,false));
+   UPDATE private.mapadventure_sessions SET records=records||jsonb_build_array(jsonb_build_object('question_id',q->>'id','answer_payload',a,'correct',ok,'is_timeout',coalesce(timed_out,false),'first_answer',s.effects->'first_answer')),effects='{}',feedback=effect,question_deadline_at=NULL,writing_results=false WHERE attempt_id=aid;
+   RETURN private.mapadventure_state()||jsonb_build_object('answer',effect);
   ELSIF p_action='use_tool' THEN
    tool:=p_payload->>'tool';
    IF tool IS NULL OR tool NOT IN('clue','freezetime','fiftyfifty','skipreplace','secondchance') THEN RAISE EXCEPTION 'Invalid tool'; END IF;
@@ -459,8 +487,14 @@ BEGIN
     ELSIF s.stage='sidequest' THEN UPDATE public.map_adventure_topics SET sidequest_attempt_id=aid WHERE id=n.id;
     ELSE UPDATE public.map_adventure_topics SET gatekeeper_attempt_id=aid WHERE id=n.id; END IF;
    END IF;
+   pts:=CASE WHEN NOT passed OR to_jsonb(n)->>(s.stage||'_status')='COMPLETED' THEN 0 WHEN s.stage='practice' THEN 25 ELSE 50 END;
+   xp:=CASE WHEN NOT passed OR to_jsonb(n)->>(s.stage||'_status')='COMPLETED' THEN 0 WHEN s.stage='sidequest' THEN 5 ELSE 1 END;
    r:=jsonb_build_object('attempt_id',aid,'nodeId',n.id,'stage',s.stage,'passed',passed,'correct',correct,'total',total,'score',round(correct*100.0/total,2),'stars',stars,
-    'tools',s.tools,'points',CASE WHEN NOT passed THEN 0 WHEN s.stage='practice' THEN 25 ELSE 50 END,'xp',CASE WHEN NOT passed THEN 0 WHEN s.stage='sidequest' THEN 5 ELSE 1 END);
+    'best_stars',greatest(stars,coalesce((to_jsonb(n)->>(s.stage||'_stars'))::integer,0)),
+    'review',(SELECT jsonb_agg(jsonb_build_object('question',x-'clue','answer_payload',rec->'answer_payload','correct',rec->'correct','is_timeout',coalesce(rec->'is_timeout','false'::jsonb)) ORDER BY ord)
+     FROM jsonb_array_elements(s.pool) WITH ORDINALITY e(x,ord)
+     JOIN LATERAL(SELECT value rec FROM jsonb_array_elements(s.records) WHERE value->>'question_id'=x->>'id') a1 ON true),
+    'tools',s.tools,'points',pts,'xp',xp);
    UPDATE private.mapadventure_sessions SET result=r,writing_results=false WHERE attempt_id=aid;
    RETURN private.mapadventure_state()||jsonb_build_object('result',r);
   END IF;
@@ -482,7 +516,7 @@ BEGIN
   END IF;
   SELECT coalesce(nullif(btrim(p.nickname),''),nullif(btrim(p.full_name),''),'Siswa') INTO nickname FROM public.profiles p WHERE p.id=u;
   PERFORM private.mapadventure_credit(0,0,nickname||' menemukan kotak misteri di pulau '||n.theme);
-  UPDATE public.map_adventure_topics SET mysterychest_status='COMPLETED',mysterychest_completed_at=clock_timestamp(),chest_reward=rewards,gatekeeper_status='UNLOCKED' WHERE id=n.id;
+  UPDATE public.map_adventure_topics SET mysterychest_status='COMPLETED',mysterychest_completed_at=clock_timestamp(),chest_reward=rewards WHERE id=n.id;
   RETURN private.mapadventure_state()||jsonb_build_object('reward',rewards);
  ELSIF p_action='buy' THEN
   tool:=p_payload->>'tool'; price:=CASE tool WHEN 'clue' THEN 30 WHEN 'freezetime' THEN 40 WHEN 'fiftyfifty' THEN 50 WHEN 'skipreplace' THEN 60 WHEN 'secondchance' THEN 80 ELSE NULL END;

@@ -7,6 +7,7 @@ import BrandLogo from "@/components/brand-logo";
 import { formatTime, getExamConfig, normalizeSubjects, normalizeGrade, normalizeType, normalizePayload, hasAnswer, getTypeLabel, getCategoryOptions, getSimulationResults } from "@/lib/student/exam";
 import { supabase } from "@/lib/supabase";
 import { QuestionNavigation, QuestionReviewList, RenderAnswer } from "@/components/student/question-review";
+import { getSubjectSessionConflict } from "@/lib/student/subject-session";
 
 // =====================================================
 // HELPER
@@ -144,12 +145,12 @@ function ChallengeContent() {
         );
       }
 
-      // RPC spesifik per jalur sesi: tryout, resume latihan/tugas, atau mulai latihan baru.
+      // Resume lewat ID memakai dispatcher ber-guard game dan tipe otoritatif server.
       const resumeId = resumeAttemptId || currentConfig.exerciseAttemptId || null;
       const rpcName = assignmentId
         ? "start_school_assignment"
         : resumeAttemptId
-          ? "resume_tka_tryout"
+          ? "resume_exam_attempt"
           : currentConfig.exerciseAttemptId
             ? "resume_student_exercise"
             : "start_student_exercise";
@@ -166,6 +167,8 @@ function ChallengeContent() {
       );
 
       if (rpcError) throw rpcError;
+      const conflict = getSubjectSessionConflict(data);
+      if (conflict) throw new Error(conflict.message);
 
       if (
         !data?.attempt_id ||
@@ -177,9 +180,11 @@ function ChallengeContent() {
         );
       }
 
-      // Server selalu mengembalikan attempt_type; fallback hanya untuk keamanan.
-      const fallbackType = assignmentId ? "ASSIGNMENT" : resumeAttemptId ? "TRYOUT" : "EXERCISE";
-      const serverAttemptType = String(data.attempt_type || fallbackType).toUpperCase();
+      // Jangan mengasumsikan resume ID selalu tryout; klasifikasi server wajib valid.
+      const serverAttemptType = String(data.attempt_type || "").toUpperCase();
+      if (!["TRYOUT", "EXERCISE", "ASSIGNMENT"].includes(serverAttemptType)) {
+        throw new Error("Tipe sesi dari server tidak valid. Buka sesi melalui halaman asalnya.");
+      }
       attemptTypeRef.current = serverAttemptType;
       setExamInfo((previous) => ({
         ...previous,

@@ -32,7 +32,7 @@ export function BossFightChoices({ question, selection, categories, selected, di
   })}{multiple && <p className="text-xs text-slate-500">Dipilih: {selection.length} jawaban</p>}</div>;
 }
 
-export function BossFightReview({ records, names, pvp }) {
+export function BossFightReview({ records, names, pvp, title = "Review Hasil Pertarungan", navigationId = "bossfight-review-navigation" }) {
   const navigation = useRef(null);
   const [passed, setPassed] = useState(false);
   const [buttonPosition, setButtonPosition] = useState(null);
@@ -83,7 +83,7 @@ export function BossFightReview({ records, names, pvp }) {
     };
   });
   return <div className="space-y-5 text-slate-900">
-    <div ref={navigation}><QuestionNavigation id="bossfight-review-navigation" title="Review Hasil Pertarungan" questions={questions} renderItem={(item, index) => <a href={`#review-question-${index + 1}`} className={`grid h-9 w-9 place-items-center rounded-lg border text-sm font-bold transition hover:scale-105 ${item.is_correct ? "border-green-300 bg-green-100 text-green-800" : "border-red-300 bg-red-100 text-red-800"}`}>{item.question_order}</a>} /></div>
+    <div ref={navigation}><QuestionNavigation id={navigationId} title={title} questions={questions} renderItem={(item, index) => <a href={`#review-question-${index + 1}`} className={`grid h-9 w-9 place-items-center rounded-lg border text-sm font-bold transition hover:scale-105 ${item.is_correct ? "border-green-300 bg-green-100 text-green-800" : "border-red-300 bg-red-100 text-red-800"}`}>{item.question_order}</a>} /></div>
     <QuestionReviewList questions={questions} getTypeLabel={item => getTypeLabel(item.question_type)} getStatus={item => item.record.selected === null ? "WAKTU HABIS" : item.is_correct ? "BENAR" : "SALAH"} renderAnswer={item => <>
       {pvp && <p className="mt-2 text-xs font-semibold text-blue-700">{names[item.record.player]}</p>}
       {item.hasKeys ? <RenderAnswer item={item} /> : <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm"><p>Jawaban siswa: {item.question_type === "PGK_KATEGORI" ? Object.entries(item.answer_payload.category_answers).map(([key, value]) => `${key}: ${value}`).join(", ") : item.answer_payload.option_codes.join(", ") || "Tidak menjawab"}</p><p className="mt-2 text-xs text-slate-500">Kunci belum tersedia untuk sesi lama ini. Mulai sesi baru setelah migrasi diterapkan.</p></div>}

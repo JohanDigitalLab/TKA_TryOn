@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 import PortalHeader from "@/components/portal-header";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 
+import { getSubjectSessionConflict, getSubjectSessionError } from "@/lib/student/subject-session";
+
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
   smp: "SMP / MTs - Kelas 9",
@@ -42,6 +44,7 @@ function MissionsForm({ params }) {
     params.get("activityType") === "simulasi" ? "simulasi" : "latihan"
   );
   const [message, setMessage] = useState("");
+  const [sessionConflict, setSessionConflict] = useState(null);
   const selectedSubjectDetails = subjects.filter((subject) => selectedSubjects.includes(subject.subject_code));
   const [questionCountInput, setQuestionCountInput] = useState("20");
   const startingRef = useRef(false);
@@ -92,6 +95,7 @@ function MissionsForm({ params }) {
       : [...previous, subject]);
 
     setMessage("");
+    setSessionConflict(null);
   }
 
   async function saveConfiguration() {
@@ -106,12 +110,20 @@ function MissionsForm({ params }) {
     startingRef.current = true;
     setStarting(true);
     setMessage("");
+    setSessionConflict(null);
     try {
     const { data, error } = await supabase.rpc("start_student_exercise", {
       p_subject_code: selectedSubjectDetails[0].subject_code,
       p_question_count: questionCount,
     });
     if (error) throw error;
+    const conflict = getSubjectSessionConflict(data);
+    if (conflict) {
+      setSessionConflict(conflict);
+      startingRef.current = false;
+      setStarting(false);
+      return;
+    }
     if (!data?.attempt_id) throw new Error("Sesi latihan tidak tersedia.");
     const grade =
       level === "smp" ? 9 : level === "sma" ? 12 : 6;
@@ -163,7 +175,7 @@ function MissionsForm({ params }) {
     startingRef.current = false;
     setStarting(false);
     } catch (error) {
-      setMessage(error.message || "Latihan gagal dimulai.");
+      setMessage(getSubjectSessionError(error, "Latihan gagal dimulai."));
       startingRef.current = false;
       setStarting(false);
     }
@@ -322,6 +334,12 @@ function MissionsForm({ params }) {
 
          </div>
 
+            {sessionConflict && (
+              <div role="status" className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+                <p>{sessionConflict.message}</p>
+                {sessionConflict.href && <Link href={sessionConflict.href} className="mt-3 inline-block font-bold underline">{sessionConflict.label}</Link>}
+              </div>
+            )}
             {message && <p role="alert" className="mt-5 text-sm text-red-700">{message}</p>}
             <button
               type="button"

@@ -2,13 +2,13 @@
 
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { bootstrapMapadventure, settingsMapadventure, materialMapadventure, readCompleteMapadventure, startMapadventure, answerMapadventure, timeoutMapadventure, useToolMapadventure, buyMapadventure, mapadventure_complete_node, mapadventure_complete_island, mapadventure_open_gatcha } from "@/app/actions/mapadventure";
+import { bootstrapMapadventure, settingsMapadventure, materialMapadventure, readCompleteMapadventure, startMapadventure, answerMapadventure, timeoutMapadventure, nextMapadventure, useToolMapadventure, buyMapadventure, mapadventure_complete_node, mapadventure_complete_island, mapadventure_open_gatcha } from "@/app/actions/mapadventure";
 import { createMapadventureClient, openGachaChest } from "@/lib/student/mapadventure-client";
 
 const actions = {
   bootstrap: bootstrapMapadventure, settings: settingsMapadventure, material: materialMapadventure,
   read_complete: readCompleteMapadventure, start: startMapadventure, answer: answerMapadventure,
-  timeout: timeoutMapadventure, use_tool: useToolMapadventure, buy: buyMapadventure,
+  timeout: timeoutMapadventure, next: nextMapadventure, use_tool: useToolMapadventure, buy: buyMapadventure,
   complete_node: (p, userId) => mapadventure_complete_node(userId, p.nodeId, undefined, undefined, p.attempt_id),
   complete_island: (p, userId) => mapadventure_complete_island(userId, p.islandId),
   gacha: (p, userId) => mapadventure_open_gatcha(userId, p.chestTier, p.nodeId),

@@ -57,7 +57,8 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   const start = async (nodeId, stage) => (await rpc('start', { nodeId, stage })).session;
   const good = q => q.type === 'PGK_KATEGORI' ? { category_answers: { 1: ' benar ', 2: 'SALAH' } } : { option_codes: q.type === 'PGK_MA' ? ['C', 'B'] : ['B'] };
   const wrong = q => q.type === 'PGK_KATEGORI' ? { category_answers: { 1: 'Salah', 2: 'Benar' } } : { option_codes: ['A'] };
-  const answer = (s, payload = good(s.question)) => rpc('answer', { attempt_id: s.attempt_id, question_id: s.question.id, answer_payload: payload });
+  const acknowledge = async r => r.session?.feedback && r.session.answered < r.session.total ? { ...await rpc('next', { attempt_id: r.session.attempt_id, question_id: r.session.feedback.question_id }), answer: r.answer } : r;
+  const answer = async (s, payload = good(s.question)) => acknowledge(await rpc('answer', { attempt_id: s.attempt_id, question_id: s.question.id, answer_payload: payload }));
   const complete = s => rpc('complete_node', { attempt_id: s.attempt_id });
   const finish = async (s, goodCount = s.total) => {
     while (s.question) { const r = await answer(s, s.index < goodCount ? good(s.question) : wrong(s.question)); s = r.session; }
@@ -201,7 +202,8 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     const replay=await complete(gate); assert.deepEqual(replay.wallet,r.wallet); assert.deepEqual(replay.status,r.status); assert.equal(replay.profile_xp,r.profile_xp);
     assert.equal(r.islands[0].status,'UNLOCKED'); assert.equal(r.islands[0].stars,3); assert.equal(r.nodes[1].material_status,'UNLOCKED');
     await assert.rejects(rpc('complete_island',{islandId:r.islands[0].id}),/not complete/);
-    await assert.rejects(start(nodeId,'gatekeeper'),/already completed/);
+    // A completed stage is replayable; finalizing its old attempt remains immutable.
+    assert.equal(r.nodes[0].gatekeeper_status,'COMPLETED');
   });
   await t.test('secondchance single retry, fiftyfifty constraints and skip replacement records/deduction', async () => {
     let b=await rpc('bootstrap'); const id=b.nodes[1].id; await read(id);
@@ -359,7 +361,7 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     let s=await start(nodeId,'sidequest');
     assert.ok(s.remaining_seconds>118 && s.remaining_seconds<=120); assert.equal(s.question.estimate_minutes,2);
     assert.equal((await rows('SELECT deadline_at FROM exam_attempts WHERE id=$1',[s.attempt_id]))[0].deadline_at,null);
-    const timeout=s=>rpc('timeout',{attempt_id:s.attempt_id,question_id:s.question.id});
+    const timeout=async s=>acknowledge(await rpc('timeout',{attempt_id:s.attempt_id,question_id:s.question.id}));
     await assert.rejects(timeout(s),/not expired/);
     await assert.rejects(rpc('timeout',{attempt_id:s.attempt_id}),/Missing session/);
     await assert.rejects(rpc('timeout',{attempt_id:s.attempt_id,question_id:s.question.id,timestamp:0}),/Unknown payload/);
@@ -405,7 +407,10 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     await db.exec(transactionalMigration); await db.exec(transactionalMigration);
     await db.exec('SET CONSTRAINTS ALL DEFERRED');
     assert.equal((await rows('SELECT question_deadline_at FROM private.mapadventure_sessions WHERE attempt_id=$1',[aid]))[0].question_deadline_at,null);
-    s=(await rpc('bootstrap')).session; assert.ok(s.remaining_seconds>118); assert.equal(s.question.estimate_minutes,2);
+    s=(await rpc('bootstrap')).session;
+    assert.equal(s.deadline_at,null); assert.ok(s.feedback);
+    s=(await rpc('next',{attempt_id:aid,question_id:s.feedback.question_id})).session;
+    assert.ok(s.remaining_seconds>118); assert.equal(s.question.estimate_minutes,2);
     assert.equal((await rpc('bootstrap')).session.deadline_at,s.deadline_at);
     await finish(s);
     s=await start(nodeId,'practice'); assert.equal(s.deadline_at,null); assert.equal(s.remaining_seconds,null);
@@ -454,6 +459,64 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     await db.query("UPDATE map_adventure_topics SET material_status='UNLOCKED' WHERE id=$1",[nodeId]); await read(nodeId);
     assert.equal((await rows("SELECT count(*) n FROM gamification_log WHERE activity='Siswa melewati Kemah Ilmu di pulau A'"))[0].n,1);
     await db.exec('ROLLBACK');
+  });
+  await t.test('branch unlock, gatekeeper bypasses chest, late sidequest/chest never downgrade completed gate',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    await db.query("UPDATE map_adventure_topics SET practice_status='UNLOCKED',sidequest_status='LOCKED',mysterychest_status='LOCKED',gatekeeper_status='LOCKED',chest_reward=NULL WHERE id=$1",[nodeId]);
+    let r=await finish(await start(nodeId,'practice'));
+    assert.equal(r.nodes[0].sidequest_status,'UNLOCKED'); assert.equal(r.nodes[0].gatekeeper_status,'UNLOCKED'); assert.equal(r.nodes[0].mysterychest_status,'LOCKED');
+    await assert.rejects(rpc('gacha',{nodeId}),/Chest locked/);
+    r=await finish(await start(nodeId,'gatekeeper'));
+    assert.equal(r.nodes[0].gatekeeper_status,'COMPLETED'); assert.equal(r.nodes[0].mysterychest_status,'LOCKED');
+    r=await finish(await start(nodeId,'sidequest')); assert.equal(r.nodes[0].mysterychest_status,'UNLOCKED');
+    r=await rpc('gacha',{nodeId}); assert.equal(r.nodes[0].gatekeeper_status,'COMPLETED');
+    const before={wallet:r.wallet,status:r.status,xp:r.profile_xp,logs:await count('gamification_log')};
+    r=await rpc('gacha',{nodeId}); assert.deepEqual({wallet:r.wallet,status:r.status,xp:r.profile_xp,logs:await count('gamification_log')},before);
+    await db.query("UPDATE map_adventure_topics SET gatekeeper_status='LOCKED' WHERE id=$1",[nodeId]);
+    await db.exec('SET CONSTRAINTS ALL IMMEDIATE'); await db.exec(migration.replace(/^BEGIN;$/m,'').replace(/^COMMIT;$/m,''));
+    assert.equal((await rpc('bootstrap')).nodes[0].gatekeeper_status,'UNLOCKED');
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('completed stages replay with highest stars, delta-only global/island totals and zero duplicate rewards/logs',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    for(const stage of ['practice','sidequest','gatekeeper']) {
+      let before=await rpc('bootstrap'); const old=before.nodes[0][`${stage}_stars`];
+      await db.query(`UPDATE map_adventure_topics SET ${stage}_stars=2 WHERE id=$1`,[nodeId]);
+      await db.query('UPDATE map_adventure_status SET stars=stars+$1 WHERE user_id=$2',[2-old,uid]);
+      if(stage==='gatekeeper') await db.exec('UPDATE map_adventure_themes h SET stars=(SELECT sum(gatekeeper_stars) FROM map_adventure_topics WHERE theme_id=h.id)');
+      before=await rpc('bootstrap'); const logs=await count('gamification_log');
+      const s=await start(nodeId,stage); let r=await finish(s);
+      assert.equal(r.result.stars,3); assert.equal(r.result.best_stars,3); assert.deepEqual([r.result.points,r.result.xp],[0,0]);
+      assert.equal(r.status.stars,before.status.stars+1); assert.equal(r.nodes[0][`${stage}_stars`],3);
+      assert.deepEqual(r.wallet,before.wallet); assert.equal(r.profile_xp,before.profile_xp); assert.equal(await count('gamification_log'),logs);
+      if(stage==='gatekeeper') assert.equal(r.islands[0].stars,before.islands[0].stars+1);
+      const replay=await complete(s); assert.deepEqual(replay.result,r.result); assert.deepEqual(replay.status,r.status);
+      await db.exec(`UPDATE map_adventure_tools SET clue=10 WHERE user_id='${uid}'`);
+      const toolSession=(await use(await start(nodeId,stage),'clue')).session;
+      r=await finish(toolSession); assert.equal(r.result.stars,2); assert.equal(r.result.best_stars,3); assert.deepEqual(r.status,replay.status);
+      r=await finish(await start(nodeId,stage),0); assert.equal(r.result.stars,0); assert.equal(r.result.best_stars,3); assert.equal(r.nodes[0][`${stage}_status`],'COMPLETED'); assert.deepEqual(r.status,replay.status);
+      assert.equal(await count('gamification_log'),logs);
+    }
+    await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('authoritative persisted feedback pauses unseen clock, next is bound/idempotent, review uses frozen keys and records',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    const s=await start(nodeId,'gatekeeper');
+    const raw=await rpc('answer',{attempt_id:s.attempt_id,question_id:s.question.id,answer_payload:good(s.question)});
+    assert.equal(raw.answer.correct,true); assert.equal(raw.session.feedback.correct,true); assert.equal(raw.session.question,null); assert.equal(raw.session.deadline_at,null);
+    const resumed=(await rpc('bootstrap')).session; assert.deepEqual(resumed.feedback,raw.answer); assert.equal(resumed.deadline_at,null);
+    const hidden=(await rows('SELECT pool FROM private.mapadventure_sessions WHERE attempt_id=$1',[s.attempt_id]))[0].pool[1];
+    await assert.rejects(rpc('answer',{attempt_id:s.attempt_id,question_id:hidden.id,answer_payload:good(hidden)}),/Acknowledge/);
+    await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:hidden.id}),/Invalid feedback/);
+    await user(other); await assert.rejects(rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}),/Session unavailable/); await user(uid);
+    let r=await rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}); assert.ok(r.session.remaining_seconds>118);
+    const deadline=r.session.deadline_at; r=await rpc('next',{attempt_id:s.attempt_id,question_id:s.question.id}); assert.equal(r.session.deadline_at,deadline);
+    // Bank edits cannot alter the final frozen review.
+    await db.exec("UPDATE question_options SET is_correct=false; UPDATE question_category_items SET correct_category='Wrong'");
+    r=await finish(r.session); assert.equal(r.result.review.length,5); assert.equal(r.result.correct,5);
+    for(const record of r.result.review) { assert.equal(record.correct,true); assert.ok(record.question.answer_keys); assert.equal(record.question.clue,undefined); assert.ok(record.answer_payload); }
+    assert.deepEqual((await complete(s)).result.review,r.result.review);
+    await db.exec('ROLLBACK'); isolated=false;
   });
   await t.test('balance conflict, incompatible wallet redeploy and insufficient purchase fail closed',async()=>{
     await db.exec('BEGIN');

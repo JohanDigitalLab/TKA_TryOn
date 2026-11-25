@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createMapadventureClient, buildAnswer, categoryLabels, questionSecondsLeft, safeMaterialUrl, openGachaChest, STAGES, TOOLS } from '../src/lib/student/mapadventure-client.js';
+import { createMapadventureClient, buildAnswer, categoryLabels, mapadventureReviewRecords, questionSecondsLeft, safeMaterialUrl, openGachaChest, STAGES, TOOLS } from '../src/lib/student/mapadventure-client.js';
 const user = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
 const active = { settings: { SHOW_TIPS: '1' }, session: { attempt_id: user, question: { id: other }, effects: {} } };
@@ -170,6 +170,28 @@ test('uncommitted timeout retries identical keys only after bootstrap reconcilia
  await f.client('timeout',{attempt_id:user,question_id:user});
  assert.deepEqual(f.calls.filter(c=>c[0]==='timeout').map(c=>c[1]),[{attempt_id:user,question_id:other},{attempt_id:user,question_id:other}]);
 });
+test('final review adapter preserves server correctness, codes, categories and timeout with no local grading', () => {
+  const question={id:user,type:'PGK_MA',text:'Frozen',options:[{option_code:'X',option_text:'Satu'},{option_code:'Z',option_text:'Dua'}],answer_keys:{option_codes:['Z']}};
+  const records=mapadventureReviewRecords([
+    {question,correct:false,answer_payload:{option_codes:['Z']}},
+    {question:{...question,type:'PGK_KATEGORI',answer_keys:{category_answers:{1:'Benar'}}},correct:true,answer_payload:{category_answers:{1:'Benar'}}},
+    {question,correct:false,is_timeout:true,answer_payload:{}},
+  ]);
+  assert.equal(records[0].correct,false); assert.deepEqual(records[0].selected,[1]); assert.deepEqual(records[0].question.answer_keys.options,['Z']);
+  assert.deepEqual(records[1].selected,{1:'Benar'}); assert.deepEqual(records[1].question.answer_keys.categories,{1:'Benar'}); assert.equal(records[2].selected,null);
+});
+test('lost answer reconciles persisted feedback without dispatching another answer',async()=>{
+  const feedback={...active,session:{...active.session,question:null,feedback:{question_id:other,correct:true}}};
+  const f=fixture({action:async action=>{if(action==='answer') throw Error('network'); return {ok:true,userId:user,data:feedback};}});
+  const r=await f.client('answer',payload); assert.equal(r.session.feedback.correct,true); assert.equal(f.calls.filter(c=>c[0]==='answer').length,1);
+});
+test('shared choices/review, replay controls and explicit feedback transition stay wired',()=>{
+  const ui=readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx',import.meta.url),'utf8');
+  assert.match(ui,/<BossFightChoices/); assert.match(ui,/<BossFightReview records=\{mapadventureReviewRecords\(result.review\)\}/);
+  assert.match(ui,/navigationId="mapadventure-review-navigation"/); assert.match(ui,/Review jawaban/); assert.match(ui,/result.best_stars/);
+  assert.match(ui,/const feedback = session.feedback/); assert.match(ui,/game.run\("next", \{ attempt_id: session.attempt_id, question_id: feedback.question_id \}\)/);
+  assert.match(ui,/disabled=\{game.busy \|\| status === "LOCKED"\}/); assert.doesNotMatch(ui,/status === "COMPLETED" && !/);
+});
 test('UI integration contract: no demo bank/local progression, reading gate, actual session/rewards, immediate tips rollback', () => {
   const ui = readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx', import.meta.url), 'utf8');
   const hook = readFileSync(new URL('../src/components/student/mapadventure/useMapAdventure.js', import.meta.url), 'utf8');
@@ -178,7 +200,7 @@ test('UI integration contract: no demo bank/local progression, reading gate, act
   const map = readFileSync(new URL('../src/components/student/mapadventure/IslandMap.jsx', import.meta.url), 'utf8');
   assert.match(map, /islands.map/);
   assert.doesNotMatch(map, /Math\.random|localStorage|setProgress|answer_keys/);
-  for (const expected of ['state.subjects.map', 'state.wallet.points', 'state.status.stars', 'game.result.points', 'game.reward.tools', 'session.answered', 'effects.clue', 'effects.eliminated', 'effects.secondchance', 'effects.retried']) assert.ok(ui.includes(expected), expected);
+  for (const expected of ['state.subjects.map', 'state.wallet.points', 'state.status.stars', 'result.points', 'game.reward.tools', 'session.answered', 'effects.clue', 'effects.eliminated', 'effects.secondchance', 'effects.retried']) assert.ok(ui.includes(expected), expected);
   assert.match(ui, /session.stage !== "practice"/);
   assert.match(ui, /role="timer"/);
   assert.match(ui, /questionSecondsLeft\(session, performance.now\(\) - receivedAt\)/);

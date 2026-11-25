@@ -16,7 +16,9 @@ Jumlah soal integer 1–100. Jenjang dari profil, subject_code harus cocok denga
 
 Parameter opsional `p_theme` dan `p_topic` pada `start_student_exercise`: bila keduanya diisi, soal diambil acak sebanyak `p_question_count` dari pasangan tema/topik tersebut; bila hanya `p_theme` yang diisi, topic diacak dalam tema tersebut; `p_topic` tanpa `p_theme` ditolak sebagai konfigurasi tidak valid. Tanpa keduanya, perilaku adaptif lama dipakai. Signature lama `(text,integer)` di-drop pada migrasi perluasan agar PostgREST tidak ambigu; panggilan tanpa tema/topik tetap cocok karena parameter baru ber-DEFAULT NULL.
 
-Klik ganda diserialkan client dan lock database. Attempt exercise aktif pada subject yang sama dilanjutkan. Attempt aktif jenis lain tidak diganti. Resume memulihkan options/category_items/jawaban tanpa kunci benar atau penjelasan. Multi-subject tetap memakai cache konfigurasi sesi; histori permanen tetap engine database.
+Klik ganda diserialkan client dan lock database. Attempt exercise aktif non-game pada subject yang sama dilanjutkan. Attempt aktif jenis lain tidak diganti: respons konflik menawarkan lanjut eksplisit dengan tipe sesi sebenarnya, bukan latihan baru. Game (termasuk tag legacy) tidak ditawarkan ke CBT generik. Durasi placeholder tidak digunakan untuk meng-expire latihan/tugas. Hanya TRYOUT non-game dengan timer valid yang habis boleh kedaluwarsa saat start. Resume memulihkan options/category_items/jawaban tanpa kunci benar atau penjelasan. Multi-subject tetap memakai cache konfigurasi sesi; histori permanen tetap engine database.
+
+Prasyarat baru: pasang [helper konflik privat](migration-subject-session-conflict.sql:1) **sebelum** memperbarui start exercise/tryout. Ikuti [panduan audit dan hotfix manual](TKA_TRYOUT.md:23); semua indeks/constraint dipertahankan. Frontend resume berdasarkan ID menggunakan dispatcher kanonik yang menjaga sesi game dan mengembalikan tipe server.
 
 ## Verifikasi deployment
 

@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 import PortalHeader from "@/components/portal-header";
 import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 
+import { getSubjectSessionConflict, getSubjectSessionError } from "@/lib/student/subject-session";
+
 const levelLabels = {
   sd: "SD / MI - Kelas 6",
   smp: "SMP / MTs - Kelas 9",
@@ -43,6 +45,7 @@ function MissionsForm({ params }) {
     params.get("activityType") === "simulasi" ? "simulasi" : "latihan"
   );
   const [message, setMessage] = useState("");
+  const [sessionConflict, setSessionConflict] = useState(null);
   const selectedSubject = subjects.find((subject) => subject.subject_code === selectedSubjects[0]);
   const selectedConfiguration = selectedSubject?.configuration;
   const questionCount = Number(selectedConfiguration?.total_questions || 0);
@@ -93,6 +96,7 @@ function MissionsForm({ params }) {
     setSelectedSubjects([subject]);
 
     setMessage("");
+    setSessionConflict(null);
   }
 
   async function saveConfiguration() {
@@ -104,11 +108,19 @@ function MissionsForm({ params }) {
     startingRef.current = true;
     setStarting(true);
     setMessage("");
+    setSessionConflict(null);
     try {
       const { data, error } = await supabase.rpc("start_tka_tryout", {
         p_tka_code: selectedConfiguration.tka_code,
       });
       if (error) throw error;
+      const conflict = getSubjectSessionConflict(data);
+      if (conflict) {
+        setSessionConflict(conflict);
+        startingRef.current = false;
+        setStarting(false);
+        return;
+      }
       if (!data?.attempt_id) throw new Error("Server tidak mengembalikan sesi tryout.");
       router.push(`/student/challenge?attemptId=${encodeURIComponent(data.attempt_id)}`);
       // Reset guard setelah navigasi agar tombol tidak tetap disabled
@@ -116,7 +128,7 @@ function MissionsForm({ params }) {
       startingRef.current = false;
       setStarting(false);
     } catch (error) {
-      setMessage(error.message || "Gagal memulai tryout. Silakan coba kembali.");
+      setMessage(getSubjectSessionError(error, "Gagal memulai tryout. Silakan coba kembali."));
       startingRef.current = false;
       setStarting(false);
     }
@@ -263,6 +275,12 @@ function MissionsForm({ params }) {
 
             {selectedSubject && !selectedConfiguration && (
               <p role="status" className="mt-5 text-sm text-amber-700">Konfigurasi TKA belum tersedia untuk mata pelajaran ini.</p>
+            )}
+            {sessionConflict && (
+              <div role="status" className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+                <p>{sessionConflict.message}</p>
+                {sessionConflict.href && <Link href={sessionConflict.href} className="mt-3 inline-block font-bold underline">{sessionConflict.label}</Link>}
+              </div>
             )}
             {message && <p role="alert" className="mt-5 text-sm text-red-700">{message}</p>}
             <button

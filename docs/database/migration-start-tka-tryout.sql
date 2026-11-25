@@ -1,4 +1,5 @@
--- Pending deployment. Requires school_actor, learning_access_context and the existing CBT engine.
+-- Pending deployment. Requires school_actor, learning_access_context, the existing CBT engine,
+-- and migration-subject-session-conflict.sql. No indexes or constraints are changed.
 BEGIN;
 ALTER TABLE public.questions
   ADD COLUMN IF NOT EXISTS theme varchar(255),
@@ -40,7 +41,7 @@ CREATE OR REPLACE FUNCTION public.start_tka_tryout(p_tka_code text) RETURNS json
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE
   u uuid:=private.school_actor(); cfg public.tka_configurations%ROWTYPE; lvl text; g integer;
-  aid uuid; selected uuid[]:='{}'; more uuid[]; r record; actual integer; access jsonb; subj text;
+  aid uuid; selected uuid[]:='{}'; more uuid[]; r record; actual integer; access jsonb; subj text; conflict jsonb;
 BEGIN
   IF p_tka_code IS NULL OR btrim(p_tka_code)='' THEN RAISE EXCEPTION 'Invalid TKA code' USING ERRCODE='22023'; END IF;
   -- Share the learning engine's user lock and also serialize this user/config pair.
@@ -59,6 +60,8 @@ BEGIN
   SELECT id INTO aid FROM public.exam_attempts WHERE user_id=u AND tka_code=cfg.tka_code
     AND attempt_type='TRYOUT' AND attempt_status='IN_PROGRESS'
     AND clock_timestamp()<started_at+duration_minutes*interval '1 minute'
+    -- no need to check so throughly. just use attempt_type
+    -- AND NOT private.is_game_exam_attempt(id)
     ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
   IF aid IS NOT NULL THEN RETURN public.resume_tka_tryout(aid)||jsonb_build_object('resumed',true); END IF;
   -- Respect the installed entitlement policy; stage 9 intentionally removes subscription gates.
@@ -69,12 +72,9 @@ BEGIN
   END IF;
   SELECT name INTO subj FROM public.subjects WHERE subject_code=cfg.subject_code LIMIT 1;
   IF subj IS NULL THEN RAISE EXCEPTION 'TKA subject unavailable'; END IF;
-  -- Keep the legacy one-active-subject index intact, without resuming a different configuration.
-  UPDATE public.exam_attempts SET attempt_status='EXPIRED' WHERE user_id=u AND grade=g AND subject_name=subj
-    AND attempt_status='IN_PROGRESS' AND started_at+duration_minutes*interval '1 minute'<=clock_timestamp();
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj AND attempt_status='IN_PROGRESS') THEN
-    RAISE EXCEPTION 'Finish or resume the existing subject session';
-  END IF;
+  -- Keep the legacy uniqueness contract; offer an explicit, typed resume instead.
+  conflict:=private.subject_session_conflict(u,g,subj);
+  IF conflict IS NOT NULL THEN RETURN conflict; END IF;
   IF cfg.type='RANDOM' THEN
     FOR r IN SELECT * FROM public.tka_question_config WHERE tka_code=cfg.tka_code ORDER BY id LOOP
       SELECT coalesce(array_agg(x.id),'{}'::uuid[]) INTO more FROM (

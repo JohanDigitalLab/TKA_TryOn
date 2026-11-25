@@ -10,8 +10,8 @@ test("sesi latihan memakai jalur adaptif, resume, dan tugas sekolah", async () =
   const source = await read("src/app/student/challenge/page.js");
   assert.match(source, /"start_student_exercise"/);
   assert.match(source, /p_subject_code: currentConfig\.subject_codes/);
-  // Resume memakai RPC spesifik, bukan resume_exam_attempt generik.
-  assert.match(source, /"resume_tka_tryout"/);
+  // ID lintas tipe memakai dispatcher yang tetap memiliki guard game.
+  assert.match(source, /"resume_exam_attempt"/);
   assert.match(source, /"resume_student_exercise"/);
   assert.match(source, /"start_school_assignment"/);
   assert.match(source, /Mode sesi latihan lama tidak lagi didukung/);

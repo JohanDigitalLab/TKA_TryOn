@@ -42,6 +42,15 @@ BEGIN
   again:=public.start_tka_tryout(code);
   IF again->>'attempt_id'<>aid::text OR again->'questions'<>r->'questions' OR NOT (again->'answers' ? qid::text) THEN RAISE EXCEPTION 'Resume regenerated snapshot or lost answer'; END IF;
   IF public.resume_exam_attempt(aid)->'questions'<>r->'questions' THEN RAISE EXCEPTION 'Resume contract differs'; END IF;
+  -- Different config must offer an explicit conflict, not masquerade as a successful start.
+  INSERT INTO public.tka_configurations(tka_code,education_level,subject_code,total_questions,duration_minutes,type)
+    VALUES(code||'_other',upper(lvl),subject,1,60,'RANDOM');
+  again:=public.start_tka_tryout(code||'_other');
+  IF again->>'status'<>'SUBJECT_SESSION_ACTIVE' OR again ? 'attempt_id'
+     OR again->'existing_session'->>'attempt_id'<>aid::text
+     OR again->'existing_session'->>'attempt_type'<>'TRYOUT' THEN
+    RAISE EXCEPTION 'Different-config conflict lost typed resume contract';
+  END IF;
   PERFORM set_config('request.jwt.claim.sub',outsider::text,true);
   denied:=false;
   BEGIN PERFORM public.resume_exam_attempt(aid); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
@@ -59,6 +68,7 @@ BEGIN
   BEGIN PERFORM public.start_tka_tryout(code); EXCEPTION WHEN insufficient_privilege THEN denied:=true; END;
   IF NOT denied THEN RAISE EXCEPTION 'Anonymous start allowed'; END IF;
   IF has_function_privilege('anon','public.start_tka_tryout(text)','EXECUTE') OR
-     has_function_privilege('authenticated','private.load_tka_tryout(uuid)','EXECUTE') THEN RAISE EXCEPTION 'Unsafe grants'; END IF;
+     has_function_privilege('authenticated','private.subject_session_conflict(uuid,integer,text)','EXECUTE') OR
+     has_function_privilege('authenticated','private.is_game_exam_attempt(uuid)','EXECUTE') THEN RAISE EXCEPTION 'Unsafe grants'; END IF;
 END $$;
 ROLLBACK;

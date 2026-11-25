@@ -33,6 +33,21 @@ export function buildAnswer(question, draft = {}, effects = {}) {
   if (new Set(codes).size !== codes.length || codes.some(code => !question.options.some(o => o.option_code === code) || effects.eliminated?.includes(code))) throw new Error("Pilihan tidak tersedia. Periksa kembali jawaban.");
   return { option_codes: [...codes] };
 }
+// Adapt finalized server records only; never infer correctness or regrade in the browser.
+export function mapadventureReviewRecords(review = []) {
+  return review.map((record, questionIndex) => {
+    const q = record.question;
+    const options = q.options || [];
+    const answer = record.answer_payload || {};
+    const indices = (answer.option_codes || []).map(code => options.findIndex(option => option.option_code === code)).filter(index => index >= 0);
+    return {
+      questionIndex, correct: record.correct === true,
+      selected: record.is_timeout ? null : q.type === "PGK_KATEGORI" ? answer.category_answers || {} : q.type === "PGK_MA" ? indices : indices[0] ?? null,
+      question: { ...q, question: q.text, optionDetails: options, options: options.map(option => option.option_text),
+        ...(q.answer_keys ? { answer_keys: { options: q.answer_keys.option_codes, categories: q.answer_keys.category_answers } } : {}) },
+    };
+  });
+}
 export function openGachaChest(request, nodeId, chestTier) {
   return request("gacha", { nodeId, ...(chestTier === undefined ? {} : { chestTier }) });
 }
@@ -80,7 +95,7 @@ export function createMapadventureClient({ getSession, actions, fetcher = fetch,
   }
   function answerAdvanced(state, previous) {
     const s = state.session;
-    return !s || s.attempt_id !== previous.attempt_id || s.question?.id !== previous.question_id || !!s.effects?.retried !== previous.retried;
+    return !s || s.attempt_id !== previous.attempt_id || s.question?.id !== previous.question_id || s.feedback?.question_id === previous.question_id || !!s.effects?.retried !== previous.retried;
   }
   return async function request(action, payload = {}, context = {}) {
     if (busy) throw new Error("Perintah sebelumnya masih diproses.");

@@ -21,7 +21,7 @@ const cases = [
   ['bootstrap', {}], ['settings', { settings: { SHOW_TIPS: '0', SUBJECT: 'Matematika' } }], ['material', { nodeId: user }],
   ['read_complete', { nodeId: user, readToken: other }], ['start', { nodeId: user, stage: 'practice' }],
   ['answer', { attempt_id: user, question_id: other, answer_payload: { option_codes: ['A'] } }],
-  ['timeout', { attempt_id: user, question_id: other }],
+  ['timeout', { attempt_id: user, question_id: other }], ['next', { attempt_id: user, question_id: other }],
   ['use_tool', { attempt_id: user, question_id: other, tool: 'clue' }], ['complete_node', { attempt_id: user }],
   ['complete_island', { islandId: user }], ['gacha', { nodeId: user, chestTier: 'golden' }], ['buy', { tool: 'secondchance' }],
 ];
@@ -106,6 +106,16 @@ test('timer projection and strict timeout keys expose no private records; timed 
   for(const extra of [{deadline_at:s.deadline_at},{server_now:s.server_now},{is_timeout:false},{answer_payload:{}},{question_id:42}]) assert.equal(validPayload('timeout',{attempt_id:user,question_id:other,...extra}),false);
   assert.equal(validPayload('answer',{attempt_id:user,question_id:other,answer_payload:{}}),false);
   assert.equal((await fixture().execute('timeout',{attempt_id:user,question_id:other},user)).ok,true);
+});
+test('feedback and final review projection whitelist authoritative fields without leaking active keys or audit', () => {
+  const question={id:other,type:'PGK_KATEGORI',text:'Snapshot',answer_keys:{category_answers:{1:'Benar'},first_answer:'secret'},category_items:[{item_number:1,item_text:'Pernyataan',correct_category:'secret'}],clue:'secret',explanation:'Pembahasan',user_id:user};
+  const feedback={question_id:other,correct:false,accepted:true,retry:false,is_timeout:true,first_answer:'secret'};
+  const data=publicState({...state,session:{question,feedback},answer:feedback,result:{best_stars:3,review:[{question,correct:false,is_timeout:true,answer_payload:{category_answers:{1:'Salah'},first_answer:'secret'},first_answer:'secret'}]}});
+  assert.equal(data.answer.correct,false); assert.equal(data.session.feedback.question_id,other); assert.equal(data.session.question.answer_keys,undefined);
+  assert.equal(data.result.best_stars,3); assert.deepEqual(data.result.review[0].question.answer_keys,{category_answers:{1:'Benar'}});
+  assert.equal(data.result.review[0].question.explanation,'Pembahasan'); assert.equal(data.result.review[0].is_timeout,true);
+  assert.doesNotMatch(JSON.stringify(data),/secret|first_answer|user_id|correct_category/);
+  for(const p of [{attempt_id:user},{attempt_id:user,question_id:other,correct:true},{attempt_id:other,question_id:'bad'}]) assert.equal(validPayload('next',p),false);
 });
 test('SQL/auth exceptions are sanitized, known shortages remain actionable', async () => {
   for (const error of [{ code: 'XX000', message: 'private SQL token' }, { code: 'P0001', message: 'secret schema' }]) {

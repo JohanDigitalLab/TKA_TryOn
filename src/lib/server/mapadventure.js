@@ -24,6 +24,7 @@ export function validPayload(action, payload) {
     case "complete_island": return keys(payload, ["islandId"]) && uuid(payload.islandId);
     case "gacha": return keys(payload, ["nodeId", "chestTier"]) && uuid(payload.nodeId) && (payload.chestTier === undefined || ["wooden", "silver", "golden"].includes(payload.chestTier));
     case "buy": return keys(payload, ["tool"]) && TOOLS.includes(payload.tool);
+    case "next":
     case "timeout": return keys(payload, ["attempt_id", "question_id"]) && uuid(payload.attempt_id) && uuid(payload.question_id);
     case "use_tool": return keys(payload, ["attempt_id", "question_id", "tool"]) && uuid(payload.attempt_id) && uuid(payload.question_id) && TOOLS.includes(payload.tool);
     case "answer": {
@@ -65,6 +66,17 @@ export function publicState(data) {
     options: (q.options || []).map(o => pick(o, ["option_code", "option_text"])),
     category_items: (q.category_items || []).map(c => pick(c, ["item_number", "item_text", "category_label"])) } : null;
   const ledger = tools => (tools || []).map(t => pick(t, ["tool", "question_id", "question_index"]));
+  const feedback = value => value ? pick(value, ["question_id", "accepted", "retry", "correct", "is_timeout"]) : null;
+  const answerPayload = value => ({
+    ...(Array.isArray(value?.option_codes) ? { option_codes: value.option_codes.filter(code => typeof code === "string") } : {}),
+    ...(object(value?.category_answers) ? { category_answers: Object.fromEntries(Object.entries(value.category_answers).filter(([key, val]) => /^\d+$/.test(key) && typeof val === "string")) } : {}),
+  });
+  // Only a finalized result may publish frozen keys; active question projection stays private.
+  const review = records => (records || []).map(record => ({
+    ...pick(record, ["correct", "is_timeout"]), answer_payload: answerPayload(record.answer_payload),
+    question: { ...question(record.question), ...pick(record.question, ["explanation"]),
+      ...(record.question?.answer_keys ? { answer_keys: answerPayload(record.question.answer_keys) } : {}) },
+  }));
   const result = {
     settings: pick(data.settings, ["SHOW_TIPS", "SUBJECT"]), education_level: data.education_level, subject_code: data.subject_code,
     subjects: (data.subjects || []).map(s => pick(s, ["name", "subject_code"])),
@@ -73,12 +85,12 @@ export function publicState(data) {
     status: pick(data.status, ["points", "stars"]), wallet: pick(data.wallet, ["points"]), inventory: pick(data.inventory, TOOLS), profile_xp: data.profile_xp,
     tip: data.tip ? pick(data.tip, ["id", "message"]) : null,
     session: data.session ? { ...pick(data.session, ["attempt_id", "nodeId", "stage", "index", "total", "answered", "deadline_at", "server_now", "remaining_seconds"]),
-      question: question(data.session.question), tools: ledger(data.session.tools), effects: pick(data.session.effects, ["clue", "eliminated", "secondchance", "retried"]) } : null,
+      question: question(data.session.question), feedback: feedback(data.session.feedback), tools: ledger(data.session.tools), effects: pick(data.session.effects, ["clue", "eliminated", "secondchance", "retried"]) } : null,
   };
   if (data.material) result.material = pick(data.material, ["nodeId", "text", "url", "readToken"]);
-  if (data.result) result.result = { ...pick(data.result, ["attempt_id", "nodeId", "stage", "passed", "correct", "total", "score", "stars", "points", "xp"]), tools: ledger(data.result.tools) };
+  if (data.result) result.result = { ...pick(data.result, ["attempt_id", "nodeId", "stage", "passed", "correct", "total", "score", "stars", "best_stars", "points", "xp"]), tools: ledger(data.result.tools), review: review(data.result.review) };
   if (data.reward) result.reward = { ...pick(data.reward, ["tier", "points"]), tools: pick(data.reward.tools, TOOLS) };
-  if (data.answer) result.answer = pick(data.answer, ["accepted", "retry", "is_timeout"]);
+  if (data.answer) result.answer = feedback(data.answer);
   if (data.resumed !== undefined) result.resumed = data.resumed;
   return result;
 }

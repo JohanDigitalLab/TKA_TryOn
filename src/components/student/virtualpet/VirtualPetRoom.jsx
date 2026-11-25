@@ -6,6 +6,7 @@ import VirtualpetQuiz, { VirtualpetAnswerReview } from "./VirtualpetQuiz";
 import { MODES } from "@/lib/student/virtualpet-client";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   Backpack,
   BookOpen,
@@ -901,8 +902,9 @@ export default function VirtualPetRoom() {
         </main>
         {tips && <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="vp-tip-title" className="vp-panel w-full max-w-md p-6"><h2 id="vp-tip-title" className="font-bold">Tips sahabat virtual</h2><p className="my-4 whitespace-pre-wrap">{tips.message}</p><label className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={busy} checked={hideTips} onChange={event => updateTips(event.target.checked)} />Jangan tampilkan lagi</label><button disabled={busy} className="vp-btn mt-4 bg-[#73895d] text-white" onClick={dismissTips}>Lanjutkan</button></section></div>}
         {session && !tips && <VirtualpetQuiz key={session.attempt_id} session={session} busy={busy} error={error} onFinish={payload => run("finish", payload)} />}
-        {result && !tips && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"><section role="dialog" aria-modal="true" aria-labelledby="vp-result-title" className={`vp-panel vp-modal w-full p-6 ${reviewOpen ? "max-w-3xl" : "max-w-lg"}`}>
-          <h2 id="vp-result-title" className="text-xl font-bold">{reviewOpen ? "Review jawaban" : result.passed ? "Misi berhasil!" : "Terus semangat belajar!"}</h2>
+        {result && !tips && <div className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/40 ${reviewOpen ? "p-0 sm:p-4" : "p-4"}`}><section role="dialog" aria-modal="true" aria-labelledby={reviewOpen ? undefined : "vp-result-title"} aria-label={reviewOpen ? "Review Hasil Kuis" : undefined} className={`vp-panel w-full overflow-y-auto overscroll-contain ${reviewOpen ? "h-dvh max-h-dvh max-w-3xl rounded-none! px-4 py-6 sm:h-auto sm:max-h-[90dvh] sm:rounded-3xl!" : "vp-modal max-w-lg p-6"}`}>
+          {!reviewOpen && <h2 id="vp-result-title" className="text-xl font-bold">{result.passed ? "Misi berhasil!" : "Terus semangat belajar!"}</h2>}
+          {reviewOpen && <button type="button" onClick={() => setReviewOpen(false)} className="mb-5 flex items-center gap-2 text-sm font-bold text-emerald-600"><ArrowLeft size={16} aria-hidden="true" />Kembali ke hasil</button>}
           {reviewOpen && result.review ? <div className="mt-4"><VirtualpetAnswerReview session={result.review.session} answers={result.review.answers} /></div> : <>
             <div className="my-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Jawaban benar", result.correct], ["Total pertanyaan", result.total], ["Skor", result.score], ["Ambang", "80%"]].map(([label, value]) => <div key={label} className="rounded-2xl bg-[var(--soft)] p-3 text-center"><p className="text-2xl font-bold">{value}</p><p className="mt-1 text-xs vp-muted">{label}</p></div>)}</div>
             <ul aria-label="Reward yang didapat" className="mb-4 flex flex-wrap gap-2">{["hunger", "hydration", "rice", "water", "apple", "donut", "cake", "vitamin", "xp"].map(id => [id, id === "xp" ? (result.rewards?.profile_xp ?? result.rewards?.pet_xp ?? 0) : (result.rewards?.[id] ?? 0)]).filter(([, count]) => count > 0).map(([id, count]) => {
@@ -913,9 +915,11 @@ export default function VirtualPetRoom() {
             })}</ul>
             {!result.passed && <p className="text-sm">Belum mendapat hadiah. Coba lagi dengan sesi baru.</p>}
           </>}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            {result.review && <button className="vp-btn bg-[var(--soft)]" onClick={() => setReviewOpen(value => !value)}>{reviewOpen ? "Kembali ke hasil" : "Review jawaban"}</button>}
-            <button className="vp-btn bg-[#73895d] text-white" onClick={() => { setReviewOpen(false); dismissResult(); }}>Kembali ke ruangan</button>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            {reviewOpen ? <button type="button" className="vp-btn w-full bg-[var(--soft)] sm:w-auto" onClick={() => setReviewOpen(false)}>Kembali ke hasil</button> : <>
+              {result.review && <button type="button" className="vp-btn w-full bg-[var(--soft)] sm:w-auto" onClick={() => setReviewOpen(true)}>Review Jawaban</button>}
+              <button type="button" className="vp-btn w-full bg-[#73895d] text-white sm:w-auto" onClick={() => { setReviewOpen(false); dismissResult(); }}>Kembali ke Ruangan</button>
+            </>}
           </div>
         </section></div>}
         <AnimatePresence>

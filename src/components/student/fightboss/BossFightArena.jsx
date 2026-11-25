@@ -685,6 +685,18 @@ export default function BossFightArena() {
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <button
                   type="button"
+                  onClick={() => {
+                    mutedRef.current = !muted;
+                    setMuted(!muted);
+                  }}
+                  aria-label={muted ? "Aktifkan suara" : "Matikan suara"}
+                  aria-pressed={muted}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-emerald-400"
+                >
+                  {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+                </button>
+                <button
+                  type="button"
                   disabled={busy || !!error || (locked && gameStatus === "playing")}
                   onClick={() => {
                     setDraftMatchMode(matchMode);
@@ -697,18 +709,6 @@ export default function BossFightArena() {
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition enabled:hover:border-emerald-400 enabled:hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:enabled:hover:text-emerald-400"
                 >
                   <Settings size={17} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    mutedRef.current = !muted;
-                    setMuted(!muted);
-                  }}
-                  aria-label={muted ? "Aktifkan suara" : "Matikan suara"}
-                  aria-pressed={muted}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-emerald-400"
-                >
-                  {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
                 </button>
               </div>
             </div>
@@ -1300,19 +1300,19 @@ export default function BossFightArena() {
                       </span>
                     </div>
                     <button
+                      type="button"
+                      onClick={() => setReview(true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-bold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    >
+                      <BookOpen size={16} /> Lihat Pembahasan
+                    </button>
+                    <button
                       autoFocus
                       type="button"
                       onClick={() => { setResultClosed(true); setReview(false); setImpact(null); }}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     >
                       <X size={16} /> Tutup
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReview(true)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-3.5 text-sm font-bold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                    >
-                      <BookOpen size={16} /> Lihat Pembahasan
                     </button>
                   </>
                 )}

@@ -4,7 +4,8 @@ import DashboardBreadcrumb from "@/components/dashboard-breadcrumb";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Backpack, Check, ChevronLeft, Coins, Map, Moon, Settings, Star, Sun, X } from "lucide-react";
-import { buildAnswer, categoryLabels, questionSecondsLeft, safeMaterialUrl, STAGES, TOOLS } from "@/lib/student/mapadventure-client";
+import { buildAnswer, mapadventureReviewRecords, questionSecondsLeft, safeMaterialUrl, STAGES, TOOLS } from "@/lib/student/mapadventure-client";
+import { BossFightChoices, BossFightReview } from "@/components/student/fightboss/BossFightQuestions";
 import { IslandNavigation, TopicMap } from "./IslandMap";
 import useMapAdventure from "./useMapAdventure";
 import "./mapadventure.css";
@@ -35,8 +36,8 @@ function Modal({ title, onClose, children }) {
     document.addEventListener("keydown", handle);
     return () => { document.removeEventListener("keydown", handle); previous?.focus?.(); };
   }, [onClose]);
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
-    <section ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-5 text-slate-800 shadow-2xl dark:bg-slate-900 dark:text-slate-100">
+  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 backdrop-blur-sm sm:items-center sm:p-5">
+    <section ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-slate-800 shadow-2xl dark:bg-slate-900 dark:text-slate-100 sm:rounded-3xl sm:p-7">
       <header className="mb-5 flex items-center justify-between gap-4"><h2 className="text-xl font-black">{title}</h2>{onClose && <button aria-label="Tutup" onClick={onClose} className="rounded-xl p-2 hover:bg-slate-100 dark:hover:bg-slate-800"><X /></button>}</header>
       {children}
     </section>
@@ -88,11 +89,15 @@ function MaterialReader({ material, game }) {
 function Quiz({ session, game }) {
   const [draft, setDraft] = useState({});
   const q = session.question;
+  const [retryFeedback, setRetryFeedback] = useState(null);
+  const feedback = session.feedback;
+  const hasNext = session.answered < session.total;
   const effects = session.effects || {};
+  const visibleOptions = (q?.options || []).filter(option => !effects.eliminated?.includes(option.option_code));
   const [seconds, setSeconds] = useState(() => questionSecondsLeft(session));
   const timeoutBusy = useRef(false);
   const timeoutSent = useRef(null);
-  const timed = session.stage !== "practice" && !!q && !!session.deadline_at;
+  const timed = session.stage !== "practice" && !!q && !!session.deadline_at && !feedback;
   const { busy, run } = game;
   useEffect(() => {
     if (!timed) return;
@@ -114,7 +119,8 @@ function Quiz({ session, game }) {
   async function answer() {
     try {
       const answer_payload = buildAnswer(q, draft, effects);
-      await game.run("answer", { attempt_id: session.attempt_id, question_id: q.id, answer_payload }, { retried: effects.retried });
+      const saved = await game.run("answer", { attempt_id: session.attempt_id, question_id: q.id, answer_payload }, { retried: effects.retried });
+      if (saved?.answer?.retry) setRetryFeedback(saved.answer);
     } catch (error) { game.reportError(error.message); }
   }
   return <Modal title={STAGES.find(s => s.id === session.stage)?.name || "Sesi tersimpan"}>
@@ -122,17 +128,29 @@ function Quiz({ session, game }) {
     <p className="mb-3 text-sm text-slate-500">{STAGES.find(s => s.id === session.stage)?.requirement} Kelulusan diverifikasi server.</p>
     <p className="mb-3 text-sm text-slate-500">{STAGES.find(s => s.id === session.stage)?.selection}</p>
     <div className="mb-5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-indigo-500" style={{ width: `${session.answered / session.total * 100}%` }} /></div>
-    {q ? <>
+    {feedback ? <div className="py-8 text-center">
+      <div aria-hidden="true" className="mb-5 text-6xl">{feedback.correct ? "🎯" : feedback.is_timeout ? "⌛" : "🌱"}</div>
+      <p role="status" className={`rounded-2xl p-5 text-lg font-black ${feedback.correct ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{feedback.correct ? "Jawaban benar!" : feedback.is_timeout ? "Waktu habis. Jawaban dicatat salah." : "Jawaban salah. Tetap semangat!"}</p>
+      <p className="my-5 text-sm text-slate-500">Jawaban telah dikunci oleh server. {hasNext ? "Timer soal berikutnya baru dimulai setelah kamu melanjutkan." : "Seluruh jawaban tersimpan. Lihat hasil dan pembahasanmu."}</p>
+      <button className={button} disabled={game.busy} onClick={() => hasNext ? game.run("next", { attempt_id: session.attempt_id, question_id: feedback.question_id }) : game.run("complete_node", { nodeId: session.nodeId, attempt_id: session.attempt_id })}>{game.busy ? "Memuat…" : hasNext ? "Soal berikutnya →" : "Lihat hasil"}</button>
+    </div> : q ? <>
       {q.stimulus && <aside className="mb-4 whitespace-pre-wrap rounded-2xl bg-sky-50 p-4 dark:bg-slate-800"><strong>{q.stimulus.title}</strong><p>{q.stimulus.content_text}</p><p>{q.stimulus.media_description}</p>{safeMaterialUrl(q.stimulus.file_url) && <a className="text-indigo-600 underline" href={safeMaterialUrl(q.stimulus.file_url).href} target="_blank" rel="noopener noreferrer">Buka stimulus ↗</a>}</aside>}
       <p className="mb-2 whitespace-pre-wrap text-sm text-slate-500">{q.instruction}</p>
       <h3 className="mb-5 whitespace-pre-wrap text-lg font-bold">{q.text}</h3>
       {q.type === "PGK_MA" && <p className="mb-3 text-sm">Pilih semua jawaban yang sesuai; pilihan kosong juga dapat dikirim.</p>}
       <fieldset disabled={game.busy || expired} className="space-y-3"><legend className="sr-only">Jawaban soal</legend>
-        {q.type === "PGK_KATEGORI" ? q.category_items.map(item => <label key={item.item_number} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3"><span className="whitespace-pre-wrap">{item.item_text}</span><select aria-label={`Kategori pernyataan ${item.item_number}`} className="rounded-lg border bg-white p-2 text-slate-800" value={draft.category_answers?.[item.item_number] || ""} onChange={event => setDraft(previous => ({ category_answers: { ...previous.category_answers, [item.item_number]: event.target.value } }))}><option value="">Pilih kategori</option>{categoryLabels(item).map(label => <option key={label}>{label}</option>)}</select></label>) : q.options.map(option => {
-          const eliminated = effects.eliminated?.includes(option.option_code);
-          return <label key={option.option_code} className={`flex gap-3 rounded-2xl border p-4 ${eliminated ? "opacity-35 line-through" : "cursor-pointer hover:border-indigo-400"}`}><input type={q.type === "PG_TUNGGAL" ? "radio" : "checkbox"} name={`answer-${q.id}`} disabled={eliminated} checked={!eliminated && !!draft.option_codes?.includes(option.option_code)} onChange={() => setDraft(previous => ({ option_codes: q.type === "PG_TUNGGAL" ? [option.option_code] : previous.option_codes?.includes(option.option_code) ? previous.option_codes.filter(code => code !== option.option_code) : [...(previous.option_codes || []), option.option_code] }))} /><span className="whitespace-pre-wrap"><b>{option.option_code}.</b> {option.option_text}</span></label>;
-        })}
+        <BossFightChoices question={{ ...q, optionDetails: visibleOptions, options: visibleOptions.map(option => option.option_text) }}
+          selection={visibleOptions.flatMap((option, i) => draft.option_codes?.includes(option.option_code) ? [i] : [])}
+          selected={visibleOptions.findIndex(option => draft.option_codes?.includes(option.option_code))}
+          categories={draft.category_answers || {}} disabled={game.busy || expired}
+          onSelect={i => {
+            const code = visibleOptions[i].option_code;
+            setRetryFeedback(null);
+            setDraft(previous => ({ option_codes: q.type === "PG_TUNGGAL" ? [code] : previous.option_codes?.includes(code) ? previous.option_codes.filter(value => value !== code) : [...(previous.option_codes || []).filter(value => !effects.eliminated?.includes(value)), code] }));
+          }}
+          onCategory={(number, value) => { setRetryFeedback(null); setDraft(previous => ({ category_answers: { ...previous.category_answers, [number]: value } })); }} />
       </fieldset>
+      {retryFeedback && <p role="status" className="mt-4 rounded-xl bg-rose-100 p-4 font-bold text-rose-800">Jawaban salah. Kesempatan kedua masih tersedia; timer tetap berjalan.</p>}
       {effects.clue && <p className="mt-4 whitespace-pre-wrap rounded-xl bg-amber-100 p-4 text-amber-900">💡 {effects.clue}</p>}
       {effects.secondchance && <p className="mt-3 text-sm text-indigo-600">{effects.retried ? "Jawaban pertama belum tepat. Satu kesempatan terakhir tersedia." : "Kesempatan kedua aktif untuk soal ini."}</p>}
       <div className="my-5 flex flex-wrap gap-2">{TOOLS.map(tool => {
@@ -147,6 +165,28 @@ function Quiz({ session, game }) {
 
     <button className="mt-4 text-sm text-indigo-600 underline disabled:opacity-40" disabled={game.busy} onClick={() => game.run("bootstrap")}>Muat ulang sesi tersimpan</button>
     <p className="mt-3 text-xs text-slate-500">Sesi otomatis dilanjutkan saat kembali. Jawaban tidak dinilai di perangkat ini.</p>
+  </Modal>;
+}
+function AdventureResult({ result, onClose }) {
+  const [reviewing, setReviewing] = useState(false);
+  const stage = STAGES.find(item => item.id === result.stage);
+  return <Modal title={reviewing ? "Review Petualangan" : result.passed ? "🏆 Tahap selesai!" : "🌱 Terus bertumbuh"} onClose={onClose}>
+    {reviewing ? <>
+      <button className="mb-5 font-bold text-indigo-600" onClick={() => setReviewing(false)}>← Kembali ke hasil</button>
+      <BossFightReview records={mapadventureReviewRecords(result.review)} pvp={false} title="Review Hasil Petualangan" navigationId="mapadventure-review-navigation" />
+    </> : <>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-7 text-center text-white shadow-lg">
+        <motion.div initial={{ scale: .6 }} animate={{ scale: 1 }} className="text-6xl">{result.passed ? "🏆" : "🧭"}</motion.div>
+        <p className="mt-4 text-sm font-bold uppercase tracking-widest text-indigo-100">{stage?.name}</p>
+        <p className="my-3 text-5xl font-black">{result.score}<span className="text-lg"> / 100</span></p>
+        <p className="font-bold">{result.correct} / {result.total} jawaban benar</p>
+        <div className="mt-5 flex justify-center gap-2" aria-label={`${result.stars} bintang percobaan`}>{[1, 2, 3].map(value => <Star key={value} size={34} className={value <= result.stars ? "fill-amber-300 text-amber-300" : "text-white/30"} />)}</div>
+      </div>
+      <div className="my-5 grid grid-cols-3 gap-3 text-center">{[[`+${result.points}`, "Poin"], [`+${result.xp}`, "XP"], [result.best_stars ?? result.stars, "Bintang terbaik"]].map(([value, label]) => <div key={label} className="rounded-2xl bg-slate-100 p-4 dark:bg-slate-800"><p className="text-xl font-black">{value}</p><p className="mt-1 text-xs text-slate-500">{label}</p></div>)}</div>
+      <p className="mb-5 text-sm leading-relaxed text-slate-500">{result.passed ? "Hebat! Progresmu tersimpan. Mainkan ulang untuk memperbaiki bintang terbaik; poin dan XP hanya diberikan pada penyelesaian pertama." : "Belum lulus kali ini, tetapi setiap percobaan membantumu berkembang. Tinjau jawabanmu lalu coba lagi!"}</p>
+      <div className="flex flex-wrap gap-3"><button className={button} disabled={!result.review?.length} onClick={() => setReviewing(true)}>Review jawaban</button><button className="rounded-2xl border px-5 py-3 font-bold" onClick={onClose}>Kembali ke peta</button></div>
+      {!result.review?.length && <p className="mt-3 text-xs text-slate-500">Review belum tersedia untuk hasil lama ini. Mulai percobaan baru setelah migrasi diterapkan.</p>}
+    </>}
   </Modal>;
 }
 function TopicTrail({ node, game }) {
@@ -171,7 +211,7 @@ function TopicTrail({ node, game }) {
       const status = node[`${stage.id}_status`];
       const [x, y] = coordinates[i];
       return <div key={stage.id} className="absolute flex w-[40%] -translate-x-1/2 flex-col items-center text-center" style={{ left: `${x}%`, top: y - 34 }}>
-        <motion.button whileHover={{ scale: status !== "LOCKED" ? 1.08 : 1 }} whileTap={{ scale: .96 }} aria-label={`${stage.name}: ${statusText[status]}`} disabled={game.busy || status === "LOCKED" || (status === "COMPLETED" && !["material", "mysterychest"].includes(stage.id))} onClick={() => activate(stage.id)} className={`relative flex h-20 w-20 items-center justify-center rounded-3xl border-4 text-3xl shadow-lg disabled:cursor-default ${status === "COMPLETED" ? "border-emerald-200 bg-emerald-100" : status === "UNLOCKED" ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-200" : "border-slate-200 bg-slate-100 grayscale"}`} style={status === "UNLOCKED" ? { animation: "mapadventure-node-pulse 2s infinite" } : undefined}>
+        <motion.button whileHover={{ scale: status !== "LOCKED" ? 1.08 : 1 }} whileTap={{ scale: .96 }} aria-label={`${stage.name}: ${statusText[status]}${status === "COMPLETED" ? ", mainkan ulang" : ""}`} disabled={game.busy || status === "LOCKED"} onClick={() => activate(stage.id)} className={`relative flex h-20 w-20 items-center justify-center rounded-3xl border-4 text-3xl shadow-lg disabled:cursor-default ${status === "COMPLETED" ? "border-emerald-200 bg-emerald-100" : status === "UNLOCKED" ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-200" : "border-slate-200 bg-slate-100 grayscale"}`} style={status === "UNLOCKED" ? { animation: "mapadventure-node-pulse 2s infinite" } : undefined}>
           {stage.symbol}{status === "COMPLETED" && <Check size={20} className="absolute -right-2 -top-2 rounded-full bg-emerald-500 p-0.5 text-white" />}
         </motion.button>
         <span className="mt-1 text-sm font-extrabold">{stage.name}</span><span className="text-xs text-slate-500">{statusText[status]}</span>{stage.id !== "mysterychest" && <Stars value={node[`${stage.id}_stars`]} />}
@@ -266,7 +306,7 @@ export default function MapAdventure() {
     {state && bag && <Modal title="Tas Alat" onClose={() => setBag(false)}>
       <span aria-label={`${state.wallet.points} poin`} className="mb-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"><Coins size={20} aria-hidden="true" />{state.wallet.points}</span>
       <div className="space-y-3">{TOOLS.map(tool => <div key={tool.id} className="flex items-center gap-3 rounded-2xl border p-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-indigo-50 text-xl leading-none dark:bg-slate-800">{tool.symbol}</span><div className="min-w-0 flex-1"><b>{tool.name}</b><p className="text-sm text-slate-500">Stok: {state.inventory[tool.id]} · {tool.price} poin / item{tool.timedOnly ? " · hanya soal bertimer (+30 detik)" : ""}</p></div><button className={button} disabled={game.busy || state.wallet.points < tool.price} onClick={() => game.run("buy", { tool: tool.id })}>Beli</button></div>)}</div><p className="mt-4 text-xs text-slate-500">Pembelian diproses atomik di server. Bila koneksi putus, periksa saldo dan stok sebelum membeli lagi.</p></Modal>}
-    {state && game.result && <Modal title={game.result.passed ? "🏆 Tahap selesai!" : "🌱 Terus bertumbuh"} onClose={game.closeResult}><p className="text-xl font-bold">{game.result.correct} / {game.result.total} benar · nilai {game.result.score}</p><p className="my-4">Hasil tersimpan: +{game.result.points} poin · +{game.result.xp} XP · {game.result.stars} bintang.</p>{!game.result.passed && <p className="mb-5">Percobaan ini tetap tersimpan. Pelajari materi lalu mulai percobaan baru dari tahap yang sama.</p>}<button className={button} onClick={game.closeResult}>Kembali ke peta</button></Modal>}
+    {state && game.result && <AdventureResult key={game.result.attempt_id} result={game.result} onClose={game.closeResult} />}
     {state && game.reward && <Modal title="🎁 Peti Misteri terbuka" onClose={game.closeReward}><motion.div initial={{ scale: .5, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} className="py-5 text-center"><span className="text-7xl">🎁</span><p className="mt-5 text-lg font-black">Peti {game.reward.tier}</p><p className="mt-3">{game.reward.points} poin</p>{Object.entries(game.reward.tools).map(([tool, count]) => <p key={tool}>{TOOLS.find(t => t.id === tool)?.name || tool} +{count}</p>)}</motion.div><p className="mb-5 text-sm text-slate-500">Ini hadiah tersimpan dari server. Membuka peti yang sama tidak mengundi atau membayar ulang.</p><button className={button} onClick={game.closeReward}>Lanjutkan perjalanan</button></Modal>}
     <Feedback game={game} />
     </div>

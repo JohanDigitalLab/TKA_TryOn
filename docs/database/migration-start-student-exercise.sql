@@ -1,4 +1,5 @@
 -- Pending deployment; see STUDENT_EXERCISE.md. Never apply automatically.
+-- Requires migration-subject-session-conflict.sql before deploying the start RPC.
 BEGIN;
 
 DROP FUNCTION IF EXISTS private.resume_student_exercise(p_attempt_id uuid);
@@ -183,7 +184,7 @@ REVOKE ALL ON FUNCTION public.resume_student_exercise(uuid),
 GRANT EXECUTE ON FUNCTION public.resume_student_exercise(uuid),
   public.save_exercise_answer(uuid,uuid,jsonb),
   public.submit_exercise_attempt(uuid) TO authenticated;
-  
+
 NOTIFY pgrst,'reload schema';
 COMMIT;
 
@@ -217,6 +218,7 @@ DECLARE
   g integer;
   subj text;
   aid uuid;
+  conflict jsonb;
   v_theme text := nullif(btrim(coalesce(p_theme, '')), '');
   v_topic text := nullif(btrim(coalesce(p_topic, '')), '');
   selected uuid[] := '{}';
@@ -240,11 +242,13 @@ BEGIN
   g := CASE lvl WHEN 'sd' THEN 6 WHEN 'smp' THEN 9 ELSE 12 END;
   PERFORM pg_advisory_xact_lock(hashtextextended('learning:user:'||u::text,0));
   SELECT id INTO aid FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj
-    AND attempt_type='EXERCISE' AND attempt_status='IN_PROGRESS' ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
+    AND attempt_type='EXERCISE' AND attempt_status='IN_PROGRESS'
+    -- no need to check so throughly. just use attempt_type
+    -- AND NOT private.is_game_exam_attempt(id)
+    ORDER BY started_at DESC,id LIMIT 1 FOR UPDATE;
   IF aid IS NOT NULL THEN RETURN public.resume_student_exercise(aid)||jsonb_build_object('resumed',true); END IF;
-  IF EXISTS(SELECT 1 FROM public.exam_attempts WHERE user_id=u AND grade=g AND subject_name=subj AND attempt_status='IN_PROGRESS') THEN
-    RAISE EXCEPTION 'Finish or resume existing subject session';
-  END IF;
+  conflict:=private.subject_session_conflict(u,g,subj);
+  IF conflict IS NOT NULL THEN RETURN conflict; END IF;
 
   IF v_theme IS NOT NULL THEN
     -- Mode theme/topic: soal acak (versi terbaru PUBLISHED) dalam theme, opsional per topic.

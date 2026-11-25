@@ -2,27 +2,25 @@
 
 import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { buildAnswers, categoryLabels, gradeVirtualpetAnswer } from "@/lib/student/virtualpet-client";
+import { buildAnswers, gradeVirtualpetAnswer } from "@/lib/student/virtualpet-client";
+import { BossFightChoices, BossFightReview } from "@/components/student/fightboss/BossFightQuestions";
 
 function mediaUrl(value) {
   try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; }
 }
 
 export function VirtualpetAnswerReview({ session, answers }) {
-  return <div className="space-y-4">{session.questions.map((question, i) => {
+  const records = session.questions.map((question, questionIndex) => {
     const answer = answers.find(item => item.question_id === question.id)?.answer_payload || {};
-    const correct = gradeVirtualpetAnswer(question, answer);
-    return <article key={question.id} className="rounded-2xl border border-[var(--line)] p-4">
-      <p className={`mb-2 text-sm font-bold ${correct ? "text-emerald-600" : "text-rose-600"}`}>Soal {i + 1} · {correct ? "Benar" : "Salah"}</p>
-      {question.stimulus && <aside className="mb-3 whitespace-pre-wrap rounded-xl bg-[var(--soft)] p-3 text-sm"><p>{question.stimulus.content_text}</p></aside>}
-      <h3 className="whitespace-pre-wrap font-bold">{question.text}</h3>
-      {question.type === "PGK_KATEGORI" ? question.category_items.map(item => <div key={item.item_number} className="mt-3 text-sm"><p className="whitespace-pre-wrap">{item.item_text}</p><p>Jawabanmu: <b>{answer.category_answers?.[item.item_number] || "—"}</b></p><p className="text-emerald-700">Kunci: {question.answer_keys.category_answers[item.item_number]}</p></div>) : <>
-        <ul className="my-3 space-y-1 text-sm">{question.options.map(option => <li key={option.option_code} className={question.answer_keys.option_codes.includes(option.option_code) ? "font-bold text-emerald-700" : ""}>{option.option_code}. {option.option_text}</li>)}</ul>
-        <p className="text-sm">Jawabanmu: <b>{answer.option_codes?.join(", ") || "Tidak memilih opsi"}</b></p>
-        <p className="text-sm text-emerald-700">Kunci: {question.answer_keys.option_codes.join(", ")}</p>
-      </>}
-    </article>;
-  })}</div>;
+    const options = question.options || [];
+    const indices = (answer.option_codes || []).map(code => options.findIndex(option => option.option_code === code)).filter(index => index >= 0);
+    return {
+      questionIndex, correct: gradeVirtualpetAnswer(question, answer),
+      selected: question.type === "PGK_KATEGORI" ? answer.category_answers || {} : question.type === "PGK_MA" ? indices : indices[0] ?? null,
+      question: { ...question, question: question.text, optionDetails: options, options: options.map(option => option.option_text), answer_keys: { options: question.answer_keys.option_codes, categories: question.answer_keys.category_answers } },
+    };
+  });
+  return <BossFightReview records={records} pvp={false} title="Review Hasil Kuis" navigationId="virtualpet-review-navigation" />;
 }
 
 export default function VirtualpetQuiz({ session, busy, error, onFinish }) {
@@ -63,8 +61,8 @@ export default function VirtualpetQuiz({ session, busy, error, onFinish }) {
       await onFinish(payload);
     } catch (failure) { setValidation(failure.message); }
   }
-  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm">
-    <section role="dialog" aria-modal="true" aria-labelledby="vp-question-title" className="vp-panel vp-modal w-full max-w-3xl p-5 sm:p-7">
+  return <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-5">
+    <section role="dialog" aria-modal="true" aria-labelledby="vp-question-title" className="vp-panel vp-modal m-0 w-full max-w-3xl rounded-t-3xl! rounded-b-none! p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-3xl! sm:p-7">
       <p className="text-sm font-bold">{session.scenario} · Soal {index + 1}/{session.total} · Tanpa batas waktu</p>
       <p className="mt-1 text-xs vp-muted">{q.subject} · Lulus minimal 80%</p>
       {q.stimulus && <aside className="my-4 whitespace-pre-wrap rounded-xl bg-[var(--soft)] p-4">
@@ -74,23 +72,21 @@ export default function VirtualpetQuiz({ session, busy, error, onFinish }) {
       {q.instruction && <p className="my-3 whitespace-pre-wrap text-sm">{q.instruction}</p>}
       <h2 id="vp-question-title" className="my-4 whitespace-pre-wrap text-lg font-bold">{q.text}</h2>
       <fieldset disabled={frozen} className="space-y-3">
-        <legend className="mb-3 text-sm">{q.type === "PGK_MA" ? "Pilih semua jawaban yang benar (boleh tidak memilih)." : q.type === "PGK_KATEGORI" ? "Tentukan kategori setiap pernyataan." : "Pilih satu jawaban."}</legend>
-        {q.type === "PGK_KATEGORI" ? q.category_items.map(item => <fieldset key={item.item_number} className="rounded-xl border border-[var(--line)] p-3">
-          <legend className="whitespace-pre-wrap px-1 text-sm">{item.item_text}</legend>
-          <div className="mt-2 flex flex-wrap gap-3">{categoryLabels(item).map(label => <label key={label} className="flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--soft)] px-3 py-2 text-sm">
-            <input type="radio" name={`vp-${q.id}-${item.item_number}`} value={label} checked={draft.category_answers?.[item.item_number] === label} onChange={() => { if (!frozen) setDrafts(previous => ({ ...previous, [q.id]: { category_answers: { ...draft.category_answers, [item.item_number]: label } } })); }} />{label}
-          </label>)}</div>
-        </fieldset>) : q.options.map(option => <label key={option.option_code} className="flex gap-3 rounded-xl border border-[var(--line)] p-3">
-          <input type={q.type === "PGK_MA" ? "checkbox" : "radio"} name={`vp-${q.id}`} checked={(draft.option_codes || []).includes(option.option_code)} onChange={() => selectOption(option.option_code)} />
-          <span className="whitespace-pre-wrap">{option.option_code}. {option.option_text}</span>
-        </label>)}
+        <BossFightChoices
+          question={{ ...q, optionDetails: q.options || [], options: (q.options || []).map(option => option.option_text) }}
+          selection={(q.options || []).flatMap((option, i) => draft.option_codes?.includes(option.option_code) ? [i] : [])}
+          selected={(q.options || []).findIndex(option => draft.option_codes?.includes(option.option_code))}
+          categories={draft.category_answers || {}} disabled={frozen}
+          onSelect={i => selectOption(q.options[i].option_code)}
+          onCategory={(number, value) => { if (!frozen) setDrafts(previous => ({ ...previous, [q.id]: { category_answers: { ...draft.category_answers, [number]: value } } })); }}
+        />
       </fieldset>
       {locked && <p role="status" className={`mt-4 rounded-xl p-3 text-sm font-bold ${confirmed[q.id] ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{confirmed[q.id] ? "Jawaban benar!" : "Jawaban salah."} Jawaban sudah dikunci.</p>}
       {(validation || error) && <p role="alert" className="mt-4 text-sm text-red-600">{validation || error}</p>}
       {submitted && <p className="mt-2 text-xs vp-muted">Jawaban dikunci untuk pengiriman ulang sesi yang sama. Hadiah hanya diputuskan server.</p>}
       {last && !allConfirmed && <p className="mt-3 text-xs vp-muted">Konfirmasi seluruh jawaban sebelum menyelesaikan kuis.</p>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <button className="vp-btn bg-[#73895d] text-white" disabled={frozen} onClick={confirm}><span className="sm:hidden">Jawab</span><span className="hidden sm:inline">Konfirmasi Jawaban</span></button>
+        <button className="vp-btn bg-[#73895d] text-white" disabled={frozen} onClick={confirm}><span className="sm:hidden">Jawab</span><span className="hidden sm:inline">Kirim Jawaban</span></button>
         <div className="ml-auto flex items-center gap-2">
           <button aria-label="Sebelumnya" className="vp-btn bg-[var(--soft)]" disabled={index === 0 || busy} onClick={() => navigate(index - 1)}><ArrowLeft size={18} className="sm:hidden" /><span className="hidden sm:inline">Sebelumnya</span></button>
           {last ? <button className="vp-btn bg-[#73895d] text-white" disabled={busy || !allConfirmed} onClick={finish}>{busy ? "Mengirim…" : submitted ? "Kirim ulang" : <><span className="sm:hidden">Selesai</span><span className="hidden sm:inline">Selesaikan kuis</span></>}</button> : <button aria-label="Berikutnya" className="vp-btn bg-[var(--soft)]" disabled={busy} onClick={() => navigate(index + 1)}><span className="hidden sm:inline">Berikutnya</span><ArrowRight size={18} className="sm:hidden" /></button>}

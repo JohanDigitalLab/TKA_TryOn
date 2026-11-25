@@ -59,9 +59,10 @@ test("loading, finished and absent attempt still block TRYOUT timer", () => {
 test("start/resume share server classification; multi-subject resets before next RPC", () => {
   assert.match(page, /\[untimed, setUntimed\] = useState\(true\)/);
   const start = page.slice(page.indexOf("  const startExam ="), page.indexOf("  // SIMPAN JAWABAN"));
-  // Resume memakai RPC spesifik: tryout untuk ?attemptId, latihan untuk attempt EXERCISE.
-  for (const rpc of ["start_school_assignment", "resume_tka_tryout", "resume_student_exercise", "start_student_exercise"]) assert.ok(start.includes(`"${rpc}"`));
-  assert.doesNotMatch(start, /"resume_exam_attempt"/);
+  // Resume ID harus mendispatch tipe dari server dan tetap menolak sesi game.
+  for (const rpc of ["start_school_assignment", "resume_exam_attempt", "resume_student_exercise", "start_student_exercise"]) assert.ok(start.includes(`"${rpc}"`));
+  assert.doesNotMatch(start, /"resume_tka_tryout"|const fallbackType/);
+  assert.match(start, /\["TRYOUT", "EXERCISE", "ASSIGNMENT"\]\.includes\(serverAttemptType\)/);
   assert.match(start, /Mode sesi latihan lama tidak lagi didukung/);
   assert.doesNotMatch(start, new RegExp(["start", "learning", "attempt"].join("_")));
   assert.doesNotMatch(start, new RegExp(["start", "exam", "attempt"].join("_")));
