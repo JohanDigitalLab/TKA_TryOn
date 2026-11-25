@@ -6,9 +6,9 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"
 
 test("island navigation stays above the topic map and selects an available island by default", () => {
   const page = read("src/components/student/mapadventure/MapAdventure.jsx");
-  assert.match(page, /state\?\.islands\.find\(i => i\.status !== "LOCKED"\)/);
+  assert.match(page, /state\?\.islands\.find\(\(i\) => i\.status !== "LOCKED"\)/);
   assert.ok(page.indexOf("<IslandNavigation") < page.indexOf("<TopicMap"));
-  assert.match(page, /onSelect=\{id => setSelection\(\{ island: id \}\)\}/);
+  assert.match(page, /onSelect=\{\(id\) => setSelection\(\{ island: id \}\)\}/);
   assert.match(page, /n\.theme_id === island\?\.id/);
   assert.match(page, /<TopicTrail node=\{node\} game=\{game\}/);
   assert.doesNotMatch(page, /Kepulauan Pengetahuan/);
@@ -31,7 +31,7 @@ test("island list supports horizontal scrolling, arrows, resize and server locks
 
 test("child map branches after practice and keeps distinct icons for locked nodes", () => {
   const page = read("src/components/student/mapadventure/MapAdventure.jsx");
-  assert.match(page, /const edges = \[\[0, 1\], \[1, 2\], \[2, 3\], \[1, 4\]\]/);
+  assert.match(page, /const edges = \[\s*\[0, 1\],\s*\[1, 2\],\s*\[2, 3\],\s*\[1, 4\],\s*\]/);
   assert.match(page, /\{stage.symbol\}/);
   assert.doesNotMatch(page, /<Lock/);
   assert.match(page, /bg-slate-100 grayscale/);
@@ -42,7 +42,7 @@ test("child map branches after practice and keeps distinct icons for locked node
   assert.match(page, /window.getComputedStyle\(header\)/);
   assert.match(page, /getBoundingClientRect/);
   assert.match(page, /window.addEventListener\("scroll", updatePosition/);
-  assert.match(page, /\[\[68, 92\], \[50, 235\], \[20, 365\], \[20, 540\], \[78, 645\]\]/);
+  assert.match(page, /\[\s*\[68, 92\],\s*\[50, 235\],\s*\[20, 365\],\s*\[20, 540\],\s*\[78, 645\],\s*\]/);
   assert.match(page, /text-xs font-bold text-indigo-500 sm:text-sm/);
   assert.match(page, /const midY = \(y \+ ny\) \/ 2/);
   assert.match(page, /h-12 w-12 shrink-0 items-center justify-center whitespace-nowrap/);
@@ -54,9 +54,9 @@ test("compact header matches BossFight structure and removes redundant map label
   assert.match(page, /<DashboardBreadcrumb current="Map Adventure"/);
   assert.match(page, /max-w-4xl/);
   assert.match(page, /mb-8 flex items-center justify-between gap-3/);
-  assert.match(page, /state && settingsOpen && <Modal title="Pengaturan"/);
-  assert.match(page, /aria-label="Pengaturan" aria-haspopup="dialog"/);
-  assert.match(page, /<select aria-label="Mata pelajaran"/);
+  assert.match(page, /state && settingsOpen[\s\S]{0,80}<Modal\s+title="Pengaturan"/);
+  assert.match(page, /aria-label="Pengaturan"[\s\S]{0,40}aria-haspopup="dialog"/);
+  assert.match(page, /<select[\s\S]{0,40}aria-label="Mata pelajaran"/);
   assert.match(page, /aria-label="Saldo dan bintang"/);
   assert.doesNotMatch(page, /Ketuk topik untuk menjelajah/);
   assert.ok(page.indexOf('aria-label="Saldo dan bintang"') > page.indexOf('<IslandNavigation'));
@@ -70,8 +70,8 @@ test("notifications outside quiz use a dismissible popup while quiz validation s
   const hook = read("src/components/student/mapadventure/useMapAdventure.js");
   assert.equal((page.match(/<Feedback game=\{game\} \/>/g) || []).length, 1);
   assert.match(page, /element.showModal\(\)/);
-  assert.match(page, /data-map-notification aria-labelledby/);
-  assert.match(page, /onCancel=\{event => \{ event.preventDefault\(\); game.closeFeedback\(\); \}\}/);
+  assert.match(page, /data-map-notification[\s\S]{0,60}aria-labelledby/);
+  assert.match(page, /onCancel=\{\(event\) => \{\s*event\.preventDefault\(\);\s*game\.closeFeedback\(\);\s*\}\}/);
   assert.match(page, /game.reportError\(error.message\)/);
   assert.match(hook, /const closeFeedback = useCallback/);
   assert.match(hook, /const reportError = useCallback/);
@@ -82,19 +82,18 @@ test("quiz navigates bounded cursor independently of answered count with immutab
   const quiz = page.slice(page.indexOf('function Quiz('), page.indexOf('function AdventureResult('));
   assert.match(quiz, /const hasNext = session.index < session.total - 1/);
   assert.match(quiz, /session.index <= 0/);
-  for (const action of ['previous', 'next']) assert.ok(quiz.includes(`game.run("${action}", { attempt_id: session.attempt_id, question_id: q.id })`));
+  for (const action of ['previous', 'next']) assert.match(quiz, new RegExp(`game\\.run\\("${action}", \\{\\s*attempt_id: session\\.attempt_id,\\s*question_id: q\\.id,\\s*\\}\\s*\\)`));
   assert.doesNotMatch(quiz, /hasNext = session.answered|!feedback.*game.run\("next"/);
   assert.match(quiz, /const answerDraft = readOnly \? session.answer_payload \|\| \{\} : draft/);
   assert.match(quiz, /categories=\{answerDraft.category_answers \|\| \{\}\}/);
   assert.match(quiz, /disabled=\{game.busy \|\| expired \|\| readOnly\}/);
-  assert.match(quiz, /const timed = .*&& !feedback/);
+  assert.match(quiz, /const timed =[\s\S]{0,140}&& !feedback/);
   assert.match(quiz, /const allHandled = session.total > 0 && session.answered === session.total/);
-  assert.match(quiz, /\{allHandled && <button.*game.run\("complete_node"/);
+  assert.match(quiz, /\{hasNext \? \([\s\S]*?\)\s*:\s*\([\s\S]*?game\.run\("complete_node"/);
   assert.equal((quiz.match(/game.run\("complete_node"/g) || []).length, 1);
   assert.match(quiz, /game.run\("bootstrap", \{ attempt_id: session.attempt_id \}\)/);
-  // Tools are hidden in review; the answer control remains visible but locked.
   assert.match(quiz, /disabled=\{game.busy \|\| !q \|\| expired \|\| readOnly\}/);
-  assert.ok(quiz.indexOf('{!readOnly && <>') < quiz.indexOf('{TOOLS.map'));
+  assert.ok(quiz.indexOf('{!readOnly && <>') < quiz.indexOf('{visibleTools.length > 0'));
   assert.ok(quiz.indexOf('{!readOnly && <>') < quiz.indexOf('onClick={answer}'));
 });
 
@@ -102,9 +101,9 @@ test("subject selection and stage starts no longer depend on global session conf
   const page = read("src/components/student/mapadventure/MapAdventure.jsx");
   const hook = read("src/components/student/mapadventure/useMapAdventure.js");
   assert.doesNotMatch(page + hook, /activeSessionConflict|differentActiveSession|resumeActiveSession|blockedStart/);
-  const selector = page.slice(page.indexOf('<select aria-label="Mata pelajaran"'), page.indexOf('</select>'));
-  assert.match(selector, /disabled=\{game.busy\}/);
-  assert.doesNotMatch(selector, /state.session|setSelection\(null\)/);
+  const selector = page.slice(page.search(/<select[\s\S]{0,40}aria-label="Mata pelajaran"/), page.indexOf('</select>'));
+  assert.match(selector, /disabled=\{game\.busy\}/);
+  assert.doesNotMatch(selector, /state\.session|setSelection\(null\)/);
   assert.match(hook, /previous: previousMapadventure/);
   assert.match(hook, /const data = await request\(action, payload, context\)/);
 });

@@ -239,16 +239,16 @@ test('lost answer reconciles persisted feedback without dispatching another answ
 });
 test('shared choices/review, replay controls and explicit feedback transition stay wired',()=>{
   const ui=readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx',import.meta.url),'utf8');
-  assert.match(ui,/<BossFightChoices/); assert.match(ui,/<BossFightReview records=\{mapadventureReviewRecords\(result.review\)\}/);
+  assert.match(ui,/<BossFightChoices/); assert.match(ui,/<BossFightReview[\s\S]{0,80}records=\{mapadventureReviewRecords\(result\.review\)\}/);
   assert.match(ui,/navigationId="mapadventure-review-navigation"/); assert.match(ui,/Review jawaban/); assert.match(ui,/result.best_stars/);
-  assert.match(ui,/const feedback = session.feedback/); assert.match(ui,/game.run\("next", \{ attempt_id: session.attempt_id, question_id: q.id \}\)/);
+  assert.match(ui,/const feedback = session\.feedback/); assert.match(ui,/game\.run\("next", \{\s*attempt_id: session\.attempt_id,\s*question_id: q\.id,?\s*\}\s*\)/);
   assert.match(ui,/disabled=\{game.busy \|\| status === "LOCKED"\}/); assert.doesNotMatch(ui,/status === "COMPLETED" && !/);
 });
 test('UI integration contract: no demo bank/local progression, reading gate, actual session/rewards, immediate tips rollback', () => {
   const ui = readFileSync(new URL('../src/components/student/mapadventure/MapAdventure.jsx', import.meta.url), 'utf8');
   const hook = readFileSync(new URL('../src/components/student/mapadventure/useMapAdventure.js', import.meta.url), 'utf8');
   assert.doesNotMatch(ui + hook, /Math\.random|ISLANDS_MATH|rollChest|arithSeries|localStorage|onReset|setPoints|setInventory|setProgress|answer_keys/);
-  assert.match(ui, /<IslandNavigation islands=\{state.islands\} nodes=\{state.nodes\}/);
+  assert.match(ui, /<IslandNavigation[\s\S]{0,80}islands=\{state\.islands\}[\s\S]{0,40}nodes=\{state\.nodes\}/);
   const map = readFileSync(new URL('../src/components/student/mapadventure/IslandMap.jsx', import.meta.url), 'utf8');
   assert.match(map, /islands.map/);
   assert.doesNotMatch(map, /Math\.random|localStorage|setProgress|answer_keys/);
@@ -258,16 +258,16 @@ test('UI integration contract: no demo bank/local progression, reading gate, act
   assert.match(ui, /questionSecondsLeft\(session, performance.now\(\) - receivedAt\)/);
   assert.match(ui, /timeoutBusy.current/);
   assert.match(ui, /timeoutSent.current !== key/);
-  assert.match(ui, /void run\("timeout", \{ attempt_id: session.attempt_id, question_id: q.id \}\)/);
+  assert.match(ui, /void run\("timeout", \{\s*attempt_id: session\.attempt_id,\s*question_id: q\.id,?\s*\}\s*\)/);
   assert.match(ui, /tool.timedOnly && !timed/);
   assert.match(hook, /timeout: timeoutMapadventure/);
   assert.match(ui, /scrollHeight <= element.clientHeight/);
   assert.match(ui, /scrollTop \+ e.clientHeight >= e.scrollHeight/);
   assert.match(ui, /readToken: material.readToken/);
-  assert.match(ui, /sandbox="" referrerPolicy="no-referrer"/);
+  assert.match(ui, /sandbox=""\s+referrerPolicy="no-referrer"/);
   assert.match(ui, /rel="noopener noreferrer"/);
-  assert.match(ui, /STAGES.find\(s => s.id === session.stage\)\?\.requirement/);
-  assert.match(ui, /STAGES.find\(s => s.id === session.stage\)\?\.selection/);
+  assert.match(ui, /STAGES\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.id === session\.stage\s*\)\?\.requirement/);
+  assert.match(ui, /STAGES\.find\(\s*\(?\s*s\s*\)?\s*=>\s*s\.id === session\.stage\s*\)\?\.selection/);
   assert.doesNotMatch(ui + hook, /SHOW_TIPS1|tip1/);
   assert.match(hook, /SHOW_TIPS === "1" && data.tip\?\.message/);
   assert.match(hook, /SHOW_TIPS: checked \? "0" : "1"/);

@@ -7,6 +7,30 @@ SET LOCAL lock_timeout='10s';
 SET LOCAL statement_timeout='120s';
 CREATE SCHEMA IF NOT EXISTS private;
 ALTER TABLE public.exam_attempts ALTER COLUMN attempt_type TYPE varchar(20);
+-- Preserve the deployed legacy index keys/predicate for every other exam app.
+-- MapAdventure has its own per-node/stage uniqueness below, not per subject.
+DO $$
+DECLARE legacy record; definition text;
+BEGIN
+ SELECT i.indexrelid, i.indisunique, i.indisvalid,
+  pg_get_indexdef(i.indexrelid) AS ddl,
+  pg_get_expr(i.indpred,i.indrelid) AS predicate,
+  EXISTS(SELECT 1 FROM pg_constraint c WHERE c.conindid=i.indexrelid) AS constrained
+ INTO legacy FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid
+ WHERE i.indrelid='public.exam_attempts'::regclass
+  AND c.relname='uq_exam_attempts_active_user_grade_subject';
+ IF FOUND THEN
+  IF NOT legacy.indisunique OR NOT legacy.indisvalid OR legacy.predicate IS NULL OR legacy.constrained THEN
+   RAISE EXCEPTION 'Unexpected legacy active exam index; operator review required';
+  END IF;
+  IF position('MAPADVENTURE' IN legacy.predicate)=0 THEN
+   definition:=left(legacy.ddl,strpos(legacy.ddl,' WHERE ')-1);
+   IF strpos(legacy.ddl,' WHERE ')=0 THEN RAISE EXCEPTION 'Unexpected legacy active exam index definition'; END IF;
+   EXECUTE 'DROP INDEX public.uq_exam_attempts_active_user_grade_subject';
+   EXECUTE definition||' WHERE ('||legacy.predicate||') AND gamification_app IS DISTINCT FROM ''MAPADVENTURE''';
+  END IF;
+ END IF;
+END $$;
 ALTER TABLE public.map_adventure_themes
   ADD COLUMN IF NOT EXISTS education_level text,
   ADD COLUMN IF NOT EXISTS subject_code text,
@@ -300,7 +324,10 @@ BEGIN
  FOREACH aid IN ARRAY ids LOOP
   SELECT * INTO s FROM private.mapadventure_sessions WHERE attempt_id=aid;
   IF FOUND OR coalesce(tagged,false) OR EXISTS(SELECT 1 FROM public.exam_attempts WHERE id=aid AND gamification_app='MAPADVENTURE') THEN
-   IF s.attempt_id IS NULL OR NOT s.writing_results OR s.result IS NOT NULL OR s.user_id IS DISTINCT FROM auth.uid() OR TG_OP='DELETE' THEN
+   -- Deletes stay forbidden except removing one stored answer row during the RPC write phase
+   -- (secondchance reopen of a locked wrong answer).
+   IF s.attempt_id IS NULL OR NOT s.writing_results OR s.result IS NOT NULL OR s.user_id IS DISTINCT FROM auth.uid()
+    OR (TG_OP='DELETE' AND TG_TABLE_NAME<>'exam_attempt_answers') THEN
     RAISE EXCEPTION 'Use MapAdventure RPC; immutable exam session' USING ERRCODE='42501'; END IF;
    IF TG_TABLE_NAME='exam_attempts' THEN
     IF NEW.id<>s.attempt_id OR NEW.user_id<>s.user_id OR NEW.attempt_type<>'GAMIFICATION' OR NEW.gamification_app IS DISTINCT FROM 'MAPADVENTURE' OR NEW.deadline_at IS NOT NULL THEN
@@ -372,7 +399,7 @@ BEGIN
  IF FOUND THEN
   idx:=s.question_index; q:=s.pool->idx;
   active:=jsonb_build_object('attempt_id',s.attempt_id,'nodeId',s.node_id,'stage',s.stage,'index',idx,'total',jsonb_array_length(s.pool),
-   'question',q-'answer_keys'-'clue'-'explanation','tools',s.tools,'effects',s.effects-'first_answer','answered',jsonb_array_length(s.records),
+   'question',(q-'answer_keys'-'clue'-'explanation')||jsonb_build_object('has_clue',nullif(btrim(q->>'clue'),'') IS NOT NULL),'tools',s.tools,'effects',s.effects-'first_answer','answered',jsonb_array_length(s.records),
    'answer_payload',(SELECT value->'answer_payload' FROM jsonb_array_elements(s.records) WHERE value->>'question_id'=q->>'id'),
    'feedback',s.feedback,'deadline_at',s.question_deadline_at,'server_now',clock_timestamp(),
    'remaining_seconds',CASE WHEN s.question_deadline_at IS NOT NULL THEN greatest(0,extract(epoch FROM s.question_deadline_at-clock_timestamp())) ELSE NULL END);
@@ -509,11 +536,15 @@ BEGIN
   END IF;
   IF p_action IN('answer','timeout','use_tool') THEN
    IF q IS NULL OR q->>'id' IS DISTINCT FROM p_payload->>'question_id' THEN RAISE EXCEPTION 'Only current frozen question may be used' USING ERRCODE='22023'; END IF;
-   IF s.feedback IS NOT NULL THEN RETURN private.mapadventure_state(aid)||jsonb_build_object('answer',s.feedback); END IF;
+   -- A locked wrong (non-timeout) answer may still accept one secondchance tool to unlock re-answering.
+   IF s.feedback IS NOT NULL AND NOT (p_action='use_tool' AND p_payload->>'tool'='secondchance'
+     AND coalesce((s.feedback->>'correct')::boolean,false)=false) THEN
+    RETURN private.mapadventure_state(aid)||jsonb_build_object('answer',s.feedback);
+   END IF;
   END IF;
   timed_out:=s.stage<>'practice' AND s.question_deadline_at<=clock_timestamp();
   IF p_action='timeout' AND NOT coalesce(timed_out,false) THEN RAISE EXCEPTION 'Current question has not expired' USING ERRCODE='22023'; END IF;
-  IF p_action IN('answer','timeout') OR (p_action='use_tool' AND timed_out) THEN
+  IF p_action IN('answer','timeout') OR (p_action='use_tool' AND timed_out AND s.feedback IS NULL) THEN
    IF timed_out THEN a:='{}'; ok:=false;
    ELSE a:=p_payload->'answer_payload'; ok:=private.virtualpet_grade(q,a); END IF;
    IF EXISTS(SELECT 1 FROM jsonb_array_elements_text(coalesce(s.effects->'eliminated','[]')) e JOIN jsonb_array_elements_text(coalesce(a->'option_codes','[]')) c ON c=e) THEN RAISE EXCEPTION 'Eliminated option cannot be selected'; END IF;
@@ -542,7 +573,27 @@ BEGIN
     SELECT coalesce(jsonb_agg(code),'[]') INTO eliminated FROM (SELECT o->>'option_code' code FROM jsonb_array_elements(q->'options') o
      WHERE NOT (q->'answer_keys'->'option_codes' ? (o->>'option_code')) ORDER BY random() LIMIT greatest(1,(jsonb_array_length(q->'options')-1)/2)) x;
     effect:=jsonb_build_object('eliminated',eliminated);
-   ELSIF tool='secondchance' THEN effect:='{"secondchance":true}';
+   ELSIF tool='secondchance' THEN
+    IF s.feedback IS NOT NULL AND coalesce((s.feedback->>'correct')::boolean,false)=false THEN
+     -- Undo the locked wrong answer once so the student may change it; correct and timeout stay frozen.
+     SELECT value->'answer_payload' INTO a FROM jsonb_array_elements(s.records) x WHERE x.value->>'question_id'=q->>'id';
+     UPDATE private.mapadventure_sessions SET writing_results=true WHERE attempt_id=aid;
+     DELETE FROM public.exam_attempt_answers WHERE attempt_id=aid AND question_id=(q->>'id')::uuid;
+     UPDATE private.mapadventure_sessions SET
+       records=(SELECT coalesce(jsonb_agg(x.value ORDER BY x.ord),'[]') FROM jsonb_array_elements(s.records) WITH ORDINALITY x(value,ord) WHERE x.value->>'question_id'<>q->>'id'),
+       question_ledger=jsonb_set(question_ledger,ARRAY[idx::text,'effects'],coalesce(question_ledger->idx::text->'effects','{}')||jsonb_build_object('retried',true,'first_answer',a)),
+       effects=effects||jsonb_build_object('retried',true,'first_answer',a),
+       feedback=NULL,writing_results=false WHERE attempt_id=aid;
+     -- An expired slot needs a fresh server clock or it would immediately lock again.
+     IF s.stage<>'practice' AND s.question_deadline_at<=clock_timestamp() THEN
+      UPDATE private.mapadventure_sessions SET
+       question_deadline_at=clock_timestamp()+greatest(1.0/60,coalesce((q->>'estimate_minutes')::numeric,2))*interval '60 seconds',
+       question_ledger=jsonb_set(question_ledger,ARRAY[idx::text,'deadline_at'],to_jsonb(clock_timestamp()+greatest(1.0/60,coalesce((q->>'estimate_minutes')::numeric,2))*interval '60 seconds'))
+      WHERE attempt_id=aid;
+     END IF;
+     SELECT * INTO s FROM private.mapadventure_sessions WHERE attempt_id=aid;
+    END IF;
+    effect:='{"secondchance":true}';
    ELSIF tool='skipreplace' THEN
     pool:=private.mapadventure_pool(n.id,s.stage,1,s.seen_ids);
     UPDATE private.mapadventure_sessions SET writing_results=true WHERE attempt_id=aid;

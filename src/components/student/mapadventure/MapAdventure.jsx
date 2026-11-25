@@ -57,8 +57,10 @@ function Modal({
   title,
   subtitle,
   headerBadge,
+  hideHeader = false,
   onClose,
   closeOnBackdrop = false,
+  bodyClass = "",
   children,
 }) {
   const box = useRef(null);
@@ -114,7 +116,7 @@ function Modal({
         aria-label={title}
         className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white text-slate-800 shadow-2xl dark:bg-slate-900 dark:text-slate-100 sm:rounded-3xl"
       >
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800 sm:px-7">
+        {!hideHeader && <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800 sm:px-7">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <h2
@@ -139,8 +141,10 @@ function Modal({
               <X />
             </button>
           )}
-        </header>
-        <div className="min-h-0 overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-7">
+        </header>}
+        <div
+          className={`min-h-0 overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-7 ${bodyClass}`}
+        >
           {children}
         </div>
       </section>
@@ -287,6 +291,24 @@ function Quiz({ session, game }) {
   const [retryFeedback, setRetryFeedback] = useState(null);
   const feedback = session.feedback;
   const readOnly = !!feedback;
+  // SecondChance appears only after a wrong answer or timeout has been locked.
+  const lockedWrong =
+    !!feedback && (feedback.correct === false || feedback.is_timeout === true);
+  const secondchanceUsed = session.tools.some(
+    (t) =>
+      t.tool === "secondchance" &&
+      (t.question_id === q?.id || t.question_index === session.index),
+  );
+  const visibleTools = TOOLS.filter((tool) => {
+    if (tool.id === "clue" && q?.has_clue === false) return false;
+    if (readOnly)
+      return (
+        lockedWrong &&
+        !secondchanceUsed &&
+        tool.id === "secondchance"
+      );
+    return tool.id !== "secondchance";
+  });
   const answerDraft = readOnly ? session.answer_payload || {} : draft;
   const hasNext = session.index < session.total - 1;
   const allHandled = session.total > 0 && session.answered === session.total;
@@ -342,28 +364,27 @@ function Quiz({ session, game }) {
   }
   return (
     <Modal
-      title={`${STAGES.find((s) => s.id === session.stage)?.name || "Sesi tersimpan"} · Soal ${session.index + 1}/${session.total} · Tanpa batas waktu`}
+      title={`${STAGES.find((s) => s.id === session.stage)?.name || "Sesi tersimpan"} · Soal ${session.index + 1}/${session.total}`}
       subtitle={STAGES.find((s) => s.id === session.stage)?.requirement}
       onClose={game.closeQuiz}
       closeOnBackdrop
+      bodyClass="pt-1! px-5! pb-5! sm:pt-1! sm:px-7! sm:pb-7!"
     >
         {timed && (
-      <div className="mb-4 flex flex-wrap justify-between gap-2 text-sm">
-          <span role="timer" aria-label="Sisa waktu soal">
-            Waktu soal: {Math.floor((seconds ?? 0) / 60)}:
-            {String((seconds ?? 0) % 60).padStart(2, "0")}
-          </span>
-      </div>
+          <div className="mb-4">
+            <div role="progressbar" aria-label="Sisa waktu soal"
+              aria-valuemin={0} aria-valuemax={Math.max(1, Number(q?.estimate_minutes || 2) * 60)}
+              aria-valuenow={Math.min(seconds ?? 0, Math.max(1, Number(q?.estimate_minutes || 2) * 60))}
+              aria-valuetext={`${seconds ?? 0} detik`}
+              className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+              <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-200 motion-reduce:transition-none"
+                style={{ width: `${Math.min(100, Math.max(0, (seconds ?? 0) / Math.max(1, Number(q?.estimate_minutes || 2) * 60) * 100))}%` }} />
+            </div>
+            <span role="timer" aria-label="Sisa waktu soal" className="mt-1 block text-right text-xs text-slate-500">
+              {Math.floor((seconds ?? 0) / 60)}:{String((seconds ?? 0) % 60).padStart(2, "0")}
+            </span>
+          </div>
         )}
-      <p className="mb-3 text-sm text-slate-500">
-        {STAGES.find((s) => s.id === session.stage)?.selection}
-      </p>
-      <div className="mb-5 h-2 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full bg-indigo-500"
-          style={{ width: `${(session.answered / session.total) * 100}%` }}
-        />
-      </div>
       {q && (
         <>
           {q.stimulus && (
@@ -389,16 +410,7 @@ function Quiz({ session, game }) {
           <h3 className="mb-5 whitespace-pre-wrap text-lg font-bold">
             {q.text}
           </h3>
-          {q.type === "PGK_MA" && (
-            <p className="mb-3 text-sm">
-              Pilih semua jawaban yang sesuai; pilihan kosong juga dapat
-              dikirim.
-            </p>
-          )}
-          <fieldset
-            disabled={game.busy || expired || readOnly}
-            className="space-y-3"
-          >
+          <fieldset disabled={game.busy || expired || readOnly} className="space-y-3">
             <legend className="sr-only">Jawaban soal</legend>
             <BossFightChoices
               question={{
@@ -460,8 +472,12 @@ function Quiz({ session, game }) {
                     : "Kesempatan kedua aktif untuk soal ini."}
                 </p>
               )}
+            </>
+          )}
+          {visibleTools.length > 0 && (
+            <>
               <div className="my-5 flex flex-wrap gap-2">
-                {TOOLS.map((tool) => {
+                {visibleTools.map((tool) => {
                   const used = session.tools.some(
                     (t) =>
                       t.tool === tool.id &&
@@ -562,35 +578,7 @@ function Quiz({ session, game }) {
           className="flex flex-nowrap items-center gap-2"
         >
           <button
-            aria-label="Sebelumnya"
             className={`${button} px-3! sm:px-5!`}
-            disabled={game.busy || !q || session.index <= 0}
-            onClick={() =>
-              game.run("previous", {
-                attempt_id: session.attempt_id,
-                question_id: q.id,
-              })
-            }
-          >
-            <ArrowLeft size={18} className="sm:hidden" />
-            <span className="hidden sm:inline">Sebelumnya</span>
-          </button>
-          <button
-            aria-label="Sesudahnya"
-            className={`${button} px-3! sm:px-5!`}
-            disabled={game.busy || !q || !hasNext}
-            onClick={() =>
-              game.run("next", {
-                attempt_id: session.attempt_id,
-                question_id: q.id,
-              })
-            }
-          >
-            <ArrowRight size={18} className="sm:hidden" />
-            <span className="hidden sm:inline">Sesudahnya</span>
-          </button>
-          <button
-            className={`${button} ml-auto px-3! sm:px-5!`}
             disabled={game.busy || !q || expired || readOnly}
             onClick={answer}
           >
@@ -603,21 +591,54 @@ function Quiz({ session, game }) {
               </>
             )}
           </button>
+          <div className="ml-auto flex flex-nowrap items-center gap-2">
+            <button
+              aria-label="Sebelumnya"
+              className={`${button} px-3! sm:px-5!`}
+              disabled={game.busy || !q || session.index <= 0}
+              onClick={() =>
+                game.run("previous", {
+                  attempt_id: session.attempt_id,
+                  question_id: q.id,
+                })
+              }
+            >
+              <ArrowLeft size={18} className="sm:hidden" />
+              <span className="hidden sm:inline">Sebelumnya</span>
+            </button>
+            {hasNext ? (
+              <button
+                aria-label="Sesudahnya"
+                className={`${button} px-3! sm:px-5!`}
+                disabled={game.busy || !q}
+                onClick={() =>
+                  game.run("next", {
+                    attempt_id: session.attempt_id,
+                    question_id: q.id,
+                  })
+                }
+              >
+                <ArrowRight size={18} className="sm:hidden" />
+                <span className="hidden sm:inline">Sesudahnya</span>
+              </button>
+            ) : (
+              <button
+                aria-label="Selesaikan sesi"
+                className={`${button} px-3! sm:px-5!`}
+                disabled={game.busy || !q || !allHandled}
+                onClick={() =>
+                  game.run("complete_node", {
+                    nodeId: session.nodeId,
+                    attempt_id: session.attempt_id,
+                  })
+                }
+              >
+                <span className="sm:hidden">Selesaikan</span>
+                <span className="hidden sm:inline">Selesaikan sesi</span>
+              </button>
+            )}
+          </div>
         </nav>
-        {allHandled && (
-          <button
-            className={button}
-            disabled={game.busy}
-            onClick={() =>
-              game.run("complete_node", {
-                nodeId: session.nodeId,
-                attempt_id: session.attempt_id,
-              })
-            }
-          >
-            Selesaikan sesi dan lihat hasil
-          </button>
-        )}
       </div>
     </Modal>
   );
@@ -635,32 +656,25 @@ function AdventureResult({ result, onClose }) {
             : "🌱 Terus bertumbuh"
       }
       onClose={onClose}
+      hideHeader={reviewing}
     >
       {reviewing ? (
         <>
-          <button
-            className="mb-5 font-bold text-indigo-600"
-            onClick={() => setReviewing(false)}
-          >
-            ← Kembali ke hasil
-          </button>
           <BossFightReview
             records={mapadventureReviewRecords(result.review)}
             pvp={false}
             title="Review Hasil Petualangan"
             navigationId="mapadventure-review-navigation"
           />
+          <div className="mt-5 flex justify-end">
+            <button className={`${button} w-full sm:w-auto`} onClick={() => setReviewing(false)}>
+              Kembali ke hasil
+            </button>
+          </div>
         </>
       ) : (
         <>
           <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500 p-7 text-center text-white shadow-lg">
-            <motion.div
-              initial={{ scale: 0.6 }}
-              animate={{ scale: 1 }}
-              className="text-6xl"
-            >
-              {result.passed ? "🏆" : "🧭"}
-            </motion.div>
             <p className="mt-4 text-sm font-bold uppercase tracking-widest text-indigo-100">
               {stage?.name}
             </p>
@@ -708,16 +722,16 @@ function AdventureResult({ result, onClose }) {
               ? "Hebat! Progresmu tersimpan. Mainkan ulang untuk memperbaiki bintang terbaik; poin dan XP hanya diberikan pada penyelesaian pertama."
               : "Belum lulus kali ini, tetapi setiap percobaan membantumu berkembang. Tinjau jawabanmu lalu coba lagi!"}
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
-              className={button}
+              className={`${button} w-full sm:w-auto`}
               disabled={!result.review?.length}
               onClick={() => setReviewing(true)}
             >
               Review jawaban
             </button>
             <button
-              className="rounded-2xl border px-5 py-3 font-bold"
+              className="w-full rounded-2xl border px-5 py-3 font-bold sm:w-auto"
               onClick={onClose}
             >
               Kembali ke peta

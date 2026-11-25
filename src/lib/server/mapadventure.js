@@ -60,7 +60,7 @@ function safeError(error) {
 
 // Strip ownership/audit columns and defensively whitelist question fields (never frozen keys).
 export function publicState(data) {
-  const question = q => q ? { ...pick(q, ["id", "version", "type", "text", "instruction", "difficulty", "estimate_minutes", "subject_code", "education_level", "theme", "topic"]),
+  const question = q => q ? { ...pick(q, ["id", "version", "type", "text", "instruction", "difficulty", "estimate_minutes", "subject_code", "education_level", "theme", "topic", "has_clue"]),
     stimulus: q.stimulus ? pick(q.stimulus, ["title", "content_text", "file_url", "media_description"]) : null,
     options: (q.options || []).map(o => pick(o, ["option_code", "option_text"])),
     category_items: (q.category_items || []).map(c => pick(c, ["item_number", "item_text", "category_label"])) } : null;
@@ -106,7 +106,17 @@ export function createMapadventureActions({ getUser, cookies }) {
   }
   async function call(identity, action, payload) {
     const { data, error } = await identity.supabase.rpc("mapadventure", { p_action: action, p_payload: payload });
-    if (error || !object(data)) return { ok: false, error: safeError(error) };
+    if (error || !object(data)) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[MapAdventure RPC failed]", {
+          action,
+          stage: action === "start" ? payload.stage : undefined,
+          code: error?.code,
+          message: error?.message || "Invalid RPC response",
+        });
+      }
+      return { ok: false, error: safeError(error) };
+    }
     return { ok: true, userId: identity.user.id, data: publicState(data) };
   }
   async function execute(action, payload, expectedUserId) {

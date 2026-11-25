@@ -35,9 +35,24 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
   await db.exec(await sql('migration-virtualpet.sql'));
   await db.exec(await sql('migration-create-map-adventure-logs.sql'));
   await db.exec(await sql('migration-add-map-adventure-logs-stars.sql'));
+  // Reproduce the deployed subject-wide active index absent from the old fixture.
+  await db.exec(`CREATE UNIQUE INDEX uq_exam_attempts_active_user_grade_subject
+    ON public.exam_attempts(user_id,grade,subject_name)
+    WHERE attempt_status='IN_PROGRESS'`);
   const migration = await sql('migration-mapadventure.sql');
   await db.exec(migration); await db.exec(migration);
   await db.exec(await sql('migration_generic_exam_attempt.sql'));
+  await t.test('legacy subject uniqueness excludes only MapAdventure and survives migration rerun', async () => {
+    const index = (await db.query(`SELECT pg_get_indexdef('public.uq_exam_attempts_active_user_grade_subject'::regclass) ddl`)).rows[0].ddl;
+    assert.match(index, /MAPADVENTURE/);
+    await db.exec('BEGIN');
+    try {
+      await db.exec(`INSERT INTO exam_attempts(user_id,grade,subject_name,duration_minutes)
+        VALUES('${uid}',6,'Index regression',60)`);
+      await assert.rejects(db.exec(`INSERT INTO exam_attempts(user_id,grade,subject_name,duration_minutes)
+        VALUES('${uid}',6,'Index regression',60)`), /uq_exam_attempts_active_user_grade_subject/);
+    } finally { await db.exec('ROLLBACK'); }
+  });
   const user = id => db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [id]);
   let isolated = false;
   t.afterEach(async () => { if(isolated) { await db.exec('ROLLBACK'); isolated=false; } });
@@ -245,6 +260,41 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.equal(r.islands[0].status,'COMPLETED'); assert.equal(r.islands[0].stars,6); assert.equal(r.islands[1].status,'UNLOCKED');
     const xp=r.profile_xp; r=await rpc('complete_island',{islandId:r.islands[0].id}); assert.equal(r.profile_xp,xp);
     await db.exec(migration); assert.equal((await rpc('bootstrap')).profile_xp,xp);
+  });
+  await t.test('secondchance after a locked wrong answer reopens exactly that slot once', async () => {
+    await db.exec('BEGIN'); isolated = true;
+    let b = await rpc('bootstrap'); const id = b.nodes[1].id; await read(id);
+    await db.exec(`UPDATE map_adventure_tools SET secondchance=2 WHERE user_id='${uid}'`);
+    let s = await start(id, 'practice'); const first = s.question.id;
+    let r = await rpc('answer', { attempt_id: s.attempt_id, question_id: first, answer_payload: wrong(s.question) });
+    assert.equal(r.answer.accepted, true); assert.equal(r.answer.correct, false);
+    assert.equal(r.session.feedback.correct, false); assert.equal(r.session.answered, 1);
+    // The locked record is replayed for ordinary tools but secondchance reopens the slot.
+    const replay = await use(r.session, 'clue');
+    assert.deepEqual(replay.answer, r.session.feedback); assert.equal(replay.session.answered, 1);
+    r = await use(r.session, 'secondchance');
+    assert.equal(r.session.feedback, null); assert.equal(r.session.answered, 0);
+    assert.equal(r.session.effects.secondchance, true); assert.equal(r.session.effects.retried, true);
+    assert.equal(r.inventory.secondchance, 1);
+    assert.equal((await rows('SELECT count(*) n FROM exam_attempt_answers WHERE attempt_id=$1', [s.attempt_id]))[0].n, 0);
+    assert.equal(r.session.question.id, first, 'reopening must not move the cursor or replace the question');
+    // A second use on the same slot is still a single-retry contract.
+    await assert.rejects(use(r.session, 'secondchance'), /already used/);
+    r = await rpc('answer', { attempt_id: r.session.attempt_id, question_id: first, answer_payload: wrong(r.session.question) });
+    assert.equal(r.answer.accepted, true); assert.equal(r.answer.retry, false);
+    assert.equal(r.session.feedback.correct, false); assert.equal(r.session.answered, 1);
+    // Correct and timeout results stay frozen; only wrong non-timeout answers can be reopened.
+    await assert.rejects(use(r.session, 'secondchance'), /already used/);
+    s = await navigate(r.session, 'next');
+    r = await rpc('answer', { attempt_id: s.attempt_id, question_id: s.question.id, answer_payload: good(s.question) });
+    assert.equal(r.session.feedback.correct, true);
+    const frozen = await use(r.session, 'secondchance');
+    assert.deepEqual(frozen.answer, r.session.feedback, 'a correct answer replays and is never reopened');
+    assert.equal(frozen.session.answered, r.session.answered);
+    assert.equal(frozen.session.feedback.correct, true);
+    const saved = await rows('SELECT records FROM private.mapadventure_sessions WHERE attempt_id=$1', [s.attempt_id]);
+    assert.equal(saved[0].records.length, 2);
+    await db.exec('ROLLBACK'); isolated = false;
   });
   await t.test('exam generic/direct guards, old/new membership, private role revokes and advisory lock held', async () => {
     let b=await rpc('bootstrap'); const id=b.nodes.find(n=>n.theme==='B').id; await read(id); const s=await start(id,'practice');
@@ -660,6 +710,21 @@ test('MapAdventure actual PostgreSQL migrations and transactional RPC contract',
     assert.equal(Number((await rows('SELECT count(*) n FROM map_adventure_logs WHERE exam_attempt_id=$1',[s.attempt_id]))[0].n),1);
     await assert.rejects(db.query('INSERT INTO map_adventure_logs(user_id,topic_attempt_id,node_type,exam_attempt_id) VALUES($1,$2,$3,$4)',[uid,nodeId,'GATEKEEPER',s.attempt_id]),/unique constraint/);
     await db.exec('ROLLBACK'); isolated=false;
+  });
+  await t.test('secondchance reopens a locked timeout once with a fresh server deadline',async()=>{
+    await db.exec('BEGIN'); isolated=true;
+    await db.exec('UPDATE map_adventure_tools SET secondchance=5');
+    let s=await start(nodeId,'sidequest');
+    await expire(s); s=await resume(s);
+    assert.equal(s.feedback.is_timeout,true);
+    const before=s.answered;
+    s=(await use(s,'secondchance')).session;
+    assert.equal(s.feedback,null);
+    assert.equal(s.answered,before-1);
+    assert.ok(new Date(s.deadline_at)>new Date(s.server_now));
+    await assert.rejects(use(s,'secondchance'),/already used/);
+    const saved=await rpc('answer',{attempt_id:s.attempt_id,question_id:s.question.id,answer_payload:good(s.question)});
+    assert.equal(saved.session.feedback.correct,true);
   });
   await t.test('independent unfinished node/stage sessions, subject switching, descriptors and explicit ownership',async()=>{
     await db.exec('BEGIN'); isolated=true;

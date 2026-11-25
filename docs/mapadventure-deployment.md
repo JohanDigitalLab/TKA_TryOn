@@ -1,5 +1,25 @@
 # MapAdventure: deployment dan kontrak integrasi
 
+## Penyempurnaan timer dan review — 2026-11-25
+
+Timer soal ditampilkan sebagai bar menyusut dengan hitungan waktu aksesibel. SecondChance disembunyikan sebelum jawaban dikunci dan hanya ditampilkan untuk salah/timeout yang belum menggunakan alat ini. SQL kini mendukung pembukaan timeout sekali; jika deadline sudah lewat, server memberikan durasi soal baru dari snapshot, sedangkan jawaban salah dengan waktu tersisa mempertahankan deadline. Perilaku timeout ini membutuhkan penerapan ulang migrasi kanonis secara manual, belum diterapkan live.
+
+Tombol hasil rata kanan pada desktop dan full width pada HP. Header modal review disembunyikan; tombol Kembali ke hasil berada di bawah, rata kanan pada desktop dan full width pada HP. Regresi database/popup/navigasi: 51 tes lulus, termasuk timeout dibuka ulang dan pengiriman jawaban baru. Lint berkas terkait dan pemeriksaan whitespace lulus; belum validasi visual browser.
+
+## Koreksi konflik indeks sesi aktif — 2026-11-25
+
+Error live SideQuest terkonfirmasi berkode 23505 pada indeks `uq_exam_attempts_active_user_grade_subject`. Indeks legacy ini membatasi sesi lintas tahap pada mapel yang sama. Migrasi kanonis kini mempertahankan kunci dan predikat indeks terpasang, dengan pengecualian hanya untuk MAPADVENTURE; batas aplikasi ujian lain tetap berlaku. Indeks unik privat per siswa/node/tahap tetap melindungi MapAdventure. Tidak ada attempt atau jawaban yang dihapus.
+
+**Penerapan manual diperlukan:** jalankan ulang seluruh [migrasi MapAdventure](database/migration-mapadventure.sql) sebagai owner, setelah backup dan validasi staging. Restart aplikasi saja tidak memperbaiki indeks database. Perubahan ini belum diterapkan live. Fixture regresi kini memasang indeks legacy sebelum migrasi dan menjalankan migrasi dua kali.
+
+## Validasi popup soal dan kedua kesempatan — 2026-11-25
+
+- Body popup soal kini memakai padding horizontal 20px (mobile) dan 28px (desktop), padding atas 4px, lewat properti `bodyClass` pada `Modal` khusus Quiz; popup lain tetap seperti semula.
+- Tombol **Kirim Jawaban/Jawab** di kiri; kanan berisi **Sebelumnya** dan **Sesudahnya**. Pada soal terakhir, **Sesudahnya** digantikan tombol **Selesaikan sesi** (mobile: **Selesaikan**) yang tetap butuh seluruh soal terjawab (`allHandled`).
+- Tool **Clue** hanya ditampilkan bila proyeksi server `question.has_clue` bernilai true (boolean baru di `private.mapadventure_state`, tanpa membocorkan isi clue).
+- **SecondChance kini dapat dipakai setelah jawaban salah terkunci** (non-timeout): RPC menghapus record jawaban salah pada slot itu (termasuk baris `exam_attempt_answers`), menyimpannya sebagai `first_answer` privat, mengosongkan feedback, lalu membuka slot untuk jawaban baru; jawaban benar dan timeout tetap beku. Guard exam kini mengizinkan DELETE hanya pada `exam_attempt_answers` selama fase `writing_results` RPC.
+- Jalankan ulang seluruh migrasi kanonis MapAdventure agar `has_clue` dan perilaku secondchance aktif; sesi lama tetap kompatibel. Tes: suite MapAdventure database 33 subtest lulus; regresi proyek 330 tes (329 lulus, 1 dilewati).
+
 ## Validasi koreksi sesi per node/tahap — 2026-11-25
 
 - Implementasi SQL, backend, dan UI sudah diselaraskan: tidak ada sesi aktif global, kedaluwarsa attempt, atau submit otomatis. Sesi unfinished unik per pengguna/node/tahap; hanya soal yang pernah dibuka mempunyai deadline. Soal belum dijawab yang ditinggalkan tetap mengikuti deadline aslinya, lalu dicatat timeout sekali saat dibaca/ditindaklanjuti kembali. Soal yang belum pernah dibuka tidak ikut habis selama feedback/review.
@@ -184,13 +204,13 @@ Setiap finish baru, **lulus maupun gagal**, menulis tepat satu baris dengan bint
 
 | Tool | Efek server |
 |---|---|
-| clue | Kembalikan clue snapshot hanya setelah inventori dikurangi. Jika clue tidak tersedia, tolak tanpa pengurangan. |
+| clue | Kembalikan clue snapshot hanya setelah inventori dikurangi. Jika clue tidak tersedia, tolak tanpa pengurangan. Proyeksi soal aktif menyertakan boolean `has_clue` (tanpa isi clue) agar UI hanya menampilkan tombol ini bila soal memang punya petunjuk. |
 | fiftyfifty | Hanya PG_TUNGGAL; hilangkan sekurangnya satu dan sekitar separuh opsi salah. Kunci benar tidak pernah dihapus; answer menolak pilihan yang dihilangkan. Tipe lain ditolak tanpa pengurangan. |
 | skipreplace | Ganti slot saat ini dengan soal baru valid memakai filter dan prioritas stage yang sama (sidequest tidak pernah MUDAH; gatekeeper hanya SEDANG), tidak pernah muncul sebelumnya. Deadline dipertahankan, bukan dimulai ulang dari estimasi soal pengganti. Tidak dihitung benar otomatis. Efek soal lama dibuang, tetapi ledger slot tetap ada sehingga bintang maksimal 2 dan alat tidak bisa diulang. Kekurangan pool membatalkan seluruh request. |
-| secondchance | Harus diaktifkan sebelum jawaban. Jawaban salah pertama mendapat satu retry pada soal yang sama; jawaban berikutnya final meskipun masih salah. Jawaban pertama dicatat privat untuk audit. Tidak bisa digunakan ulang pada slot itu, tidak mereset deadline dan tidak menghindari timeout. |
+| secondchance | Dapat diaktifkan sebelum jawaban, **atau setelah satu jawaban salah yang sudah terkunci** (bukan timeout): server menghapus record salah tersebut, menyimpannya sebagai `first_answer` privat untuk audit, lalu membuka kembali slot yang sama agar jawaban diubah. Setelah reopen, jawaban berikutnya tetap final meskipun masih salah. Jawaban benar dan hasil timeout tidak pernah dibuka ulang. Tetap hanya sekali per slot, tidak mereset deadline dan tidak menghindari timeout. |
 | freezetime | Hanya sidequest/gatekeeper sebelum expiry: deadline soal aktif ditambah tepat 30 detik, inventori dikurangi satu dan ledger ditulis atomik. Maksimal sekali per slot, termasuk setelah replacement. Practice ditolak tanpa pengurangan. Dijual 40 poin. |
 
-Pada slot belum dijawab, pemakaian tool yang sama ditolak bila sudah sukses, termasuk setelah navigasi atau replacement. Pada slot sudah dijawab, use_tool mengembalikan feedback immutable tanpa debit. Bootstrap dengan attempt_id dipakai untuk reconcile setelah network error. Complete/read/gacha aman diulang karena reward melekat ke identitas sesi/node.
+Pada slot belum dijawab, pemakaian tool yang sama ditolak bila sudah sukses, termasuk setelah navigasi atau replacement. Pada slot sudah dijawab, use_tool mengembalikan feedback immutable tanpa debit, **kecuali secondchance pada jawaban salah non-timeout** yang membuka kembali slot tersebut sesuai baris tabel di atas. Bootstrap dengan attempt_id dipakai untuk reconcile setelah network error. Complete/read/gacha aman diulang karena reward melekat ke identitas sesi/node.
 
 ## Gacha
 
