@@ -1,5 +1,6 @@
 
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import SiteFooter from "@/components/site-footer";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = "https://tka-tryout-champion.vercel.app";
+const siteUrl = "https://tka.temansiswa.com";
 
 const ogImage = `${siteUrl}/og-image.png`;
 
@@ -29,7 +30,7 @@ export const metadata = {
   description:
     "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
 
-  applicationName: "TKA TryOut",
+  applicationName: "TKA TryOut by TemanSiswa.Com",
 
   openGraph: {
     type: "website",
@@ -72,6 +73,7 @@ export default function RootLayout({ children }) {
           {children}
           <SiteFooter />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
