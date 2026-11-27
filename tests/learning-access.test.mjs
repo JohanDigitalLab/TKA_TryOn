@@ -31,7 +31,8 @@ test("paket langganan menyatu di dashboard siswa tanpa kuota trial", async () =>
   ]);
   assert.match(student, /export function SubscriptionPlans/);
   // Aktivasi paket lewat WhatsApp (settings), bukan tautan /register.
-  assert.match(student, /openActivationWhatsApp/);
+  assert.match(student, /ActivationWhatsApp/);
+  assert.match(student, /href=\{url\}/);
   assert.doesNotMatch(student, /href: "\/register"/);
   assert.match(migration, /'unrestricted',true/);
   assert.doesNotMatch(migration, /LEARNING_SUBSCRIPTION_REQUIRED|A02_TRIAL_EXHAUSTED/);

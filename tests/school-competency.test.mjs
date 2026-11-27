@@ -119,7 +119,7 @@ test("challenge page memicu recalc kompetensi setelah submit sesuai setting", as
   const page = await read("src/app/student/challenge/page.js");
   assert.match(page, /async function recalcCompetency|const recalcCompetency = useCallback\(async/);
   assert.match(page, /supabase\.rpc\("get_setting",\s*\{\s*p_name: "AUTO_CALC_COMPETENCY",?\s*\}\)/);
-  assert.match(page, /!== "TRUE"\) return;/);
+  assert.match(page, /\["1", "TRUE"\]\.includes/);
   assert.match(page, /supabase\.rpc\("recalc_student_competency",\s*\{\s*p_user_uid: userId,\s*p_exam_attempt_uid: id,/);
   assert.match(page, /supabase\.rpc\("recalc_school_competency",\s*\{\s*p_school_uid: profileData\.school_id,\s*p_exam_attempt_uid: id,/);
   // Recalc dipanggil setelah submit sukses dan hasil disimpan.

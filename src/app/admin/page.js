@@ -3,7 +3,7 @@
 
 import AdminSidebar from "@/components/admin/admin-sidebar";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -134,7 +134,18 @@ export default function AdminDashboard() {
     setLoadingCandidates(false);
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (window.location.hash === "#operators") {
+        setActiveMenu("Manajemen Admin");
+        void loadCandidates();
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadCandidates]);
+
   function selectMenu(label) {
+    if (label === "Pengaturan") { router.push("/admin/settings"); return; }
     setActiveMenu(label);
     if (label === "Manajemen Admin") {
       void loadCandidates();
@@ -821,6 +832,7 @@ export default function AdminDashboard() {
         </header>
 
         <nav aria-label="Navigasi admin layar kecil" className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-5 py-3 lg:hidden">
+          <button type="button" onClick={() => router.push("/admin/settings")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">Pengaturan</button>
           <button type="button" onClick={() => router.push("/admin/master/users")} className="min-h-11 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
             Master Data
           </button>

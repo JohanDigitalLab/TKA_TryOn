@@ -58,13 +58,14 @@ test("tombol paket berbeda tujuan dan formulir menampilkan konteks tetap", async
   // Aktivasi paket memakai settings WhatsApp per paket.
   assert.ok(subscription.includes('messageSetting: "WA_MSG_SISWA"'));
   assert.ok(subscription.includes('messageSetting: "WA_MSG_SEKOLAH"'));
-  assert.ok(subscription.includes("if (!number) return;"));
+  assert.ok(subscription.includes('if (!target) throw new Error('));
   assert.ok(!subscription.includes("method=independent"));
   assert.ok(!subscription.includes("method=school"));
   // Tombol aktivasi kini membuka WhatsApp memakai settings, bukan link /register.
-  assert.ok(subscription.includes("openActivationWhatsApp(plan)"));
+  assert.ok(subscription.includes('<ActivationWhatsApp plan={plan} />'));
   assert.ok(subscription.includes('p_name: "WA_NUMBER"'));
-  assert.ok(subscription.includes("wa.me/"));
+  assert.ok(subscription.includes('whatsAppUrl(number.data,'));
+  assert.ok(subscription.includes('href={url}'));
   assert.ok(!subscription.includes("Catatan aktivasi"));
   assert.ok(!subscription.includes("Belum ada pembayaran atau transaksi yang dianggap berhasil."));
   const register = await read("../src/app/register/page.js");

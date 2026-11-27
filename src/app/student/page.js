@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getTimeGreeting } from "@/lib/student/greeting.mjs";
 import PortalHeader from "@/components/portal-header";
 import StudentActionTables from "@/components/student/action-tables";
+import { whatsAppUrl } from "@/lib/admin/platform-settings.mjs";
 
 function subscribeToClock(onChange) {
   const timer = window.setInterval(onChange, 30_000);
@@ -54,31 +55,30 @@ const plans = [
   },
 ];
 
-function normalizeWhatsAppNumber(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (!digits) return "";
-  // 08xx -> 628xx agar valid untuk tautan wa.me.
-  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
-  return digits;
-}
-
-async function openActivationWhatsApp(plan) {
-  // Ambil nomor dan pesan dari tabel settings lewat RPC get_setting.
-  const [{ data: numberData }, { data: messageData }] = await Promise.all([
-    supabase.rpc("get_setting", { p_name: "WA_NUMBER" }),
-    supabase.rpc("get_setting", { p_name: plan.messageSetting }),
-  ]);
-
-  const number = normalizeWhatsAppNumber(numberData);
-  const message = String(messageData || "").trim();
-
-  // Setting nomor WA belum tersedia; tidak melakukan apa-apa.
-  if (!number) return;
-
-  const url = `https://wa.me/${number}${
-    message ? `?text=${encodeURIComponent(message)}` : ""
-  }`;
-  window.open(url, "_blank", "noopener,noreferrer");
+function ActivationWhatsApp({ plan }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [url, setUrl] = useState("");
+  const [message, setMessage] = useState("");
+  async function prepare() {
+    if (loading) return;
+    setLoading(true); setError(""); setUrl("");
+    try {
+      const [number, text] = await Promise.all([
+        supabase.rpc("get_setting", { p_name: "WA_NUMBER" }),
+        supabase.rpc("get_setting", { p_name: plan.messageSetting }),
+      ]);
+      if (number.error || text.error) throw new Error("Kontak aktivasi gagal dimuat. Silakan coba lagi.");
+      const target = whatsAppUrl(number.data, String(text.data || "").trim());
+      if (!target) throw new Error("Kontak aktivasi belum dikonfigurasi. Silakan hubungi pengelola platform.");
+      setMessage(String(text.data || "").trim()); setUrl(target);
+    } catch (err) { setError(err.message || "Kontak aktivasi belum dapat dibuka."); }
+    finally { setLoading(false); }
+  }
+  return <div className="mt-8">
+    {url ? <div className="rounded-lg border border-slate-200 p-3"><p className="text-sm text-slate-600">Pesan aktivasi {plan.name}:</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{message || "(Tanpa pesan)"}</p><a href={url} className="mt-3 block rounded-lg bg-blue-700 px-5 py-3 text-center text-sm font-bold text-white">Lanjutkan ke WhatsApp →</a><button type="button" onClick={prepare} disabled={loading} className="mt-2 text-sm font-semibold text-blue-700">Muat ulang kontak</button></div> : <button type="button" disabled={loading} onClick={prepare} className="block w-full rounded-lg bg-blue-700 px-5 py-3 text-center text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-60">{loading ? "Memuat kontak…" : error ? "Coba lagi" : plan.action}</button>}
+    {error && <p role="alert" className="mt-3 text-sm text-slate-700">{error}</p>}
+  </div>;
 }
 
 export function SubscriptionPlans() {
@@ -94,13 +94,7 @@ export function SubscriptionPlans() {
           <ul className={`mt-7 space-y-3 text-sm ${plan.tone === "blue" ? "text-slate-600" : "text-slate-200"}`}>
             {plan.features.map((feature) => <li key={feature} className="flex gap-3"><span className="font-bold text-blue-400" aria-hidden="true">✓</span><span>{feature}</span></li>)}
           </ul>
-          <button
-            type="button"
-            onClick={() => openActivationWhatsApp(plan)}
-            className={`mt-8 block w-full rounded-lg px-5 py-3 text-center text-sm font-bold ${plan.tone === "blue" ? "bg-blue-700 text-white hover:bg-blue-800" : "bg-white text-slate-900 hover:bg-blue-50"}`}
-          >
-            {plan.action}
-          </button>
+          <ActivationWhatsApp plan={plan} />
         </article>
       ))}
     </div>

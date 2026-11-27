@@ -20,10 +20,10 @@ export const ADMIN_MENU = [
   { icon: "◈", label: "Tipe Sekolah", href: "/admin/master/school-types" },
   { icon: "≡", label: "Jenjang Pendidikan", href: "/admin/master/education-levels" },
   { icon: "♙", label: "Manajemen Admin", section: "MANAJEMEN" },
-  { icon: "⚙", label: "Pengaturan" },
+  { icon: "⚙", label: "Pengaturan", href: "/admin/settings" },
 ];
 
-export default function AdminSidebar({ active, onSelect }) {
+export default function AdminSidebar({ active, onSelect, beforeNavigate }) {
   const router = useRouter();
 
   return (
@@ -62,6 +62,7 @@ export default function AdminSidebar({ active, onSelect }) {
                 type="button"
                 onClick={() => {
                   if (item.href) {
+                    if (beforeNavigate && !beforeNavigate()) return;
                     router.push(item.href);
                     return;
                   }

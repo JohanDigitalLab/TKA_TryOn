@@ -506,7 +506,7 @@ function ChallengeContent() {
       const { data: settingValue } = await supabase.rpc("get_setting", {
         p_name: "AUTO_CALC_COMPETENCY",
       });
-      if (String(settingValue || "").trim().toUpperCase() !== "TRUE") return;
+      if (!["1", "TRUE"].includes(String(settingValue || "").trim().toUpperCase())) return;
 
       await supabase.rpc("recalc_student_competency", {
         p_user_uid: userId,
