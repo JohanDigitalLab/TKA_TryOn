@@ -768,7 +768,7 @@ function ChallengeContent() {
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
           <p className="font-semibold">
-            Menyiapkan soal dari bank TKA TryOut…
+            Menyiapkan soal dari bank TKA TryOn…
           </p>
         </div>
       </main>
@@ -1011,7 +1011,7 @@ function ChallengeContent() {
             <BrandLogo className="h-20 w-25 shrink-0" />
           <div id="logo-text">
             <h1 className="text-lg font-extrabold text-slate-900">
-              TKA <span className="text-blue-700">TryOut</span>
+              TKA <span className="text-blue-700">TryOn</span>
             </h1>
             <p className="text-xs text-slate-500">
               {examInfo.subject} · Kelas {examInfo.grade}

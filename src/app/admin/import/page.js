@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { isV81Workbook, parseV81Workbook } from "@/lib/import/v81";
 
 /* =========================================================
-   TKA TRYOUT — SMART IMPORT CENTER
+   TKA TRYON — SMART IMPORT CENTER
    Satu pintu masuk seluruh sumber bank soal.
    Alur: Upload → Extract → Structure → Validate → Review → DRAFT
 ========================================================= */
@@ -923,7 +923,7 @@ export default function ImportCenterPage() {
             <BrandLogo className="h-14 w-14" />
             <div>
               <h1 className="text-xl font-bold text-slate-900">
-                TKA TryOut
+                TKA TryOn
               </h1>
               <p className="text-xs text-slate-500">
                 Smart Import Center
@@ -1025,13 +1025,13 @@ export default function ImportCenterPage() {
               </Link>
             </div>
             <p className="text-xs font-bold tracking-[0.18em] text-blue-700">
-              TKA TRYOUT / ACADEMIC CONTENT
+              TKA TRYON / ACADEMIC CONTENT
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">
               Smart Import Center
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Satu pintu masuk untuk seluruh sumber Bank Soal TKA TryOut.
+              Satu pintu masuk untuk seluruh sumber Bank Soal TKA TryOn.
             </p>
           </div>
 
@@ -1091,7 +1091,7 @@ export default function ImportCenterPage() {
               1. Unggah Sumber Bank Soal
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Pilih sumber soal yang akan dimasukkan ke Bank Soal TKA TryOut.
+              Pilih sumber soal yang akan dimasukkan ke Bank Soal TKA TryOn.
             </p>
           </div>
 
@@ -1856,7 +1856,7 @@ export default function ImportCenterPage() {
                 Status penyimpanan: siap disimpan sebagai DRAFT
               </p>
               <p className="mt-1 text-sm leading-6 text-blue-900">
-                Soal akan disimpan ke database TKA TryOut dalam status DRAFT.
+                Soal akan disimpan ke database TKA TryOn dalam status DRAFT.
                 Kunci jawaban yang masih perlu diverifikasi tetap ditandai untuk
                 telaah Guru/Moderator. Soal tidak otomatis dipublikasikan.
               </p>
@@ -1909,7 +1909,7 @@ export default function ImportCenterPage() {
         {/* FOOTER */}
 
         <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
-          © 2026 TKA TryOut · SKILL ON • CONFIDENCE ON
+          © 2026 TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>
     </main>

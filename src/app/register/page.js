@@ -77,7 +77,7 @@ function Register({ context }) {
       <div className="mx-auto max-w-xl space-y-6 rounded-xl border border-slate-200 bg-white p-6 sm:p-8">
         <Link href="/" className="inline-flex items-center gap-3 font-bold text-blue-800">
           <BrandLogo className="h-14 w-14" />
-          <span>← Beranda TKA TryOut</span>
+          <span>← Beranda TKA TryOn</span>
         </Link>
         <h1 className="text-3xl font-black">Daftar Akun</h1>
         <p>Buat akun untuk mulai latihan, tryout, dan memantau perkembangan belajarmu.</p>

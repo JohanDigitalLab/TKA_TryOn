@@ -33,7 +33,7 @@ export default function AdminSidebar({ active, onSelect }) {
           <BrandLogo className="h-12 w-14" />
 
           <div>
-            <h1 className="text-lg font-bold tracking-wide">TKA TryOut</h1>
+            <h1 className="text-lg font-bold tracking-wide">TKA TryOn</h1>
 
             <p className="text-xs text-slate-400">SKILL ON • CONFIDENCE ON</p>
           </div>
@@ -46,7 +46,7 @@ export default function AdminSidebar({ active, onSelect }) {
 
           <p className="mt-1 font-semibold">Super Admin</p>
 
-          <p className="text-xs text-slate-400">TKA TryOut Platform</p>
+          <p className="text-xs text-slate-400">TKA TryOn Platform</p>
         </div>
 
         <nav className="space-y-1">
@@ -89,7 +89,7 @@ export default function AdminSidebar({ active, onSelect }) {
       </div>
 
       <div className="border-t border-white/10 px-6 py-5">
-        <p className="text-xs text-slate-500">TKA TryOut Administration</p>
+        <p className="text-xs text-slate-500">TKA TryOn Administration</p>
 
         <p className="mt-1 text-xs text-slate-400">Platform v1.0</p>
       </div>

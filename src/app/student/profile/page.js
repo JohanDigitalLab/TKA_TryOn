@@ -459,7 +459,7 @@ export default function StudentProfilePage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          TKA TryOut · Data profil hanya dapat diubah oleh pemilik akun.
+          TKA TryOn · Data profil hanya dapat diubah oleh pemilik akun.
         </p>
       </div>
     </main>

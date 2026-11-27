@@ -23,21 +23,21 @@ export const metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: "TKA TryOut",
-    template: "%s | TKA TryOut",
+    default: "TKA TryOn",
+    template: "%s | TKA TryOn",
   },
 
   description:
     "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
 
-  applicationName: "TKA TryOut by TemanSiswa.Com",
+  applicationName: "TKA TryOn",
 
   openGraph: {
     type: "website",
     locale: "id_ID",
     url: siteUrl,
-    siteName: "TKA TryOut",
-    title: "TKA TryOut — SKILL ON • CONFIDENCE ON",
+    siteName: "TKA TryOn",
+    title: "TKA TryOn — SKILL ON • CONFIDENCE ON",
     description:
       "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik untuk SD/MI, SMP/MTs, dan SMA/MA/SMK.",
     images: [
@@ -45,14 +45,14 @@ export const metadata = {
         url: ogImage,
         width: 1200,
         height: 630,
-        alt: "TKA TryOut — SKILL ON • CONFIDENCE ON",
+        alt: "TKA TryOn — SKILL ON • CONFIDENCE ON",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "TKA TryOut — SKILL ON • CONFIDENCE ON",
+    title: "TKA TryOn — SKILL ON • CONFIDENCE ON",
     description:
       "Platform simulasi, latihan, dan evaluasi Tes Kemampuan Akademik.",
     images: [ogImage],

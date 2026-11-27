@@ -129,7 +129,7 @@ export default function HomeNewPage() {
           <BrandLogo className="h-20 w-25" priority />
           <div>
             <p className="text-lg font-black tracking-tight">
-              TKA <span className="text-cyan-300">TryOut</span>
+              TKA <span className="text-cyan-300">TryOn</span>
             </p>
             <p className="theme-subtle text-[9px] font-bold tracking-[0.2em]">
               SKILL ON • CONFIDENCE ON
@@ -202,7 +202,7 @@ export default function HomeNewPage() {
           <div className="rounded-[1.5rem] bg-[#f7f5ff] p-6 text-[#10102a]">
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-[#10102a] px-3 py-1 text-[10px] font-black text-white">
-                TKA TRYOUT
+                TKA TRYON
               </span>
               <span className="text-xl">✦</span>
             </div>
@@ -245,7 +245,7 @@ export default function HomeNewPage() {
           <p
             className={`text-xs font-black tracking-[.25em] ${theme === "light" ? "text-slate-500" : "text-white/55"}`}
           >
-            WHY TRYOUT?
+            WHY TRYON?
           </p>
           <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-tight sm:text-5xl">
             Small steps.{" "}

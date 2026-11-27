@@ -1028,7 +1028,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
 
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900">
-                TKA TryOut
+                TKA TryOn
               </h1>
               <p className="text-sm text-slate-500">
                 Academic Content Management
@@ -1192,7 +1192,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500 md:text-base">
-              Pusat data soal dan telaah konten akademik TKA TryOut.
+              Pusat data soal dan telaah konten akademik TKA TryOn.
             </p>
           </div>
         </header>
@@ -2305,7 +2305,7 @@ export default function QuestionsWorkspace({ questionId = null }) {
         {/* FOOTER */}
 
         <footer className="border-t border-slate-200 pt-5 text-center text-xs text-slate-400">
-          TKA TryOut · SKILL ON • CONFIDENCE ON
+          TKA TryOn · SKILL ON • CONFIDENCE ON
         </footer>
       </div>
     </main>
