@@ -2,7 +2,18 @@
 
 ## Status implementasi — 27 November 2026
 
-Basis worktree: commit 422f1f1, branch feature/admin-platform-settings. Migrasi telah diterapkan ke database produksi pada 27 November 2026 pukul 22:54 WIB; deployment frontend sedang disiapkan. Koneksi memakai TLS terverifikasi dan project reference database cocok dengan aplikasi serta environment produksi. Keempat baris pengaturan tetap identik dengan backup privat; tidak ada duplikat, seed, atau penulisan konfigurasi untuk pengujian.
+Basis worktree: commit 422f1f1, branch feature/admin-platform-settings. Migrasi telah diterapkan ke database produksi pada 27 November 2026 pukul 22:54 WIB; frontend berhasil dideploy pukul 22:57 WIB dan berstatus Ready. Koneksi memakai TLS terverifikasi dan project reference database cocok dengan aplikasi serta environment produksi. Keempat baris pengaturan tetap identik dengan backup privat; tidak ada duplikat, seed, atau penulisan konfigurasi untuk pengujian.
+
+### Hasil deployment produksi
+
+- URL fitur: https://tka-tryon-champion.vercel.app/admin/settings.
+- Deployment: dpl_B73t8i3d4ELnovNHH8CNNWuYP4Uy; URL immutable https://tka-tryon-8810gmrhz-johan-digital-lab.vercel.app; status READY dan alias champion dikonfirmasi ulang melalui Vercel inspect.
+- Sumber deployment adalah worktree bersih pada commit fitur f66c9dc6f4383be549e1fdf683650f7ebf0df79b. Tidak ada push Git atau deployment root main. Respons metadata CLI tidak menyertakan SHA Git, jadi SHA sisi server tidak diklaim terverifikasi; commit sumber tercatat dari HEAD worktree sebelum/sesudah deployment.
+- Smoke HTTP pada 23:00 WIB: route Pengaturan 200, sebelas chunk JavaScript berhasil dimuat, dan bundle memuat ketiga RPC get/save/history. HTTP 200 hanya membuktikan shell publik tersedia, bukan login atau otorisasi admin.
+- Verifikasi database pascadeploy pada 23:01 WIB lulus: empat baris identik dengan backup sebelum migrasi, satu Superadmin eligible, pembacaan get/history dengan role authenticated dan JWT sub Superadmin berhasil, pengguna biasa/anon ditolak, privileges langsung/helper tetap tertutup, revisi 0, audit kosong.
+- Pengulangan final: 24 tes fokus lulus, 0 gagal, 0 skip (termasuk PGlite dan routing Superadmin); lint berkas berubah dan build lokal serta build Vercel lulus. Suite penuh tidak diulang; kegagalan lama yang tidak terkait tetap dicatat di bawah.
+- Batas QA: tidak ada sesi browser admin login, uji simpan konfigurasi produksi, uji visual desktop/mobile, atau balapan dua koneksi live. Tes save/audit/revisi hanya pada database sintetis terisolasi. Konfigurasi nyata tidak dimutasi untuk membuktikan UI.
+- Dokumentasi hasil final ditambahkan sesudah deployment dalam commit dokumentasi terpisah; tidak memerlukan deployment aplikasi ulang.
 
 ### Penerapan lanjutan dengan persetujuan eksplisit
 
@@ -11,7 +22,7 @@ Basis worktree: commit 422f1f1, branch feature/admin-platform-settings. Migrasi 
 - Backup sebelum perubahan profil dan migrasi disimpan privat di direktori .local yang diabaikan Git, mencakup keadaan profil awal, empat baris konfigurasi allowlist, privileges, dan definisi fungsi. Identitas akun serta nilai kontak tidak dicetak ke log atau dokumentasi.
 - Migrasi diterapkan dalam transaksi dengan lock tabel settings, pemeriksaan duplikat, dan perbandingan snapshot sebelum/sesudah. Revisi awal 0 dan audit kosong; tidak ada nilai konfigurasi berubah.
 - Pengujian live baca-saja memakai role database authenticated dan JWT sub Superadmin existing: RPC get dan history berhasil; pengguna biasa dan anon ditolak. Direct table privileges dan eksekusi helper ditolak sesuai kontrak. Ini bukan bukti sesi browser login atau pengujian write produksi.
-- Tes fokus dan lint diulang; build produksi lokal lulus pada Next.js 16.4.5. Hasil deployment dicatat setelah Vercel selesai, bukan diasumsikan.
+- Tes fokus dan lint diulang; build produksi lokal lulus pada Next.js 16.4.5. Hasil deployment aktual dan batas pembuktiannya tercatat di atas.
 
 ### Percobaan penerapan produksi — 27 November 2026, 22:43 WIB
 
