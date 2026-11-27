@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { hasSuperAdminRole } from "@/lib/dashboard/global-role.mjs";
 import {
   getHomeHref,
   HOME_HREF_PROFILE_COLUMNS,
@@ -55,6 +56,17 @@ export default function PortalGuard({ children, allowedTypes }) {
         if (!wanted) {
           setAccess("allowed");
           return;
+        }
+
+        // Global superadmin is independent of the underlying student profile.
+        // Only the admin portal accepts this role override.
+        if (wanted.includes("ADMIN")) {
+          const isSuperAdmin = await hasSuperAdminRole(supabase, data.user.id);
+          if (!active) return;
+          if (isSuperAdmin) {
+            setAccess("allowed");
+            return;
+          }
         }
 
         const { data: profile, error: profileError } = await supabase

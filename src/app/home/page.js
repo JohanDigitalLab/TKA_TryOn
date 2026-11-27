@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getHomeHref, HOME_HREF_PROFILE_COLUMNS } from "@/lib/dashboard/home-href.mjs";
+import { hasSuperAdminRole } from "@/lib/dashboard/global-role.mjs";
 
 export default function HomeRedirectPage() {
   const router = useRouter();
@@ -17,6 +18,18 @@ export default function HomeRedirectPage() {
 
       if (!userData.user) {
         router.push("/");
+        return;
+      }
+
+      try {
+        const isSuperAdmin = await hasSuperAdminRole(supabase, userData.user.id);
+        if (!active) return;
+        if (isSuperAdmin) {
+          router.replace("/admin");
+          return;
+        }
+      } catch {
+        if (active) router.replace("/");
         return;
       }
 
