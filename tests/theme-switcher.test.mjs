@@ -4,6 +4,34 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+ test('root layout mounts one global switch inside the shared provider for every route', () => {
+  const layout = read('src/app/layout.js');
+  assert.match(layout, /import ThemeToggle from "@\/components\/theme-toggle"/);
+  assert.equal((layout.match(/<ThemeToggle\s*\/>/g) || []).length, 1);
+  assert.match(layout, /<ThemeProvider>[\s\S]*<ThemeToggle\s*\/>[\s\S]*<\/ThemeProvider>/);
+});
+
+test('global switch uses a body portal above page overlays and respects mobile safe areas', () => {
+  const toggle = read('src/components/theme-toggle.js');
+  assert.match(toggle, /return createPortal\(/);
+  assert.match(toggle, /document\.body/);
+  assert.match(toggle, /if \(!ready\) return null/);
+  assert.match(toggle, /fixed z-\[2147483647\]/);
+  assert.match(toggle, /safe-area-inset-left/);
+  assert.match(toggle, /safe-area-inset-bottom/);
+  assert.match(toggle, /h-12 w-12/);
+});
+
+test('global switch is keyboard accessible and shares the existing theme state', () => {
+  const toggle = read('src/components/theme-toggle.js');
+  assert.match(toggle, /const \{ theme, toggleTheme, ready \} = useTheme\(\)/);
+  assert.match(toggle, /type="button"/);
+  assert.match(toggle, /onClick=\{toggleTheme\}/);
+  assert.match(toggle, /aria-label=\{label\}/);
+  assert.match(toggle, /focus-visible:/);
+  assert.doesNotMatch(toggle, /useState|localStorage|sessionStorage/);
+});
+
 test('ThemeProvider persists one shared session theme and mirrors it onto html.dark', () => {
   const provider = read('src/components/theme-provider.js');
   assert.match(provider, /sessionStorage\.getItem\("tka-theme"\)/);
